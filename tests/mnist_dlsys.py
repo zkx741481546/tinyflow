@@ -1,5 +1,5 @@
-from tinyflow import autodiff as ad
-from tinyflow import ndarray, gpu_op
+from python.tinyflow import autodiff as ad
+from python.tinyflow import ndarray, gpu_op
 import numpy as np
 
 import argparse

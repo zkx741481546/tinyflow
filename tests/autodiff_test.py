@@ -1,6 +1,6 @@
-from tinyflow import autodiff as ad
+from python.tinyflow import autodiff as ad
 import numpy as np
-
+from python.tinyflow import ndarray
 
 def test_identity():
     x2 = ad.Variable(name="x2")
@@ -238,8 +238,90 @@ def test_lr():
     b = ad.Variable(name="b")
     X = ad.Variable(name="X")
     y_ = ad.Variable(name="y_")
+    
 
-    z = ad.matmul_op(X, W) + b
-    loss = ad.sigmoidcrossentropy_op(z, y_)
-
+    # ini 
+    x_val = np.linspace(0,1,100).reshape((100,1))
+    y_val = x_val + 0.5
+    W_val = np.array([[0.1]])
+    b_val = np.array([[0.1]])
+    z = ad.matmul_op(X, W)
+    # z.shape = (100,1)
+    # b.shape = (1,1)
+    y = z + ad.broadcastto_op(b, z)
+    # y = (100,1)
+    loss = ad.matmul_op(y + (-1)*y_, y + (-1)*y_, trans_A=True) * (1/100)
+    # loss = ad.softmaxcrossentropy_op(y, y_)
     grad_W, grad_b = ad.gradients(loss, [W, b])
+
+    executor = ad.Executor([loss, grad_W, grad_b])
+
+    aph = 1e-3
+
+    for i in range(100000):
+
+        loss_val, grad_W_val ,grad_b_val = executor.run(feed_dict={X: x_val,b: b_val,W: W_val,y_:y_val})
+
+        W_val = W_val - aph * grad_W_val
+        b_val = b_val - aph * grad_b_val
+    print(W_val,b_val)
+    executor = ad.Executor([y])
+    res = executor.run(feed_dict={X: x_val,b: b_val,W: W_val})
+    print('y_true'+str(y_val))
+    print('y_pred'+str(res))
+
+
+
+
+
+
+
+
+
+# def convolution_1d_forward_op():
+#     inputs = ad.Variable("inputs")
+#     filters = ad.Variable("filters")
+#     y_ = ad.Variable(name="y_")
+#
+#     outputs = ad.Convolution1DForwardOp(inputs,filters,"NCHW","VALID",1)
+#     loss = ad.matmul_op(y_ + (-1)*outputs,y_ + (-1)* outputs,trans_A = True) * (1/5)
+#     #ini
+#     x_val = np.linspace(0,100,100).reshape((5,1,20))
+#     filters_val = np.ones((1,1,20))
+#     y_val = np.zeros((5,1,1))
+#
+#     grad_f = ad.gradients(loss, [filters])
+#
+#
+#     executor = ad.Executor([loss, grad_f])
+#
+#
+#
+#     aph = 1.0e-3
+#
+#     for i in range(1000):
+#
+#         loss_val, filters_grad_val = executor.run(feed_dict={inputs: x_val,filters:filters_val,y_: y_val})
+#
+#         filters_val = filters_val - aph * filters_grad_val
+#
+#         print(loss_val)
+#         print(filters_grad_val)
+test_lr()
+test_identity()
+test_add_by_const()
+test_mul_by_const()
+test_add_two_vars()
+test_mul_two_vars()
+test_add_mul_mix_1()
+test_add_mul_mix_2()
+test_add_mul_mix_3()
+test_grad_of_grad()
+test_matmul_two_vars()
+# =============not implement yet====================
+# test_exp()
+# test_exp_grad()
+
+
+
+

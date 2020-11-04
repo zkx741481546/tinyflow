@@ -1,5 +1,5 @@
 import numpy as np
-from tinyflow import ndarray, gpu_op, autodiff
+from python.tinyflow import ndarray, gpu_op, autodiff
 
 
 def test_array_set():
@@ -176,3 +176,29 @@ def test_softmax_cross_entropy():
     cross_entropy = np.mean(
         -np.sum(y_ * np.log(autodiff.softmax_func(y)), axis=1), keepdims=True)
     np.testing.assert_allclose(cross_entropy, out, rtol=1e-5)
+
+
+#��
+def test_convolution_forward():
+    ctx = ndarray.gpu(0)
+    in_shape = (1,1,8)
+    filter_shape = (1, 1, 5)
+    out_shape = (1, 1, 8)
+    input_arr_np = np.arange(8).reshape(in_shape)
+
+    dinput_arr_np = np.arange(8).reshape(in_shape)
+    filter_arr_np = np.arange(5).reshape(filter_shape)
+    dfilter_arr_np = np.arange(5).reshape(filter_shape)
+    dinput=ndarray.array(dinput_arr_np, ctx=ctx)
+    dfilter=ndarray.array(dfilter_arr_np, ctx=ctx)
+    arr_in = ndarray.array(input_arr_np, ctx=ctx)
+    arr_filter = ndarray.array(filter_arr_np, ctx=ctx)
+    arr_out = ndarray.empty(out_shape, ctx=ctx)
+    gpu_op.convolution_1d_forward(arr_in,arr_filter,arr_out,"NCHW","SAME",1)
+    gpu_op.convolution_1d_backward(arr_in,arr_out,arr_filter,dfilter,dinput,"NCHW","SAME",1)
+    print(arr_out.asnumpy())
+    print(dfilter.asnumpy())
+    print(dinput.asnumpy())
+    print(arr_in.asnumpy())
+
+test_convolution_forward()
