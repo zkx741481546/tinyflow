@@ -3,7 +3,7 @@ from __future__ import absolute_import
 
 import numpy as np
 from . import ndarray, gpu_op
-
+import copy
 
 class Node(object):
     """Node in a computation graph."""
@@ -152,11 +152,17 @@ class AddOp(Op):
 
     def infer_shape(self, node, input_shapes):
         """Need to handle input_vals[0].shape != input_vals[1].shape"""
+        def get_ele_num(shape):
+            num = 1
+            for size_ in shape:
+                num*=size_
+            return num
+
         if input_shapes[0] == input_shapes[1]:
             return input_shapes[0]
-        elif input_shapes[0] == (1,):
+        elif input_shapes[0] == (1,) or get_ele_num(input_shapes[0]):
             return input_shapes[1]
-        elif input_shapes[1] == (1,):
+        elif input_shapes[1] == (1,) or get_ele_num(input_shapes[1]):
             return input_shapes[0]
 
 
@@ -287,25 +293,25 @@ class MatMulOp(Op):
                 node.inputs[0], output_grad, trans_A=True, trans_B=False)
         elif ((node.matmul_attr_trans_A is True) and
                 (node.matmul_attr_trans_B is False)):
-            # if Y=A^T B, then dA=(dY B^T)^T=B dY^T, dB=A^T dY
+            # if Y=A^T B, then dA=(dY B^T)^T=B dY^T, dB=A dY
             lhs_grad = matmul_op(
                 node.inputs[1], output_grad, trans_A=False, trans_B=True)
             rhs_grad = matmul_op(
-                node.inputs[0], output_grad, trans_A=True, trans_B=False)
+                node.inputs[0], output_grad, trans_A=False, trans_B=False)
         elif ((node.matmul_attr_trans_A is False) and
                 (node.matmul_attr_trans_B is True)):
-            # if Y=A B^T, then dA=dY B^T, dB=(A^T dY)^T=dY^T A
+            # if Y=A B^T, then dA=dY B, dB=(A^T dY)^T=dY^T A
             lhs_grad = matmul_op(
-                output_grad, node.inputs[1], trans_A=False, trans_B=True)
+                output_grad, node.inputs[1], trans_A=False, trans_B=False)
             rhs_grad = matmul_op(
                 output_grad, node.inputs[0], trans_A=True, trans_B=False)
         elif ((node.matmul_attr_trans_A is True) and
                 (node.matmul_attr_trans_B is True)):
-            # if Y=A^T B^T, then dA=(dY B^T)^T=B dY^T, dB=(A^T dY)^T=dY^T A
+            # if Y=A^T B^T, then dA=(dY B^T)^T=B^T dY^T, dB=(A^T dY)^T=dY^T A^T
             lhs_grad = matmul_op(
-                node.inputs[1], output_grad, trans_A=False, trans_B=True)
+                node.inputs[1], output_grad, trans_A=True, trans_B=True)
             rhs_grad = matmul_op(
-                output_grad, node.inputs[0], trans_A=True, trans_B=False)
+                output_grad, node.inputs[0], trans_A=True, trans_B=True)
         return [lhs_grad, rhs_grad]
 
     def infer_shape(self, node, input_shapes):
@@ -541,6 +547,48 @@ class ReluGradientOp(Op):
     def infer_shape(self, node, input_shapes):
         return input_shapes[0]
 
+class Convolution1DForwardOp(Op):
+    def __call__(self, node_A, node_B, dataformat, padding, v):
+        new_node = Op.__call__(self)
+        new_node.inputs = [node_A, node_B]
+        new_node.name = "Convolution1DForward(%s)withfilter(%s)" % (node_A.name, node_B.name)
+        new_node.dataformat = dataformat
+        new_node.padding = padding
+        new_node.v = v
+        return new_node
+    def compute(self, node, input_vals, output_val, use_numpy=False):
+        assert len(input_vals) == 2
+
+        gpu_op.convolution_1d_forward(input_vals[0], input_vals[1], output_val, node.dataformat, node.padding, node.v)
+    def gradient(self, node, output_grad):
+        
+        #dfilter = copy.deepcopy(node.input[1])
+        #dinput = copy.deepcopy(node.input[0])
+        #gpu_op.convolution_1d_backward(node.inputs[0],output_grad,node.input[1],dfilter, dinput,dataformat,padding, v)
+        #return [dinput,dfilter]
+        return [convolution_1d_backward_op(node.inputs[0],node.inputs[1],output_grad, node.dataformat, node.padding, node.v)]
+    def infer_shape(self, node, input_shapes):
+
+        return gpu_op.convolution_1d_forward_get_out_shape(input_shapes[0],input_shapes[1],node.dataformat,node.padding,node.v)
+
+class Convolution1DBackwardOp(Op):
+    def __call__(self, node_A, node_B, node_C, dataformat, padding, v):
+        new_node = Op.__call__(self)
+        new_node.inputs = [node_A, node_B, node_C]
+        new_node.name = "Convolution1DBackward(%s)withfilter(%s)withdoutput(%s)" % (node_A.name, node_B.name, node_C.name)
+        new_node.dataformat = dataformat
+        new_node.padding = padding
+        new_node.v = v
+        return new_node
+    def compute(self, node, input_vals, output_val, use_numpy=False):
+        assert len(input_vals) == 3
+
+        gpu_op.convolution_1d_backward(input_vals[0],input_vals[2],input_vals[1],output_val[1], output_val[0],node.dataformat,node.padding,node.v)
+    def gradient(self, node, output_grad):
+        raise NotImplementedError
+    def infer_shape(self, node, input_shapes):
+        return input_shapes[0],input_shapes[2]
+        
 
 # Create global singletons of operators.
 add_op = AddOp()
@@ -557,8 +605,8 @@ softmaxcrossentropy_op = SoftmaxCrossEntropyOp()
 softmax_op = SoftmaxOp()
 relu_op = ReluOp()
 relu_gradient_op = ReluGradientOp()
-
-
+convolution_1d_forward_op = Convolution1DForwardOp()
+convolution_1d_backward_op = Convolution1DBackwardOp()
 class Executor(object):
     """Executor computes values for given set of nodes in computation graph."""
     def __init__(self, eval_node_list, ctx=None):
@@ -591,10 +639,12 @@ class Executor(object):
         feed_shapes: node->shapes mapping for feed_dict nodes.
         """
         self.node_to_shape_map = dict(feed_shapes)
-        for node in self.topo_order:
+        print(dict(feed_shapes))
+        for idx, node in enumerate(self.topo_order):
             if node in self.node_to_shape_map:
                 continue
             input_shapes = [self.node_to_shape_map[i] for i in node.inputs]
+            assert None not in input_shapes
             self.node_to_shape_map[node] = node.op.infer_shape(node, input_shapes)
 
     def memory_plan(self, feed_shapes):
@@ -641,6 +691,7 @@ class Executor(object):
         for node, value in feed_dict.items():
             if use_numpy:
                 # all values passed in feed_dict must be np.ndarray
+
                 assert isinstance(value, np.ndarray)
                 node_to_val_map[node] = value
             else:
