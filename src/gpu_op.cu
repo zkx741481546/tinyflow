@@ -55,6 +55,8 @@ __global__ void matrix_reduce_sum_axis_zero_kernel(float* inputArr,
       }
 }
 
+
+
 __global__ void matrix_elementwise_add_kernel(float* matAData, float* matBData,
                                               float* outputData, int count) {
     CUDA_1D_KERNEL_LOOP(index, count) {
@@ -166,6 +168,33 @@ __global__ void matrix_softmax_cross_entropy_kernel(int nrow, int ncol,
   }
 }
 
+__global__ void matrix_exp_kernel(float* inputArr, float* outputArr, int count) {
+    CUDA_1D_KERNEL_LOOP(index, count) {
+        outputArr[index] = exp(inputArr[index]);
+    }
+}
+
+__global__ void matrix_log_kernel(float* inputArr, float* outputArr, int count) {
+    CUDA_1D_KERNEL_LOOP(index, count) {
+        outputArr[index] = log(inputArr[index]);
+    }
+}
+
+__global__ void matrix_reverse_kernel(float* inputArr, float* outputArr, int count) {
+    CUDA_1D_KERNEL_LOOP(index, count) {
+        outputArr[index] = 1. / inputArr[index];
+    }
+}
+
+__global__ void matrix_pow_kernel(float* inputArr, float val, float* outputArr, int count) {
+    CUDA_1D_KERNEL_LOOP(index, count) {
+        outputArr[index] = pow(inputArr[index],val);
+    }
+}
+
+
+
+
 int DLGpuArraySet(DLArrayHandle arr, float value) {
   int count = 1;
   for (int i = 0; i < arr->ndim; ++i) {
@@ -191,6 +220,168 @@ int DLGpuBroadcastTo(const DLArrayHandle input, DLArrayHandle output) {
     inputCount, inputArr, outputCount, outputArr);
   return 0;
 }
+
+
+__global__ void matrix_reduce_sum_axis_n_kernel(float* inputArr,
+                                                int outputCount, float* outputArr,
+                                                int reduceDim,int stride,int lowstride) {
+    CUDA_1D_KERNEL_LOOP(index, outputCount) {
+        int lown = index / stride;
+        int lown1 = index % stride;
+        float sum = 0;
+        for (int i = 0; i < reduceDim; ++i) {
+        sum += inputArr[lown * lowstride + lown1 + i * stride];
+        }
+        outputArr[index] = sum;
+    }
+}
+
+__global__ void matrix_reduce_sum_axis_n_kernel_backward(float* inputArr,
+                                                        int outputCount, float* outputArr,
+                                                        int reduceDim,int lowstride) {
+    CUDA_1D_KERNEL_LOOP(index, outputCount) {
+
+        int lown = index / lowstride / reduceDim;
+        int lown1 = index % lowstride;
+        outputArr[index] += inputArr[lown * lowstride + lown1];
+
+    }
+}
+
+
+
+int DLGpuReduceSumAxisN(const DLArrayHandle input, DLArrayHandle output, const int axis) {
+
+
+    if(input->ndim == 1){
+    assert(1 == output->ndim);
+    }else{
+    assert(input->ndim == output->ndim + 1);
+    }
+
+    int stride = 1;
+
+    for (int i = input->ndim; i > axis + 1; --i) {
+
+        stride = stride * (input->shape[i-1]);
+    }
+    int reduceDim = input->shape[axis], outputCount = 1;
+    for (int i = 0; i < output->ndim; ++i) {
+
+        if( i < axis){
+            assert(input->shape[i] == output->shape[i]);
+        }else if(input->ndim != 1){
+            assert(input->shape[i+1] == output->shape[i]);
+        }
+
+        outputCount *= output->shape[i];
+    }
+    float* inputArr = (float*) input->data;
+    float* outputArr = (float*) output->data;
+   // printf("%d",reduceDim);
+   // printf("%d",outputCount);
+   // printf("%d",stride);
+    int lowstride = reduceDim * stride;
+    matrix_reduce_sum_axis_n_kernel<<<BLOCK_NUM(outputCount), MAX_THREADS_NUM>>>(
+            inputArr, outputCount, outputArr, reduceDim, stride, lowstride);
+
+    return 0;
+}
+
+int DLGpuReduceSumAxisNBackward(const DLArrayHandle input, DLArrayHandle output, const int axis) {
+
+
+    if(output->ndim == 1){
+        assert(1 == input->ndim);
+    }else{
+        assert(input->ndim +1== output->ndim);
+    }
+
+    int lowstride = 1;
+
+    for (int i = (output->ndim) - 1; i > axis; --i) {
+        lowstride = lowstride * (output->shape[i]);
+    }
+
+    int reduceDim = output->shape[axis], outputCount = 1;
+    for (int i = 0; i < output->ndim; ++i) {
+
+
+
+        outputCount *= output->shape[i];
+    }
+    float* inputArr = (float*) input->data;
+    float* outputArr = (float*) output->data;
+    matrix_reduce_sum_axis_n_kernel_backward<<<BLOCK_NUM(outputCount), MAX_THREADS_NUM>>>(
+        inputArr, outputCount, outputArr, reduceDim, lowstride);
+
+    return 0;
+}
+
+
+
+int DLGpuReduceSumAll(const DLArrayHandle input, DLArrayHandle output) {
+
+    assert(1 == output->ndim);
+    assert(1 == output->shape[0]);
+    int stride = 1;
+    int reduceDim = input->shape[0];
+    int outputCount = 1;
+    int lowstride = 1;
+    for (int i = 0; i < input->ndim; ++i) {
+        outputCount *= input->shape[i];
+    }
+    float* inputArr = (float*) input->data;
+    float* outputArr = (float*) output->data;
+
+    float* tmp = (float*)malloc(sizeof(float)*outputCount);
+    float* tmp1 = (float*)malloc(sizeof(float)*outputCount);
+    float* inputi = inputArr;
+    float* outputi = tmp;
+    float* changetmp;
+    for(int i= (input->ndim)-1; i > 0;--i){
+        outputCount /= input->shape[i];
+        reduceDim = input->shape[i];
+        lowstride = reduceDim * stride;
+
+        matrix_reduce_sum_axis_n_kernel<<<BLOCK_NUM(outputCount), MAX_THREADS_NUM>>>(
+            inputi, outputCount, outputi, reduceDim, stride, lowstride);
+
+        if (i == (input->ndim)-1){
+        changetmp = tmp1;
+        }else{
+        changetmp = inputi;
+        }
+        inputi = outputi;
+        outputi = changetmp;
+        
+    }
+
+    outputi = outputArr;
+    lowstride = reduceDim * stride;
+    matrix_reduce_sum_axis_n_kernel<<<BLOCK_NUM(outputCount), MAX_THREADS_NUM>>>(
+        inputi, outputCount, outputi, reduceDim, stride, lowstride);
+    free(tmp);
+    free(tmp1);
+
+    return 0;
+}
+
+int DLGpuReduceSumAllBackward(const DLArrayHandle input, DLArrayHandle output) {
+
+    assert(1 == input->ndim);
+    assert(1 == input->shape[0]);
+    float *val = (float*)malloc(sizeof(float));
+    float* inputArr = (float*) input->data;
+    cudaMemcpy(val, inputArr, sizeof(float), cudaMemcpyDeviceToHost);
+
+
+    DLGpuArraySet(output, *val);
+    return 0;
+}
+
+
+
 
 int DLGpuReduceSumAxisZero(const DLArrayHandle input, DLArrayHandle output) {
   assert(input->ndim == output->ndim + 1);
@@ -232,6 +423,8 @@ int DLGpuMatrixElementwiseAddByConst(const DLArrayHandle input, float val,
     assert(input->shape[i] == output->shape[i]);
     count *= input->shape[i];
   }
+
+
   float* inputArr = (float*) input->data;
   float* outputArr = (float*) output->data;
   matrix_elementwise_add_by_const_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM>>>(
@@ -264,8 +457,11 @@ int DLGpuMatrixMultiplyByConst(const DLArrayHandle input, float val,
   int count = 1;
   for (int i = 0; i < input->ndim; ++i) {
     assert(input->shape[i] == output->shape[i]);
+
     count *= input->shape[i];
   }
+
+
   float* inputArr = (float*) input->data;
   float* outputArr = (float*) output->data;
   matrix_elementwise_multipy_by_const_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM>>>(
@@ -391,6 +587,64 @@ int DLGpuSoftmaxCrossEntropy(const DLArrayHandle input_a,
     return 0;
 }
 
+int DLGpuMatrixExp(const DLArrayHandle input, DLArrayHandle output) {
+    assert(input->ndim == output->ndim);
+    int count = 1;
+    for (int i = 0; i < input->ndim; ++i) {
+    assert(input->shape[i] == output->shape[i]);
+    count *= input->shape[i];
+    }
+    float* inputArr = (float*) input->data;
+    float* outputArr = (float*) output->data;
+    matrix_exp_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM>>>(
+    inputArr, outputArr, count);
+    return 0;
+}
+
+
+int DLGpuMatrixLog(const DLArrayHandle input, DLArrayHandle output) {
+    assert(input->ndim == output->ndim);
+    int count = 1;
+    for (int i = 0; i < input->ndim; ++i) {
+    assert(input->shape[i] == output->shape[i]);
+    count *= input->shape[i];
+    }
+    float* inputArr = (float*) input->data;
+    float* outputArr = (float*) output->data;
+    matrix_log_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM>>>(
+    inputArr, outputArr, count);
+    return 0;
+}
+
+
+int DLGpuMatrixReverse(const DLArrayHandle input, DLArrayHandle output) {
+    assert(input->ndim == output->ndim);
+    int count = 1;
+    for (int i = 0; i < input->ndim; ++i) {
+    assert(input->shape[i] == output->shape[i]);
+    count *= input->shape[i];
+    }
+    float* inputArr = (float*) input->data;
+    float* outputArr = (float*) output->data;
+    matrix_reverse_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM>>>(
+    inputArr, outputArr, count);
+    return 0;
+}
+
+int DLGpuMatrixPow(const DLArrayHandle input,const float val, DLArrayHandle output) {
+    assert(input->ndim == output->ndim);
+    int count = 1;
+    for (int i = 0; i < input->ndim; ++i) {
+    assert(input->shape[i] == output->shape[i]);
+    count *= input->shape[i];
+    }
+    float* inputArr = (float*) input->data;
+    float* outputArr = (float*) output->data;
+    matrix_pow_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM>>>(
+    inputArr, val, outputArr, count);
+    return 0;
+}
+
 
 
 
@@ -400,10 +654,10 @@ int DLGpuConvolution1DForward(const DLArrayHandle input,
     DLArrayHandle output,
     cudnnTensorFormat_t dataformat,
     const paddingStatus_t padding,
-    const int v          /*filter stride */) {
+    const int v         /*filter stride */) {
 
-    cout<<dataformat<<endl;
-    cout<<padding<<endl;
+    //cout<<dataformat<<endl;
+   // cout<<padding<<endl;
     assert(input->ndim == 3);
     assert(filter->ndim == 3);
 
@@ -449,7 +703,7 @@ int DLGpuConvolution1DForward(const DLArrayHandle input,
     //handle
     cudnnHandle_t handle;
     CUDNN_CALL(cudnnCreate(&handle));
-     printf("0\n");
+
     //input
     cudnnTensorDescriptor_t input_descriptor;
     CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
@@ -542,7 +796,7 @@ int DLGpuConvolution1DForward(const DLArrayHandle input,
     void* workspace = nullptr;
     cudaMalloc(&workspace, workspace_size);
 
-    printf("6\n");
+
     // convolution
     auto alpha = 1.0f, beta = 0.0f;
     CUDNN_CALL(cudnnConvolutionForward(handle,
@@ -578,14 +832,15 @@ int DLGpuConvolution1DForwardGetOutShape(const int* input_shapes,
     const paddingStatus_t padding,
     const int v          /*filter stride */) {
 
-    cout << dataformat << endl;
-    cout << padding << endl;
+   // cout << dataformat << endl;
+   // cout << padding << endl;
 
 
     int input_n = input_shapes[0];
     int input_c = input_shapes[2];
     int input_h = 1;
     int input_w = input_shapes[1];
+
 
     int filter_n = filter_shapes[0];
     int filter_c = filter_shapes[2];
@@ -603,7 +858,6 @@ int DLGpuConvolution1DForwardGetOutShape(const int* input_shapes,
         filter_h = 1;
         filter_w = filter_shapes[2];
     }
-
 
 
     int out_n;
@@ -704,7 +958,7 @@ int DLGpuConvolution1DBackward(const DLArrayHandle input,
 
     assert(input->ndim == 3);
     assert(filter->ndim == 3);
-
+        
 
      int input_n = input->shape[0];
      int input_c = input->shape[2];
@@ -729,7 +983,7 @@ int DLGpuConvolution1DBackward(const DLArrayHandle input,
         filter_w = filter->shape[2];
     }
 
-  
+
 
     int out_n;
     int out_c;
@@ -820,6 +1074,9 @@ int DLGpuConvolution1DBackward(const DLArrayHandle input,
         out_h,
         out_w));
 
+    
+
+    
     //�������㷨
     cudnnConvolutionBwdFilterAlgo_t  algo1;
     CUDNN_CALL(cudnnGetConvolutionBackwardFilterAlgorithm(handle,
@@ -867,7 +1124,6 @@ int DLGpuConvolution1DBackward(const DLArrayHandle input,
     cudaMalloc(&workspace2, workspace_size2);
 
 
-
     // convolution
     auto alpha = 1.0f, beta = 0.0f;
     CUDNN_CALL(cudnnConvolutionBackwardFilter(handle,
@@ -883,7 +1139,6 @@ int DLGpuConvolution1DBackward(const DLArrayHandle input,
         &beta, //y����,y�������ݽ������ţ�
         filter_descriptor,
         dfilter->data));
-
 
 
     CUDNN_CALL(cudnnConvolutionBackwardData(handle,
@@ -1093,6 +1348,130 @@ int DLGpuConvolution2DForward(const DLArrayHandle input,
     CUDNN_CALL(cudnnDestroy(handle));
     return 0;
 }
+
+int DLGpuConvolution2DForwardGetOutShape(const int* input_shapes,
+    const int* filter_shapes,
+    int* output_shapes,
+    cudnnTensorFormat_t dataformat,
+    const paddingStatus_t padding,
+    const int u,          /* vertical filter stride */
+    const int v          /* horizontal filter stride */) {
+
+   // cout << dataformat << endl;
+   // cout << padding << endl;
+
+
+    int input_n = input_shapes[0];
+    int input_c = input_shapes[3];
+    int input_h = input_shapes[1];
+    int input_w = input_shapes[2];
+
+
+    int filter_n = filter_shapes[0];
+    int filter_c = filter_shapes[3];
+    int filter_h = filter_shapes[1];
+    int filter_w = filter_shapes[2];
+
+    if (dataformat == 0) {
+        input_n = input_shapes[0];
+        input_c = input_shapes[1];
+        input_h = input_shapes[2];
+        input_w = input_shapes[3];
+
+        filter_n = filter_shapes[0];
+        filter_c = filter_shapes[1];
+        filter_h = filter_shapes[2];
+        filter_w = filter_shapes[3];
+    }
+
+
+    int out_n;
+    int out_c;
+    int out_h;
+    int out_w;
+
+    int pad_h = 0;
+    int pad_w = 0;
+
+    if (padding == 1) {
+        pad_h = filter_h / 2;
+        pad_w = filter_w / 2;
+    }
+
+
+    //handle
+    cudnnHandle_t handle;
+    CUDNN_CALL(cudnnCreate(&handle));
+
+    //input
+    cudnnTensorDescriptor_t input_descriptor;
+    CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
+    CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
+        dataformat,
+        CUDNN_DATA_FLOAT,
+        input_n,
+        input_c,
+        input_h,
+        input_w));
+
+
+    //������
+    cudnnFilterDescriptor_t filter_descriptor;
+    CUDNN_CALL(cudnnCreateFilterDescriptor(&filter_descriptor));
+    CUDNN_CALL(cudnnSetFilter4dDescriptor(filter_descriptor,
+        CUDNN_DATA_FLOAT,
+        dataformat,
+        filter_n,
+        filter_c,
+        filter_h,
+        filter_w));
+
+
+    //��ķ�ʽ��������padding
+    cudnnConvolutionDescriptor_t conv_descriptor;
+    CUDNN_CALL(cudnnCreateConvolutionDescriptor(&conv_descriptor));
+    CUDNN_CALL(cudnnSetConvolution2dDescriptor(conv_descriptor,
+        pad_h, pad_w, // zero-padding
+        u, v, // stride
+        1, 1,
+        CUDNN_CROSS_CORRELATION, CUDNN_DATA_FLOAT));
+
+    //����output��4��ά��
+    CUDNN_CALL(cudnnGetConvolution2dForwardOutputDim(
+        conv_descriptor,
+        input_descriptor,
+        filter_descriptor,
+        &out_n,
+        &out_c,
+        &out_h,
+        &out_w));
+
+
+
+    if (dataformat == 0) {
+        output_shapes[0] = out_n;
+        output_shapes[1] = out_c;
+        output_shapes[2] = out_h;
+        output_shapes[3] = out_w;
+    }
+    else {
+        output_shapes[0] = out_n;
+        output_shapes[1] = out_h;
+        output_shapes[2] = out_w;
+        output_shapes[3] = out_c;
+    }
+
+
+
+    CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
+    CUDNN_CALL(cudnnDestroyConvolutionDescriptor(conv_descriptor));
+    CUDNN_CALL(cudnnDestroyFilterDescriptor(filter_descriptor));
+    CUDNN_CALL(cudnnDestroy(handle));
+
+    return 0;
+
+}
+
 
 
 int DLGpuConvolution2DBackward(const DLArrayHandle input,
@@ -1483,6 +1862,92 @@ int DLGpuConvolution3DForward(const DLArrayHandle input,
 
 }
 
+
+int DLGpuConvolution3DForwardGetOutShape(const int* input_shapes,
+    const int* filter_shapes,
+    int* output_shapes,
+    cudnnTensorFormat_t dataformat,
+    const paddingStatus_t padding,
+    const int s1,
+    const int s2,
+    const int s3) {
+
+    int* padA, * filterStrideA, * dilationA;
+
+    padA = (int*)malloc(sizeof(int) * 3);
+    filterStrideA = (int*)malloc(sizeof(int) * 3);
+    dilationA = (int*)malloc(sizeof(int) * 3);
+
+
+    for (int i = 0; i < 3; i++) {
+        padA[i] = 0;
+        dilationA[i] = 1;
+
+    }
+
+    if (padding == 1) {
+        for (int i = 0; i < 3; i++) {
+            padA[i] = filter_shapes[i+2]/2;
+
+        }
+    }
+
+    filterStrideA[0] = s1;
+    filterStrideA[1] = s2;
+    filterStrideA[2] = s3;
+
+
+    //handle
+    cudnnHandle_t handle;
+    CUDNN_CALL(cudnnCreate(&handle));
+
+    //input
+    cudnnTensorDescriptor_t input_descriptor;
+    CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
+    CUDNN_CALL(cudnnSetTensorNdDescriptorEx(input_descriptor,
+        dataformat,
+        CUDNN_DATA_FLOAT,
+        5,
+        input_shapes));
+
+    //�˺���
+    cudnnFilterDescriptor_t filter_descriptor;
+    CUDNN_CALL(cudnnCreateFilterDescriptor(&filter_descriptor));
+    CUDNN_CALL(cudnnSetFilterNdDescriptor(filter_descriptor,
+        CUDNN_DATA_FLOAT,
+        dataformat,
+        5,
+        filter_shapes));
+
+
+    cudnnConvolutionDescriptor_t conv_descriptor;
+    CUDNN_CALL(cudnnCreateConvolutionDescriptor(&conv_descriptor));
+    CUDNN_CALL(cudnnSetConvolutionNdDescriptor(conv_descriptor,
+        3,
+        padA,
+        filterStrideA,
+        dilationA,
+        CUDNN_CROSS_CORRELATION, CUDNN_DATA_FLOAT));
+
+    //output��shape
+    CUDNN_CALL(cudnnGetConvolutionNdForwardOutputDim(
+        conv_descriptor,
+        input_descriptor,
+        filter_descriptor,
+        5,
+        output_shapes));
+
+
+
+    CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
+    CUDNN_CALL(cudnnDestroyConvolutionDescriptor(conv_descriptor));
+    CUDNN_CALL(cudnnDestroyFilterDescriptor(filter_descriptor));
+    CUDNN_CALL(cudnnDestroy(handle));
+
+    return 0;
+
+}
+
 int DLGpuConvolution3DBackward(const DLArrayHandle input,
     const DLArrayHandle doutput,
     const DLArrayHandle filter,
@@ -1701,6 +2166,7 @@ int DLGpuConvolution3DBackward(const DLArrayHandle input,
 int DLGpuPooling1DForward(const DLArrayHandle input,
     DLArrayHandle output,
     cudnnTensorFormat_t dataformat,
+    cudnnPoolingMode_t poolingMode,
     const int padding_w,
     const int v,
     const int filter_w) {
@@ -1714,6 +2180,8 @@ int DLGpuPooling1DForward(const DLArrayHandle input,
     int input_c = input->shape[2];
     int input_h = 1;
     int input_w = input->shape[1];
+
+   
 
 
 
@@ -1741,7 +2209,7 @@ int DLGpuPooling1DForward(const DLArrayHandle input,
     cudnnPoolingDescriptor_t pool_descriptor;
     CUDNN_CALL(cudnnCreatePoolingDescriptor(&pool_descriptor));
     CUDNN_CALL(cudnnSetPooling2dDescriptor(pool_descriptor,
-        CUDNN_POOLING_MAX,
+        poolingMode,
         CUDNN_NOT_PROPAGATE_NAN,
         filter_h, filter_w,
         padding_h, padding_w, // zero-padding
@@ -1753,7 +2221,7 @@ int DLGpuPooling1DForward(const DLArrayHandle input,
     cudnnTensorDescriptor_t input_descriptor;
     CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
     CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
-        CUDNN_TENSOR_NHWC,
+        dataformat,
         CUDNN_DATA_FLOAT,
         input_n,
         input_c,
@@ -1787,7 +2255,7 @@ int DLGpuPooling1DForward(const DLArrayHandle input,
     cudnnTensorDescriptor_t output_descriptor;
     CUDNN_CALL(cudnnCreateTensorDescriptor(&output_descriptor));
     CUDNN_CALL(cudnnSetTensor4dDescriptor(output_descriptor,
-        CUDNN_TENSOR_NHWC,
+        dataformat,
         CUDNN_DATA_FLOAT,
         output_n,
         output_c,
@@ -1795,7 +2263,7 @@ int DLGpuPooling1DForward(const DLArrayHandle input,
         output_w));
 
 
-    auto alpha = 1.0f, beta = 1.0f;
+    auto alpha = 1.0f, beta = 0.0f;
     CUDNN_CALL(cudnnPoolingForward(handle,
         pool_descriptor,
         &alpha,
@@ -1812,11 +2280,103 @@ int DLGpuPooling1DForward(const DLArrayHandle input,
     return 0;
 }
 
+
+int DLGpuPooling1DForwardGetOutShape(const int* input_shapes,
+    int* output_shapes,
+    cudnnTensorFormat_t dataformat,
+    cudnnPoolingMode_t poolingMode,
+    const int padding_w,
+    const int v,
+    const int filter_w){
+
+
+
+    int padding_h = 0;
+    int u = 1;
+    int filter_h = 1;
+
+    int input_n = input_shapes[0];
+    int input_c = input_shapes[2];
+    int input_h = 1;
+    int input_w = input_shapes[1];
+
+
+
+    if (dataformat == 0) {
+        input_n = input_shapes[0];
+        input_c = input_shapes[1];
+        input_h = 1;
+        input_w = input_shapes[2];
+    }
+
+    int output_n;
+    int output_c;
+    int output_h;
+    int output_w;
+
+
+
+    //handle
+    cudnnHandle_t handle;
+    CUDNN_CALL(cudnnCreate(&handle));
+
+
+    cudnnPoolingDescriptor_t pool_descriptor;
+    CUDNN_CALL(cudnnCreatePoolingDescriptor(&pool_descriptor));
+    CUDNN_CALL(cudnnSetPooling2dDescriptor(pool_descriptor,
+        poolingMode,
+        CUDNN_NOT_PROPAGATE_NAN,
+        filter_h, filter_w,
+        padding_h, padding_w, // zero-padding
+        u, v // stride
+    ));
+
+    //input
+    cudnnTensorDescriptor_t input_descriptor;
+    CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
+    CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
+        dataformat,
+        CUDNN_DATA_FLOAT,
+        input_n,
+        input_c,
+        input_h,
+        input_w));
+
+
+    CUDNN_CALL(cudnnGetPooling2dForwardOutputDim(
+        pool_descriptor,
+        input_descriptor,
+        &output_n,
+        &output_c,
+        &output_h,
+        &output_w));
+
+
+    if (dataformat == 0) {
+        output_shapes[0] = output_n;
+        output_shapes[1] = output_c;
+        output_shapes[2] = output_w;
+    }
+    else {
+        output_shapes[0] = output_n;
+        output_shapes[1] = output_w;
+        output_shapes[2] = output_c;
+    }
+
+    CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
+    CUDNN_CALL(cudnnDestroyPoolingDescriptor(pool_descriptor));
+    CUDNN_CALL(cudnnDestroy(handle));
+    return 0;
+
+
+}
+
 int DLGpuPooling1DBackward(const DLArrayHandle input,
     const DLArrayHandle output,
     const DLArrayHandle doutput,
     DLArrayHandle dinput,
     cudnnTensorFormat_t dataformat,
+    cudnnPoolingMode_t poolingMode,
     const int padding_w,
     const int v,
     const int filter_w) {
@@ -1853,7 +2413,7 @@ int DLGpuPooling1DBackward(const DLArrayHandle input,
     cudnnPoolingDescriptor_t pool_descriptor;
     CUDNN_CALL(cudnnCreatePoolingDescriptor(&pool_descriptor));
     CUDNN_CALL(cudnnSetPooling2dDescriptor(pool_descriptor,
-        CUDNN_POOLING_MAX,
+        poolingMode,
         CUDNN_NOT_PROPAGATE_NAN,
         filter_h, filter_w,
         padding_h, padding_w, // zero-padding
@@ -1909,7 +2469,7 @@ int DLGpuPooling1DBackward(const DLArrayHandle input,
         output_w));
 
 
-    auto alpha = 1.0f, beta = 1.0f;
+    auto alpha = 1.0f, beta = 0.0f;
     CUDNN_CALL(cudnnPoolingBackward(handle,
         pool_descriptor,
         &alpha,
@@ -1935,6 +2495,7 @@ int DLGpuPooling1DBackward(const DLArrayHandle input,
 int DLGpuPooling2DForward(const DLArrayHandle input,
     DLArrayHandle output,
     cudnnTensorFormat_t dataformat,
+    cudnnPoolingMode_t poolingMode,
     const int padding_h,
     const int padding_w,
     const int u,
@@ -1969,7 +2530,7 @@ int DLGpuPooling2DForward(const DLArrayHandle input,
     cudnnPoolingDescriptor_t pool_descriptor;
     CUDNN_CALL(cudnnCreatePoolingDescriptor(&pool_descriptor));
     CUDNN_CALL(cudnnSetPooling2dDescriptor(pool_descriptor,
-        CUDNN_POOLING_MAX,
+        poolingMode,
         CUDNN_NOT_PROPAGATE_NAN,
         filter_h, filter_w,
         padding_h, padding_w, // zero-padding
@@ -2008,7 +2569,7 @@ int DLGpuPooling2DForward(const DLArrayHandle input,
         output_w));
 
 
-    auto alpha = 1.0f, beta = 1.0f;
+    auto alpha = 1.0f, beta = 0.0f;
     CUDNN_CALL(cudnnPoolingForward(handle,
         pool_descriptor,
         &alpha,
@@ -2025,13 +2586,102 @@ int DLGpuPooling2DForward(const DLArrayHandle input,
    return 0;
 }
 
+int DLGpuPooling2DForwardGetOutShape(const int* input_shapes,
+    int* output_shapes,
+    cudnnTensorFormat_t dataformat,
+    cudnnPoolingMode_t poolingMode,
+    const int padding_h,
+    const int padding_w,
+    const int u,
+    const int v,
+    const int filter_h,
+    const int filter_w){
 
+
+
+    int input_n = input_shapes[0];
+    int input_c = input_shapes[3];
+    int input_h = input_shapes[1];
+    int input_w = input_shapes[2];
+    if (dataformat == 0) {
+        input_n = input_shapes[0];
+        input_c = input_shapes[1];
+        input_h = input_shapes[2];
+        input_w = input_shapes[3];
+    }
+
+
+
+    int output_n;
+    int output_c;
+    int output_h;
+    int output_w;
+
+
+
+    //handle
+    cudnnHandle_t handle;
+    CUDNN_CALL(cudnnCreate(&handle));
+
+
+    cudnnPoolingDescriptor_t pool_descriptor;
+    CUDNN_CALL(cudnnCreatePoolingDescriptor(&pool_descriptor));
+    CUDNN_CALL(cudnnSetPooling2dDescriptor(pool_descriptor,
+        poolingMode,
+        CUDNN_NOT_PROPAGATE_NAN,
+        filter_h, filter_w,
+        padding_h, padding_w, // zero-padding
+        u, v // stride
+    ));
+
+    //input
+    cudnnTensorDescriptor_t input_descriptor;
+    CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
+    CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
+        dataformat,
+        CUDNN_DATA_FLOAT,
+        input_n,
+        input_c,
+        input_h,
+        input_w));
+
+
+    CUDNN_CALL(cudnnGetPooling2dForwardOutputDim(
+        pool_descriptor,
+        input_descriptor,
+        &output_n,
+        &output_c,
+        &output_h,
+        &output_w));
+
+
+    if (dataformat == 0) {
+        output_shapes[0] = output_n;
+        output_shapes[1] = output_c;
+        output_shapes[2] = output_h;
+        output_shapes[3] = output_w;
+    }
+    else {
+        output_shapes[0] = output_n;
+        output_shapes[1] = output_h;
+        output_shapes[2] = output_w;
+        output_shapes[3] = output_c;
+    }
+
+    CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
+    CUDNN_CALL(cudnnDestroyPoolingDescriptor(pool_descriptor));
+    CUDNN_CALL(cudnnDestroy(handle));
+    return 0;
+
+
+}
 
 int DLGpuPooling2DBackward(const DLArrayHandle input,
     const DLArrayHandle output,
     const DLArrayHandle doutput,
     DLArrayHandle dinput,
     cudnnTensorFormat_t dataformat,
+    cudnnPoolingMode_t poolingMode,
     const int padding_h,
     const int padding_w,
     const int u,
@@ -2066,7 +2716,7 @@ int DLGpuPooling2DBackward(const DLArrayHandle input,
     cudnnPoolingDescriptor_t pool_descriptor;
     CUDNN_CALL(cudnnCreatePoolingDescriptor(&pool_descriptor));
     CUDNN_CALL(cudnnSetPooling2dDescriptor(pool_descriptor,
-        CUDNN_POOLING_MAX,
+        poolingMode,
         CUDNN_NOT_PROPAGATE_NAN,
         filter_h, filter_w,
         padding_h, padding_w, // zero-padding
@@ -2105,7 +2755,7 @@ int DLGpuPooling2DBackward(const DLArrayHandle input,
         output_w));
 
 
-    auto alpha = 1.0f, beta = 1.0f;
+    auto alpha = 1.0f, beta = 0.0f;
     CUDNN_CALL(cudnnPoolingBackward(handle,
         pool_descriptor,
         &alpha,
@@ -2132,6 +2782,7 @@ int DLGpuPooling2DBackward(const DLArrayHandle input,
 int DLGpuPooling3DForward(const DLArrayHandle input,
     DLArrayHandle output,
     cudnnTensorFormat_t dataformat,
+    cudnnPoolingMode_t poolingMode,
     const int padding1,
     const int padding2,
     const int padding3,
@@ -2184,7 +2835,7 @@ int DLGpuPooling3DForward(const DLArrayHandle input,
     cudnnPoolingDescriptor_t pool_descriptor;
     CUDNN_CALL(cudnnCreatePoolingDescriptor(&pool_descriptor));
     CUDNN_CALL(cudnnSetPoolingNdDescriptor(pool_descriptor,
-        CUDNN_POOLING_MAX,
+        poolingMode,
         CUDNN_NOT_PROPAGATE_NAN,
         3,
         filter_shape,
@@ -2230,7 +2881,7 @@ int DLGpuPooling3DForward(const DLArrayHandle input,
         output_shape));
 
 
-    auto alpha = 1.0f, beta = 1.0f;
+    auto alpha = 1.0f, beta = 0.0f;
     CUDNN_CALL(cudnnPoolingForward(handle,
         pool_descriptor,
         &alpha,
@@ -2248,7 +2899,76 @@ int DLGpuPooling3DForward(const DLArrayHandle input,
 
 }
 
+int DLGpuPooling3DForwardGetOutShape(const int* input_shapes,
+    int* output_shapes,
+    cudnnTensorFormat_t dataformat,
+    cudnnPoolingMode_t poolingMode,
+    const int padding1,
+    const int padding2,
+    const int padding3,
+    const int s1,
+    const int s2,
+    const int s3,
+    const int filter1,
+    const int filter2,
+    const int filter3){
 
+    int* filter_shape,*padA,*filterStrideA;
+
+    filter_shape = (int*)malloc(sizeof(int) * 3);
+    padA = (int*)malloc(sizeof(int) * 3);
+    filterStrideA = (int*)malloc(sizeof(int) * 3);
+    filter_shape[0] = filter1;
+    filter_shape[1] = filter2;
+    filter_shape[2] = filter3;
+    filterStrideA[0] = s1;
+    filterStrideA[1] = s2;
+    filterStrideA[2] = s3;
+    padA[0] = padding1;
+    padA[1] = padding2;
+    padA[2] = padding3;
+
+
+
+    //handle
+    cudnnHandle_t handle;
+    CUDNN_CALL(cudnnCreate(&handle));
+
+
+     cudnnPoolingDescriptor_t pool_descriptor;
+    CUDNN_CALL(cudnnCreatePoolingDescriptor(&pool_descriptor));
+    CUDNN_CALL(cudnnSetPoolingNdDescriptor(pool_descriptor,
+        poolingMode,
+        CUDNN_NOT_PROPAGATE_NAN,
+        3,
+        filter_shape,
+        padA,
+        filterStrideA));
+
+
+    //input
+    cudnnTensorDescriptor_t input_descriptor;
+    CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
+    CUDNN_CALL(cudnnSetTensorNdDescriptorEx(input_descriptor,
+        dataformat,
+        CUDNN_DATA_FLOAT,
+        5,
+        input_shapes));
+
+
+    CUDNN_CALL(cudnnGetPoolingNdForwardOutputDim(
+        pool_descriptor,
+        input_descriptor,
+        5,
+        output_shapes));
+
+    CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
+    CUDNN_CALL(cudnnDestroyPoolingDescriptor(pool_descriptor));
+    CUDNN_CALL(cudnnDestroy(handle));
+    return 0;
+
+
+}
 
 
 int DLGpuPooling3DBackward(const DLArrayHandle input,
@@ -2256,6 +2976,7 @@ int DLGpuPooling3DBackward(const DLArrayHandle input,
     const DLArrayHandle doutput,
     DLArrayHandle dinput,
     cudnnTensorFormat_t dataformat,
+    cudnnPoolingMode_t poolingMode,
     const int padding1,
     const int padding2,
     const int padding3,
@@ -2308,7 +3029,7 @@ int DLGpuPooling3DBackward(const DLArrayHandle input,
     cudnnPoolingDescriptor_t pool_descriptor;
     CUDNN_CALL(cudnnCreatePoolingDescriptor(&pool_descriptor));
     CUDNN_CALL(cudnnSetPoolingNdDescriptor(pool_descriptor,
-        CUDNN_POOLING_MAX,
+        poolingMode,
         CUDNN_NOT_PROPAGATE_NAN,
         3,
         filter_shape,
@@ -2354,7 +3075,7 @@ int DLGpuPooling3DBackward(const DLArrayHandle input,
         output_shape));
 
 
-    auto alpha = 1.0f, beta = 1.0f;
+    auto alpha = 1.0f, beta = 0.0f;
     CUDNN_CALL(cudnnPoolingBackward(handle,
         pool_descriptor,
         &alpha,
@@ -2375,6 +3096,974 @@ int DLGpuPooling3DBackward(const DLArrayHandle input,
     return 0;
 
 }
+
+
+
+
+
+
+//activation
+int DLGpuActivationForward(const DLArrayHandle input,
+    DLArrayHandle output,
+    cudnnTensorFormat_t dataformat,
+    cudnnActivationMode_t activationMode) {
+
+    assert(input->ndim==4||input->ndim==3||input->ndim==5);
+
+    //handle
+    cudnnHandle_t handle;
+    CUDNN_CALL(cudnnCreate(&handle));
+    //input
+    cudnnTensorDescriptor_t input_descriptor;
+
+    int input_n;
+    int input_c;
+    int input_h;
+    int input_w;
+
+    if(input->ndim == 3){
+        if (dataformat == 0) {
+            input_n = input->shape[0];
+            input_c = input->shape[1];
+            input_h = 1;
+            input_w = input->shape[2];
+        }else{
+            input_n = input->shape[0];
+            input_c = input->shape[2];
+            input_h = 1;
+            input_w = input->shape[1];
+        }
+        //input
+        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
+        CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
+            dataformat,
+            CUDNN_DATA_FLOAT,
+            input_n,
+            input_c,
+            input_h,
+            input_w));
+
+    }
+
+
+    if(input->ndim == 4){
+        if (dataformat == 0) {
+            input_n = input->shape[0];
+            input_c = input->shape[1];
+            input_h = input->shape[2];
+            input_w = input->shape[3];
+        }else{
+            input_n = input->shape[0];
+            input_c = input->shape[3];
+            input_h = input->shape[1];
+            input_w = input->shape[2];
+        }
+        //input
+        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
+        CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
+            dataformat,
+            CUDNN_DATA_FLOAT,
+            input_n,
+            input_c,
+            input_h,
+            input_w));
+
+    }
+
+    if(input->ndim == 5){
+
+        int* input_shape;
+        input_shape = (int*)malloc(sizeof(int) * 5);
+        for(int i=0;i<5;i++){
+            input_shape[i]= input->shape[i];
+        }
+
+        //input
+        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
+        CUDNN_CALL(cudnnSetTensorNdDescriptorEx(input_descriptor,
+            dataformat,
+            CUDNN_DATA_FLOAT,
+            5,
+            input_shape));
+
+        
+
+    }
+    auto alpha = 1.0f, beta = 0.0f;
+    if (activationMode != 3 ){
+        // 描述激活
+        cudnnActivationDescriptor_t activation_descriptor;
+        CUDNN_CALL(cudnnCreateActivationDescriptor(&activation_descriptor));
+        CUDNN_CALL(cudnnSetActivationDescriptor(activation_descriptor,
+            activationMode,
+            CUDNN_PROPAGATE_NAN,
+            /*relu_coef=*/0));
+
+       
+        CUDNN_CALL(cudnnActivationForward(handle,
+            activation_descriptor,
+            &alpha,
+            input_descriptor,
+            input->data,
+            &beta,
+            input_descriptor,
+            output->data));
+        CUDNN_CALL(cudnnDestroyActivationDescriptor(activation_descriptor));
+       
+    }else{
+
+        CUDNN_CALL(cudnnSoftmaxForward(handle,
+            CUDNN_SOFTMAX_FAST,
+            CUDNN_SOFTMAX_MODE_INSTANCE,
+            &alpha,
+            input_descriptor,
+            input->data,
+            &beta,
+            input_descriptor,
+            output->data));
+    }
+
+
+    
+   
+    CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
+    CUDNN_CALL(cudnnDestroy(handle));
+    return 0;
+
+
+
+}
+
+
+//activation
+int DLGpuActivationBackward(const DLArrayHandle input,
+    DLArrayHandle dinput,
+    const DLArrayHandle output,
+    const DLArrayHandle doutput,
+    cudnnTensorFormat_t dataformat,
+    cudnnActivationMode_t activationMode) {
+
+    assert(input->ndim==4||input->ndim==3||input->ndim==5);
+
+    //handle
+    cudnnHandle_t handle;
+    CUDNN_CALL(cudnnCreate(&handle));
+    //input
+    cudnnTensorDescriptor_t input_descriptor;
+
+    int input_n;
+    int input_c;
+    int input_h;
+    int input_w;
+
+    if(input->ndim == 3){
+        if (dataformat == 0) {
+            input_n = input->shape[0];
+            input_c = input->shape[1];
+            input_h = 1;
+            input_w = input->shape[2];
+        }else{
+            input_n = input->shape[0];
+            input_c = input->shape[2];
+            input_h = 1;
+            input_w = input->shape[1];
+        }
+        //input
+        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
+        CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
+            dataformat,
+            CUDNN_DATA_FLOAT,
+            input_n,
+            input_c,
+            input_h,
+            input_w));
+
+    }
+
+
+    if(input->ndim == 4){
+        if (dataformat == 0) {
+            input_n = input->shape[0];
+            input_c = input->shape[1];
+            input_h = input->shape[2];
+            input_w = input->shape[3];
+        }else{
+            input_n = input->shape[0];
+            input_c = input->shape[3];
+            input_h = input->shape[1];
+            input_w = input->shape[2];
+        }
+        //input
+        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
+        CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
+            dataformat,
+            CUDNN_DATA_FLOAT,
+            input_n,
+            input_c,
+            input_h,
+            input_w));
+
+    }
+
+    if(input->ndim == 5){
+
+        int* input_shape;
+        input_shape = (int*)malloc(sizeof(int) * 5);
+        for(int i=0;i<5;i++){
+            input_shape[i]= input->shape[i];
+        }
+
+        //input
+        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
+        CUDNN_CALL(cudnnSetTensorNdDescriptorEx(input_descriptor,
+            dataformat,
+            CUDNN_DATA_FLOAT,
+            5,
+            input_shape));
+
+        
+
+    }
+    auto alpha = 1.0f, beta = 0.0f;
+    if(activationMode != 3){
+
+        // 描述激活
+        cudnnActivationDescriptor_t activation_descriptor;
+        CUDNN_CALL(cudnnCreateActivationDescriptor(&activation_descriptor));
+        CUDNN_CALL(cudnnSetActivationDescriptor(activation_descriptor,
+            activationMode,
+            CUDNN_PROPAGATE_NAN,
+            /*relu_coef=*/0));
+
+        // 激活函数求导
+       
+        CUDNN_CALL(cudnnActivationBackward(handle,
+            activation_descriptor,
+            &alpha,
+            input_descriptor,
+            output->data,
+            input_descriptor,
+            doutput->data,
+            input_descriptor,
+            input->data,
+            &beta,
+            input_descriptor,
+            dinput->data));
+        CUDNN_CALL(cudnnDestroyActivationDescriptor(activation_descriptor));
+    }else{
+
+
+        CUDNN_CALL(cudnnSoftmaxBackward(handle,
+            CUDNN_SOFTMAX_FAST,
+            CUDNN_SOFTMAX_MODE_INSTANCE,
+            &alpha,
+            input_descriptor,
+            output->data,
+            input_descriptor,
+            doutput->data,
+            &beta,
+            input_descriptor,
+            dinput->data));
+
+
+    }
+
+    CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
+    CUDNN_CALL(cudnnDestroy(handle));
+    return 0;
+
+
+
+}
+
+//dropout
+int DLGpuDropoutForward(const DLArrayHandle input,
+    DLArrayHandle output,
+    cudnnTensorFormat_t dataformat,
+    const float dropout,
+    const int seed,
+    void **reserveSpace_p/*back use*/){
+
+
+
+    //handle
+    cudnnHandle_t handle;
+    CUDNN_CALL(cudnnCreate(&handle));
+
+    //input
+    cudnnTensorDescriptor_t input_descriptor;
+
+    int input_n;
+    int input_c;
+    int input_h;
+    int input_w;
+
+    if(input->ndim == 3){
+        if (dataformat == 0) {
+            input_n = input->shape[0];
+            input_c = input->shape[1];
+            input_h = 1;
+            input_w = input->shape[2];
+        }else{
+            input_n = input->shape[0];
+            input_c = input->shape[2];
+            input_h = 1;
+            input_w = input->shape[1];
+        }
+        //input
+        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
+        CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
+            dataformat,
+            CUDNN_DATA_FLOAT,
+            input_n,
+            input_c,
+            input_h,
+            input_w));
+
+    }
+
+
+    if(input->ndim == 4){
+        if (dataformat == 0) {
+            input_n = input->shape[0];
+            input_c = input->shape[1];
+            input_h = input->shape[2];
+            input_w = input->shape[3];
+        }else{
+            input_n = input->shape[0];
+            input_c = input->shape[3];
+            input_h = input->shape[1];
+            input_w = input->shape[2];
+        }
+        //input
+        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
+        CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
+            dataformat,
+            CUDNN_DATA_FLOAT,
+            input_n,
+            input_c,
+            input_h,
+            input_w));
+
+    }
+
+    if(input->ndim == 5){
+
+        int* input_shape;
+        input_shape = (int*)malloc(sizeof(int) * 5);
+        for(int i=0;i<5;i++){
+            input_shape[i]= input->shape[i];
+        }
+
+        //input
+        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
+        CUDNN_CALL(cudnnSetTensorNdDescriptorEx(input_descriptor,
+            dataformat,
+            CUDNN_DATA_FLOAT,
+            5,
+            input_shape));
+
+        
+
+    }
+    size_t stateSizeInBytes = 1;
+    size_t reserveSpaceSizeInBytes = 1;
+    void *states;
+    //unsigned long long  seed = 0;//ini rand seed
+    CUDNN_CALL(cudnnDropoutGetStatesSize(handle,
+        &stateSizeInBytes));
+
+    CUDNN_CALL(cudnnDropoutGetReserveSpaceSize(input_descriptor,
+        &reserveSpaceSizeInBytes));
+
+
+    cudaMalloc((void**)&states, stateSizeInBytes);
+    cudaMalloc((void**)reserveSpace_p, reserveSpaceSizeInBytes);
+
+
+
+
+    cudnnDropoutDescriptor_t dropout_descriptor;
+    CUDNN_CALL(cudnnCreateDropoutDescriptor(&dropout_descriptor));
+
+    CUDNN_CALL(cudnnSetDropoutDescriptor(dropout_descriptor,
+        handle,
+        dropout,
+        states,
+        stateSizeInBytes,
+        seed));
+
+
+    CUDNN_CALL(cudnnDropoutForward(handle,
+        dropout_descriptor,
+        input_descriptor,
+        input->data,
+        input_descriptor,
+        output->data,
+        *reserveSpace_p,
+        reserveSpaceSizeInBytes));
+
+    CUDNN_CALL(cudnnDestroyDropoutDescriptor(dropout_descriptor));
+    CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
+    CUDNN_CALL(cudnnDestroy(handle));
+    cudaFree(states);
+    return 0;
+
+}
+
+
+
+
+int DLGpuDropoutBackward(const DLArrayHandle doutput,
+    DLArrayHandle dinput,
+    cudnnTensorFormat_t dataformat,
+    const float dropout,
+    const int seed,
+    void **reserveSpace_p/*back use*/){
+
+
+
+
+
+
+    //handle
+    cudnnHandle_t handle;
+    CUDNN_CALL(cudnnCreate(&handle));
+
+    //input
+    cudnnTensorDescriptor_t input_descriptor;
+
+    int input_n;
+    int input_c;
+    int input_h;
+    int input_w;
+
+    if(dinput->ndim == 3){
+        if (dataformat == 0) {
+            input_n = dinput->shape[0];
+            input_c = dinput->shape[1];
+            input_h = 1;
+            input_w = dinput->shape[2];
+        }else{
+            input_n = dinput->shape[0];
+            input_c = dinput->shape[2];
+            input_h = 1;
+            input_w = dinput->shape[1];
+        }
+        //input
+        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
+        CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
+            dataformat,
+            CUDNN_DATA_FLOAT,
+            input_n,
+            input_c,
+            input_h,
+            input_w));
+
+    }
+
+
+    if(dinput->ndim == 4){
+        if (dataformat == 0) {
+            input_n = dinput->shape[0];
+            input_c = dinput->shape[1];
+            input_h = dinput->shape[2];
+            input_w = dinput->shape[3];
+        }else{
+            input_n = dinput->shape[0];
+            input_c = dinput->shape[3];
+            input_h = dinput->shape[1];
+            input_w = dinput->shape[2];
+        }
+        //input
+        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
+        CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
+            dataformat,
+            CUDNN_DATA_FLOAT,
+            input_n,
+            input_c,
+            input_h,
+            input_w));
+
+    }
+
+    if(dinput->ndim == 5){
+
+        int* input_shape;
+        input_shape = (int*)malloc(sizeof(int) * 5);
+        for(int i=0;i<5;i++){
+            input_shape[i]= dinput->shape[i];
+        }
+
+        //input
+        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
+        CUDNN_CALL(cudnnSetTensorNdDescriptorEx(input_descriptor,
+            dataformat,
+            CUDNN_DATA_FLOAT,
+            5,
+            input_shape));
+
+        
+
+    }
+
+
+
+    size_t stateSizeInBytes = 1;
+    size_t reserveSpaceSizeInBytes = 1;
+    void *states;
+    //unsigned long long  seed = 0;//ini rand seed
+    CUDNN_CALL(cudnnDropoutGetStatesSize(handle,
+        &stateSizeInBytes));
+
+    CUDNN_CALL(cudnnDropoutGetReserveSpaceSize(input_descriptor,
+        &reserveSpaceSizeInBytes));
+
+    cudnnDropoutDescriptor_t dropout_descriptor;
+    CUDNN_CALL(cudnnCreateDropoutDescriptor(&dropout_descriptor));
+
+    cudaMalloc((void**)&states, stateSizeInBytes);
+
+
+    CUDNN_CALL(cudnnSetDropoutDescriptor(dropout_descriptor,
+        handle,
+        dropout,
+        states,
+        stateSizeInBytes,
+        seed));
+
+
+    CUDNN_CALL(cudnnDropoutBackward(handle,
+        dropout_descriptor,
+        input_descriptor,
+        doutput->data,
+        input_descriptor,
+        dinput->data,
+        *reserveSpace_p,
+        reserveSpaceSizeInBytes));
+
+
+    CUDNN_CALL(cudnnDestroyDropoutDescriptor(dropout_descriptor));
+    CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
+    CUDNN_CALL(cudnnDestroy(handle));
+    cudaFree(states);
+    cudaFree(*reserveSpace_p);
+    return 0;
+
+}
+
+
+
+
+//loss
+
+__global__ void matrix_cross_entropy_kernel(int nrow, int ncol,
+                                                    const float *input_a,
+                                                    const float *input_b,
+                                                    float *output) {
+  // Dynamic shared memory, size provided at kernel launch.
+  extern __shared__ float loss_per_row[];
+  // Two dimensional thread blocks.
+  int y = blockIdx.x * blockDim.x * blockDim.y + threadIdx.y * blockDim.x +
+          threadIdx.x;
+  if (y >= nrow) {
+    return;
+  }
+  input_a += y * ncol;
+  input_b += y * ncol;
+  float loss = 0;
+  for (int x = 0; x < ncol; ++x) {
+   output[x+y*ncol] = input_b[x] * log(input_a[x])+(1-input_b[x])* log(1-input_a[x]);
+  }
+  loss_per_row[y] = loss;
+  /*__syncthreads();
+  // Compute reduce_mean across rows.
+  float mean_loss = 0;
+  // Use a single thread to reduce mean across rows.
+  if ((threadIdx.x == 0) && (threadIdx.y == 0)) {
+    for (int i = 0; i < nrow; ++i) {
+      mean_loss += loss_per_row[i];
+    }
+
+    output[0] = mean_loss;
+  }*/
+}
+__global__ void matrix_l1loss_kernel(int nrow, int ncol,
+                                                    const float *input_a,
+                                                    const float *input_b,
+                                                    float *output) {
+  // Dynamic shared memory, size provided at kernel launch.
+  extern __shared__ float loss_per_row[];
+  // Two dimensional thread blocks.
+  int y = blockIdx.x * blockDim.x * blockDim.y + threadIdx.y * blockDim.x +
+          threadIdx.x;
+  if (y >= nrow) {
+    return;
+  }
+  input_a += y * ncol;
+  input_b += y * ncol;
+  float loss = 0;
+  for (int x = 0; x < ncol; ++x) {
+    loss += abs(input_b[x]-input_a[x]);
+  }
+  loss_per_row[y] = loss;
+  __syncthreads();
+  // Compute reduce_mean across rows.
+  float mean_loss = 0;
+  // Use a single thread to reduce mean across rows.
+  if ((threadIdx.x == 0) && (threadIdx.y == 0)) {
+    for (int i = 0; i < nrow; ++i) {
+      mean_loss += loss_per_row[i];
+    }
+    mean_loss /= nrow;
+    output[0] = mean_loss;
+  }
+}
+__global__ void matrix_l2loss_kernel(int nrow, int ncol,
+                                                    const float *input_a,
+                                                    const float *input_b,
+                                                    float *output) {
+  // Dynamic shared memory, size provided at kernel launch.
+  extern __shared__ float loss_per_row[];
+  // Two dimensional thread blocks.
+  int y = blockIdx.x * blockDim.x * blockDim.y + threadIdx.y * blockDim.x +
+          threadIdx.x;
+  if (y >= nrow) {
+    return;
+  }
+  input_a += y * ncol;
+  input_b += y * ncol;
+  float loss = 0;
+  for (int x = 0; x < ncol; ++x) {
+    loss += pow(input_b[x]-input_a[x],2);
+  }
+  loss_per_row[y] = loss;
+  __syncthreads();
+  // Compute reduce_mean across rows.
+  float mean_loss = 0;
+  // Use a single thread to reduce mean across rows.
+  if ((threadIdx.x == 0) && (threadIdx.y == 0)) {
+    for (int i = 0; i < nrow; ++i) {
+      mean_loss += loss_per_row[i];
+    }
+    mean_loss /= nrow;
+    mean_loss/=2;
+    output[0] = mean_loss;
+  }
+}
+
+__global__ void matrix_l1lossgradient_kernel(const float* inputArr,const float* inputArr1, const float* gradArr,
+                                            float* outputArr, int count,int n) {
+    CUDA_1D_KERNEL_LOOP(index, count) {
+        outputArr[index] = (inputArr[index]-inputArr1[index])> 0 ? gradArr[0]/n : -gradArr[0] /n;
+    }
+}
+__global__ void matrix_l2lossgradient_kernel(const float* inputArr,const float* inputArr1, const float* gradArr,
+                                            float* outputArr, int count,int n) {
+    CUDA_1D_KERNEL_LOOP(index, count) {
+        outputArr[index] = (inputArr[index]-inputArr1[index])*gradArr[0]/n;
+    }
+}
+__global__ void matrix_l1regular_kernel(int nrow, int ncol,
+                                                    const float *input_a,
+                                                    float *output) {
+  // Dynamic shared memory, size provided at kernel launch.
+  extern __shared__ float loss_per_row[];
+  // Two dimensional thread blocks.
+  int y = blockIdx.x * blockDim.x * blockDim.y + threadIdx.y * blockDim.x +
+          threadIdx.x;
+  if (y >= nrow) {
+    return;
+  }
+  input_a += y * ncol;
+  float loss = 0;
+  for (int x = 0; x < ncol; ++x) {
+    loss += abs(input_a[x]);
+  }
+  loss_per_row[y] = loss;
+  __syncthreads();
+  // Compute reduce_mean across rows.
+  float mean_loss = 0;
+  // Use a single thread to reduce mean across rows.
+  if ((threadIdx.x == 0) && (threadIdx.y == 0)) {
+    for (int i = 0; i < nrow; ++i) {
+      mean_loss += loss_per_row[i];
+    }
+    mean_loss /= nrow;
+    output[0] = mean_loss;
+  }
+}
+__global__ void matrix_l2regular_kernel(int nrow, int ncol,
+                                                    const float *input_a,
+                                                    float *output) {
+  // Dynamic shared memory, size provided at kernel launch.
+  extern __shared__ float loss_per_row[];
+  // Two dimensional thread blocks.
+  int y = blockIdx.x * blockDim.x * blockDim.y + threadIdx.y * blockDim.x +
+          threadIdx.x;
+  if (y >= nrow) {
+    return;
+  }
+  input_a += y * ncol;
+  float loss = 0;
+  for (int x = 0; x < ncol; ++x) {
+    loss += pow(input_a[x],2);
+  }
+  loss_per_row[y] = loss;
+  __syncthreads();
+  // Compute reduce_mean across rows.
+  float mean_loss = 0;
+  // Use a single thread to reduce mean across rows.
+  if ((threadIdx.x == 0) && (threadIdx.y == 0)) {
+    for (int i = 0; i < nrow; ++i) {
+      mean_loss += loss_per_row[i];
+    }
+    mean_loss /= nrow;
+    mean_loss/=2;
+    output[0] = mean_loss;
+  }
+}
+__global__ void matrix_l1regulargradient_kernel(const float* inputArr, const float* gradArr,
+                                            float* outputArr, int count,int n) {
+    CUDA_1D_KERNEL_LOOP(index, count) {
+        outputArr[index] = inputArr[index]> 0 ? gradArr[0]/n : -gradArr[0]/n;
+    }
+}
+__global__ void matrix_l2regulargradient_kernel(const float* inputArr, const float* gradArr,
+                                            float* outputArr, int count,int n) {
+    CUDA_1D_KERNEL_LOOP(index, count) {
+        outputArr[index] = inputArr[index]*gradArr[0]/n;
+    }
+}
+
+
+int DLGpuCrossEntropy(const DLArrayHandle input_a,
+    const DLArrayHandle input_b,
+    DLArrayHandle output) {
+    assert(input_a->ndim == 2);
+    assert(input_b->ndim == 2);
+    assert(output->ndim == 2);
+    assert(input_a->shape[0] == input_b->shape[0] &&
+        input_a->shape[1] == input_b->shape[1]);
+    int nrow = input_a->shape[0];
+    assert(nrow <= 1024 * 4);
+    int ncol = input_a->shape[1];
+    const float* input_data_a = (const float*)input_a->data;
+    const float* input_data_b = (const float*)input_b->data;
+    float* output_data = (float*)output->data;
+    dim3 threads;
+    if (nrow <= 1024) {
+        threads.x = nrow;
+    }
+    else {
+        threads.x = 1024;
+        threads.y = (nrow + 1023) / 1024;
+    }
+    // 1 block, each block with 'threads' number of threads with 'nrow' shared
+    // memory size
+    matrix_cross_entropy_kernel << <1, threads, nrow * sizeof(float) >> > (
+        nrow, ncol, input_data_a, input_data_b, output_data);
+    return 0;
+}
+int DLGpuL1loss(const DLArrayHandle input_a,
+    const DLArrayHandle input_b,
+    DLArrayHandle output) {
+    assert(input_a->ndim == 2);
+    assert(input_b->ndim == 2);
+    assert(output->ndim == 1);
+    assert(input_a->shape[0] == input_b->shape[0] &&
+        input_a->shape[1] == input_b->shape[1]);
+    int nrow = input_a->shape[0];
+    assert(nrow <= 1024 * 4);
+    int ncol = input_a->shape[1];
+    const float* input_data_a = (const float*)input_a->data;
+    const float* input_data_b = (const float*)input_b->data;
+    float* output_data = (float*)output->data;
+    dim3 threads;
+    if (nrow <= 1024) {
+        threads.x = nrow;
+    }
+    else {
+        threads.x = 1024;
+        threads.y = (nrow + 1023) / 1024;
+    }
+    // 1 block, each block with 'threads' number of threads with 'nrow' shared
+    // memory size
+    matrix_l1loss_kernel << <1, threads, nrow * sizeof(float) >> > (
+        nrow, ncol, input_data_a, input_data_b, output_data);
+    return 0;
+}
+int DLGpuL2loss(const DLArrayHandle input_a,
+    const DLArrayHandle input_b,
+    DLArrayHandle output) {
+    assert(input_a->ndim == 2);
+    assert(input_b->ndim == 2);
+    assert(output->ndim == 1);
+    assert(input_a->shape[0] == input_b->shape[0] &&
+        input_a->shape[1] == input_b->shape[1]);
+    int nrow = input_a->shape[0];
+    assert(nrow <= 1024 * 4);
+    int ncol = input_a->shape[1];
+    const float* input_data_a = (const float*)input_a->data;
+    const float* input_data_b = (const float*)input_b->data;
+    float* output_data = (float*)output->data;
+    dim3 threads;
+    if (nrow <= 1024) {
+        threads.x = nrow;
+    }
+    else {
+        threads.x = 1024;
+        threads.y = (nrow + 1023) / 1024;
+    }
+    // 1 block, each block with 'threads' number of threads with 'nrow' shared
+    // memory size
+    matrix_l2loss_kernel << <1, threads, nrow * sizeof(float) >> > (
+        nrow, ncol, input_data_a, input_data_b, output_data);
+    return 0;
+}
+
+int DLGpuL1LossGradient(const DLArrayHandle input, const DLArrayHandle input1,const DLArrayHandle in_grad,
+    DLArrayHandle output) {
+
+    assert(input->ndim == input1->ndim);
+    int count = 1;
+    for (int i = 0; i < input->ndim; ++i) {
+    assert(input->ndim == input1->ndim);
+        count *= input->shape[i];
+    }
+
+    int  n=input->shape[0];
+    const float* inputArr = (const float*)input->data;
+    const float* inputArr1 = (const float*)input1->data;
+    const float* gradArr = (const float*)in_grad->data;
+    float* outputArr = (float*)output->data;
+    int nrow=input->shape[0];
+    dim3 threads;
+    threads.x = nrow;
+
+    matrix_l1lossgradient_kernel << <1, threads >> > (
+        inputArr, inputArr1,gradArr, outputArr, count,n);
+    return 0;
+}
+int DLGpuL2LossGradient(const DLArrayHandle input, const DLArrayHandle input1,const DLArrayHandle in_grad,
+    DLArrayHandle output) {
+
+    assert(input->ndim == input1->ndim);
+    int count = 1;
+    for (int i = 0; i < input->ndim; ++i) {
+    assert(input->ndim == input1->ndim);
+        count *= input->shape[i];
+    }
+
+    int  n=input->shape[0];
+    const float* inputArr = (const float*)input->data;
+    const float* inputArr1 = (const float*)input1->data;
+    const float* gradArr = (const float*)in_grad->data;
+    float* outputArr = (float*)output->data;
+    int nrow=input->shape[0];
+    dim3 threads;
+    threads.x = nrow;
+
+    matrix_l2lossgradient_kernel << <1, threads >> > (
+        inputArr, inputArr1,gradArr, outputArr, count,n);
+    return 0;
+}
+int DLGpuL1regular(const DLArrayHandle input_a,
+    DLArrayHandle output) {
+    assert(input_a->ndim == 2);
+    assert(output->ndim == 1);
+    int nrow = input_a->shape[0];
+    assert(nrow <= 1024 * 4);
+    int ncol = input_a->shape[1];
+    const float* input_data_a = (const float*)input_a->data;
+    float* output_data = (float*)output->data;
+    dim3 threads;
+    if (nrow <= 1024) {
+        threads.x = nrow;
+    }
+    else {
+        threads.x = 1024;
+        threads.y = (nrow + 1023) / 1024;
+    }
+    // 1 block, each block with 'threads' number of threads with 'nrow' shared
+    // memory size
+    matrix_l1regular_kernel << <1, threads, nrow * sizeof(float) >> > (
+        nrow, ncol, input_data_a, output_data);
+    return 0;
+}
+int DLGpuL2regular(const DLArrayHandle input_a,
+    DLArrayHandle output) {
+    assert(input_a->ndim == 2);
+    assert(output->ndim == 1);
+    int nrow = input_a->shape[0];
+    assert(nrow <= 1024 * 4);
+    int ncol = input_a->shape[1];
+    const float* input_data_a = (const float*)input_a->data;
+    float* output_data = (float*)output->data;
+    dim3 threads;
+    if (nrow <= 1024) {
+        threads.x = nrow;
+    }
+    else {
+        threads.x = 1024;
+        threads.y = (nrow + 1023) / 1024;
+    }
+    // 1 block, each block with 'threads' number of threads with 'nrow' shared
+    // memory size
+    matrix_l2regular_kernel << <1, threads, nrow * sizeof(float) >> > (
+        nrow, ncol, input_data_a, output_data);
+    return 0;
+}
+
+int DLGpuL1regularGradient(const DLArrayHandle input,const DLArrayHandle in_grad,
+    DLArrayHandle output) {
+
+    int count = 1;
+    for (int i = 0; i < input->ndim; ++i) {
+        count *= input->shape[i];
+    }
+
+    int  n=input->shape[0];
+    const float* inputArr = (const float*)input->data;
+    const float* gradArr = (const float*)in_grad->data;
+    float* outputArr = (float*)output->data;
+    int nrow=input->shape[0];
+    dim3 threads;
+    threads.x = nrow;
+
+    matrix_l1regulargradient_kernel << <1, threads >> > (
+        inputArr, gradArr, outputArr, count,n);
+    return 0;
+}
+int DLGpuL2regularGradient(const DLArrayHandle input, const DLArrayHandle in_grad,
+    DLArrayHandle output) {
+
+    int count = 1;
+    for (int i = 0; i < input->ndim; ++i) {
+        count *= input->shape[i];
+    }
+
+    int  n=input->shape[0];
+    const float* inputArr = (const float*)input->data;
+    const float* gradArr = (const float*)in_grad->data;
+    float* outputArr = (float*)output->data;
+    int nrow=input->shape[0];
+    dim3 threads;
+    threads.x = nrow;
+
+    matrix_l2regulargradient_kernel << <1, threads >> > (
+        inputArr, gradArr, outputArr, count,n);
+    return 0;
+}
+
+
+
+
+
+
+
+
+
 
 
 

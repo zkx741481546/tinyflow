@@ -86,6 +86,7 @@ class NDArray(object):
     def __del__(self):
         check_call(_LIB.DLArrayFree(self.handle))
 
+
     @property
     def shape(self):
         """Shape of this array"""
@@ -172,11 +173,22 @@ class NDArray(object):
         if isinstance(target, DLContext):
             target = empty(self.shape, target)
         if isinstance(target, NDArray):
+
             check_call(_LIB.DLArrayCopyFromTo(
                 self.handle, target.handle, None))
+
         else:
             raise ValueError("Unsupported target type %s" % str(type(target)))
         return target
+
+    def reshape(self,newshape):
+        target = empty(newshape, self.ctx)
+        check_call(_LIB.DLArrayCopyFromTo(
+            self.handle, target.handle, None))
+        return target
+
+
+
 
 
 def array(arr, ctx=cpu(0)):
@@ -215,6 +227,96 @@ def empty(shape, ctx=cpu(0)):
     shape = c_array(ctypes.c_int64, shape)
     ndim = ctypes.c_int(len(shape))
     handle = DLArrayHandle()
+
     check_call(_LIB.DLArrayAlloc(
         shape, ndim, ctx, ctypes.byref(handle)))
     return NDArray(handle)
+
+
+def Normalex(loc=0,scale=1,size=None ,ctx=cpu(0)):
+    arr=np.random.normal(loc,scale,size)
+    b0= np.random.normal(loc, scale,size[0])
+    if not isinstance(arr, np.ndarray):
+        arr = np.array(arr)
+    if not isinstance(b0,np.ndarray):
+        b0 =np.array(b0)
+    w=empty(arr.shape,ctx)
+    b = empty(arr.shape, ctx)
+    w._sync_copyfrom(arr)
+    b._sync_copyfrom(b0)
+    return w,b
+
+def Uniformex(low=0,high=1,size=None,ctx=cpu(0)):
+    arr =np.random.uniform(low,high, size)
+    b0 = np.random.uniform(low,high,size[0])
+    if not isinstance(arr, np.ndarray):
+        arr = np.array(arr)
+    if not isinstance(b0, np.ndarray):
+        b0 = np.array(b0)
+    w = empty(arr.shape, ctx)
+    b = empty(arr.shape, ctx)
+    w._sync_copyfrom(arr)
+    b._sync_copyfrom(b0)
+    return w, b
+
+def xavier_Normalex(loc=0,size=None ,ctx=cpu(0)):
+    scale=np.sqrt(2.0/(size[0]+size[1]))
+    arr = np.random.normal(loc, scale, size)
+    b0 = np.random.normal(loc, scale, size[0])
+    if not isinstance(arr, np.ndarray):
+        arr = np.array(arr)
+    if not isinstance(b0, np.ndarray):
+        b0 = np.array(b0)
+    w = empty(arr.shape, ctx)
+    b = empty(arr.shape, ctx)
+    w._sync_copyfrom(arr)
+    b._sync_copyfrom(b0)
+    return w, b
+
+def xavier_Uniformex(size=None,ctx=cpu(0)):
+    a = np.sqrt(6.0/(size[0]+size[1]))
+    arr = np.random.uniform(-a, a, size)
+    b0 = np.random.uniform(-a, a, size[0])
+    if not isinstance(arr, np.ndarray):
+        arr = np.array(arr)
+    if not isinstance(b0, np.ndarray):
+        b0 = np.array(b0)
+    w = empty(arr.shape, ctx)
+    b = empty(arr.shape, ctx)
+    w._sync_copyfrom(arr)
+    b._sync_copyfrom(b0)
+    return w, b
+
+def Normal(loc=0,scale=1,size=None ,ctx=cpu(0)):
+    arr=np.random.normal(loc,scale,size)
+    if not isinstance(arr, np.ndarray):
+        arr = np.array(arr)
+    w=empty(arr.shape,ctx)
+    w._sync_copyfrom(arr)
+    return w
+
+def Uniform(low=0,high=1,size=None,ctx=cpu(0)):
+    arr =np.random.uniform(low,high, size)
+    if not isinstance(arr, np.ndarray):
+        arr = np.array(arr)
+    w = empty(arr.shape, ctx)
+    w._sync_copyfrom(arr)
+    return w
+
+def xavier_Normal(loc=0,size=None ,ctx=cpu(0)):
+    scale=np.sqrt(2.0/(size[0]+size[1]))
+    arr = np.random.normal(loc, scale, size)
+    if not isinstance(arr, np.ndarray):
+        arr = np.array(arr)
+    w = empty(arr.shape, ctx)
+    w._sync_copyfrom(arr)
+    return w
+
+def xavier_Uniform(size=None,ctx=cpu(0)):
+    a = np.sqrt(6.0/(size[0]+size[1]))
+    arr = np.random.uniform(-a, a, size)
+    if not isinstance(arr, np.ndarray):
+        arr = np.array(arr)
+    w = empty(arr.shape, ctx)
+    w._sync_copyfrom(arr)
+    return w

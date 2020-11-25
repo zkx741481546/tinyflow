@@ -124,6 +124,7 @@ int DLArrayCopyFromTo(DLArrayHandle from, DLArrayHandle to,
   // The size must exactly match
   assert(from_size == to_size);
   DLContext ctx = from->ctx;
+
   if (ctx.device_type == kCPU) {
     ctx = to->ctx;
   } else {
@@ -131,6 +132,7 @@ int DLArrayCopyFromTo(DLArrayHandle from, DLArrayHandle to,
     assert((to->ctx.device_type == kCPU) ||
            (to->ctx.device_type == from->ctx.device_type));
   }
+
   DeviceAPIManager::Get(ctx)->CopyDataFromTo(from->data, to->data, from_size,
                                              from->ctx, to->ctx, stream);
   API_END();

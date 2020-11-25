@@ -1,5 +1,5 @@
-from python.tinyflow import autodiff as ad
-from python.tinyflow import ndarray, gpu_op
+from pycode.tinyflow import autodiff as ad
+from pycode.tinyflow import ndarray, gpu_op
 import numpy as np
 
 import argparse
@@ -233,6 +233,7 @@ def mnist_mlp(executor_ctx=None, num_epochs=10, print_loss_val_each_epoch=False)
             X_val[:] = train_set_x[minibatch_start:minibatch_end]
             y_val[:] = convert_to_one_hot(
                 train_set_y[minibatch_start:minibatch_end])
+            print(np.shape(y_val))
             loss_val, grad_W1_val, grad_W2_val, grad_W3_val, \
                 grad_b1_val, grad_b2_val, grad_b3_val, _ = executor.run(
                     feed_dict={
@@ -334,3 +335,4 @@ if __name__ == "__main__":
         m(executor_ctx, num_epochs, print_loss_val_each_epoch)
         toc = time.time()
         print("mode use time: " + str(toc - tic))
+

@@ -1,5 +1,5 @@
 import numpy as np
-from python.tinyflow import ndarray, gpu_op, autodiff
+from pycode.tinyflow import ndarray, gpu_op, autodiff
 
 
 def test_array_set():
@@ -18,24 +18,28 @@ def test_array_set():
 
 def test_broadcast_to():
     ctx = ndarray.gpu(0)
-    shape = (200, 300)
-    to_shape = (130, 200, 300)
+    shape = (2, 3)
+    to_shape = ( 5,2,3)
     x = np.random.uniform(-1, 1, shape).astype(np.float32)
     arr_x = ndarray.array(x, ctx=ctx)
     arr_y = ndarray.empty(to_shape, ctx=ctx)
     gpu_op.broadcast_to(arr_x, arr_y)
     y = arr_y.asnumpy()
+    print(arr_x.asnumpy())
+    print(y)
     np.testing.assert_allclose(np.broadcast_to(x, to_shape), y)
 
 
 def test_reduce_sum_axis_zero():
     ctx = ndarray.gpu(0)
-    shape = (500, 200, 100)
-    to_shape = (200, 100)
+    shape = (5)
+    to_shape = (1,)
     x = np.random.uniform(0, 20, shape).astype(np.float32)
     arr_x = ndarray.array(x, ctx=ctx)
     arr_y = ndarray.empty(to_shape, ctx=ctx)
     gpu_op.reduce_sum_axis_zero(arr_x, arr_y)
+    print(arr_x.asnumpy())
+    print(arr_y.asnumpy())
     y = arr_y.asnumpy()
     y_ = np.sum(x, axis=0)
     for index, _ in np.ndenumerate(y):
@@ -201,4 +205,65 @@ def test_convolution_forward():
     print(dinput.asnumpy())
     print(arr_in.asnumpy())
 
-test_convolution_forward()
+
+def test_reshape():
+    ctx = ndarray.gpu(0)
+    in_shape = (5,  2)
+    input_arr_np = np.arange(10).reshape(in_shape)
+    arr_in = ndarray.array(input_arr_np, ctx=ctx)
+    print(arr_in.asnumpy())
+    arr_in = arr_in.reshape((5,1,2))
+    print(arr_in.asnumpy())
+    print(len(arr_in.shape))
+
+def test_convolution_backward():
+    ctx = ndarray.gpu(0)
+    x_val1 = np.linspace(0, 100, 100).reshape((5, 1, 20))
+    filters_val1 = np.ones((1, 1, 20)) * 0.001
+    y_val = np.array([[[0.07676768]],[[0.23838384]],[[0.40000007]],[[0.5616162 ]],[[0.7232323]]])
+    x_val = ndarray.array(x_val1, ctx)
+    d_x_val = ndarray.array(x_val1, ctx)
+    d_filters_val = ndarray.array(filters_val1, ctx)
+    filters_val = ndarray.array(filters_val1, ctx)
+    y_val = ndarray.array(y_val, ctx)
+    gpu_op.convolution_1d_backward(x_val,y_val,filters_val,d_filters_val,d_x_val,"NCHW","VALID",1)
+    print(1)
+    print(d_x_val.asnumpy())
+    print(d_filters_val.asnumpy())
+
+
+def test_dropout():
+    ctx = ndarray.gpu(0)
+    in_shape = (5, 1, 2)
+
+    input_arr_np = np.arange(10).reshape(in_shape)
+    arr_in = ndarray.array(input_arr_np, ctx=ctx)
+    arr_out = ndarray.empty(in_shape,ctx=ctx)
+    r = gpu_op.dropout_forward(arr_in,arr_out,"NCHW",0.2,1)
+    print(arr_in.asnumpy())
+    print(arr_out.asnumpy())
+    gpu_op.dropout_backward(arr_out, arr_in, "NCHW", 0.2,1, r)
+    print(arr_in.asnumpy())
+
+def test_reduce_sum_axis_n():
+    ctx = ndarray.gpu(0)
+    shape = (5)
+    to_shape = (1,)
+    x = np.random.uniform(0, 20, shape).astype(np.float32)
+    arr_x = ndarray.array(x, ctx=ctx)
+    arr_y = ndarray.empty(to_shape, ctx=ctx)
+    gpu_op.reduce_sum(arr_x, arr_y)
+
+    print(arr_x.shape[0])
+    print(arr_y.asnumpy())
+
+
+
+#test_reduce_sum_axis_zero()
+#test_softmax_cross_entropy()
+#test_reshape()
+#test_reduce_sum_axis_n()
+#test_convolution_backward()
+#test_convolution_forward()
+#test_dropout()
+test_broadcast_to()
