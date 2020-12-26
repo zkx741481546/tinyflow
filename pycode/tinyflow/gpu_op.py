@@ -10,10 +10,22 @@ def array_set(arr, value):
     _LIB.DLGpuArraySet(arr.handle, ctypes.c_float(value))
 
 
-def broadcast_to(in_arr, out_arr):
+def broadcast_to(in_arr, out_arr, type):
     assert isinstance(in_arr, _nd.NDArray)
     assert isinstance(out_arr, _nd.NDArray)
-    _LIB.DLGpuBroadcastTo(in_arr.handle, out_arr.handle)
+    if type == "NHWC":
+        _LIB.DLGpuBroadcastTo0(in_arr.handle, out_arr.handle)
+    elif type == "NCHW":
+        _LIB.DLGpuBroadcastTo1(in_arr.handle, out_arr.handle)
+
+
+def broadcast_to_backward(in_arr, out_arr, type):
+    assert isinstance(in_arr, _nd.NDArray)
+    assert isinstance(out_arr, _nd.NDArray)
+    if type == "NHWC":
+        _LIB.DLGpuBroadcastToBackward0(in_arr.handle, out_arr.handle)
+    elif type == "NCHW":
+        _LIB.DLGpuBroadcastToBackward1(in_arr.handle, out_arr.handle)
 
 
 def reduce_sum_axis_zero(in_arr, out_arr):
@@ -155,234 +167,91 @@ def matrix_pow(in_arr, val, out_arr):
 #��
 
 
-def convolution_1d_forward(in_arr, in_filter, out_arr,dataformat, padding, v):
+def convolution_1d_forward(in_arr, in_filter, out_arr, cudnnlist):
     assert isinstance(in_arr, _nd.NDArray)
     assert isinstance(in_filter, _nd.NDArray)
     assert isinstance(out_arr, _nd.NDArray)
-    if dataformat=="NCHW":
-        dataformat=0
-    elif dataformat=="NHWC":
-        dataformat=1
-    else:
-        assert 0
-    if padding=="SAME":
-        padding=1
-    elif padding=="VALID":
-        padding=0
-    else:
-        assert 0
-    _LIB.DLGpuConvolution1DForward(in_arr.handle, in_filter.handle, out_arr.handle,dataformat, padding,  v)
+    _LIB.DLGpuConvolution1DForward(in_arr.handle, in_filter.handle, out_arr.handle, cudnnlist)
 
 
 
-def convolution_2d_forward(in_arr, in_filter, out_arr,dataformat, padding, u, v):
+def convolution_2d_forward(in_arr, in_filter, out_arr,cudnnlist):
     assert isinstance(in_arr, _nd.NDArray)
     assert isinstance(in_filter, _nd.NDArray)
     assert isinstance(out_arr, _nd.NDArray)
-    if dataformat=="NCHW":
-        dataformat=0
-    elif dataformat=="NHWC":
-        dataformat=1
-    else:
-        assert 0
-    if padding=="SAME":
-        padding=1
-    elif padding=="VALID":
-        padding=0
-    else:
-        assert 0
-    _LIB.DLGpuConvolution2DForward(in_arr.handle, in_filter.handle, out_arr.handle,dataformat, padding, u, v)
+    _LIB.DLGpuConvolution2DForward(in_arr.handle, in_filter.handle, out_arr.handle,cudnnlist)
 
 
-def convolution_3d_forward(in_arr, in_filter, out_arr,dataformat, padding, s1, s2, s3):
+def convolution_3d_forward(in_arr, in_filter, out_arr,nodelist):
     assert isinstance(in_arr, _nd.NDArray)
     assert isinstance(in_filter, _nd.NDArray)
     assert isinstance(out_arr, _nd.NDArray)
-    if dataformat=="NCHW":
-        dataformat=0
-    elif dataformat=="NHWC":
-        dataformat=1
-    else:
-        assert 0
-    if padding=="SAME":
-        padding=1
-    elif padding=="VALID":
-        padding=0
-    else:
-        assert 0
-    _LIB.DLGpuConvolution3DForward(in_arr.handle, in_filter.handle, out_arr.handle,dataformat, padding, s1, s2, s3)
+    _LIB.DLGpuConvolution3DForward(in_arr.handle, in_filter.handle, out_arr.handle,nodelist)
 
 
-def convolution_1d_backward(in_arr,dout_arr,in_filter,in_dfilter, dinput_arr,dataformat,padding, v):
+def convolution_1d_backward(in_arr,dout_arr,in_filter,in_dfilter, dinput_arr, cudnnlist):
     assert isinstance(in_arr, _nd.NDArray)
     assert isinstance(in_filter, _nd.NDArray)
     assert isinstance(dout_arr, _nd.NDArray)
     assert isinstance(in_dfilter, _nd.NDArray)
     assert isinstance(dinput_arr, _nd.NDArray)
-    if dataformat=="NCHW":
-        dataformat=0
-    elif dataformat=="NHWC":
-        dataformat=1
-    else:
-        assert 0
-    if padding=="SAME":
-        padding=1
-    elif padding=="VALID":
-        padding=0
-    else:
-        assert 0
-    _LIB.DLGpuConvolution1DBackward(in_arr.handle,dout_arr.handle,in_filter.handle,in_dfilter.handle, dinput_arr.handle,dataformat,padding,  v)
+    _LIB.DLGpuConvolution1DBackward(in_arr.handle,dout_arr.handle,in_filter.handle,in_dfilter.handle, dinput_arr.handle, cudnnlist)
 
-def convolution_2d_backward(in_arr,dout_arr,in_filter,in_dfilter, dinput_arr,dataformat, padding, u, v):
+def convolution_2d_backward(in_arr,dout_arr,in_filter,in_dfilter, dinput_arr, cudnnlist):
     assert isinstance(in_arr, _nd.NDArray)
     assert isinstance(in_filter, _nd.NDArray)
     assert isinstance(dout_arr, _nd.NDArray)
     assert isinstance(in_dfilter, _nd.NDArray)
     assert isinstance(dinput_arr, _nd.NDArray)
-    if dataformat=="NCHW":
-        dataformat=0
-    elif dataformat=="NHWC":
-        dataformat=1
-    else:
-        assert 0
-    if padding=="SAME":
-        padding=1
-    elif padding=="VALID":
-        padding=0
-    else:
-        assert 0
-    _LIB.DLGpuConvolution2DBackward(in_arr.handle,dout_arr.handle,in_filter.handle,in_dfilter.handle, dinput_arr.handle,dataformat,padding, u, v)
+    _LIB.DLGpuConvolution2DBackward(in_arr.handle,dout_arr.handle,in_filter.handle,in_dfilter.handle, dinput_arr.handle,cudnnlist)
 
 
-def convolution_3d_backward(in_arr,dout_arr,in_filter,in_dfilter, dinput_arr,dataformat,padding, s1, s2, s3):
+def convolution_3d_backward(in_arr,dout_arr,in_filter,in_dfilter, dinput_arr,cudnnlist):
     assert isinstance(in_arr, _nd.NDArray)
     assert isinstance(in_filter, _nd.NDArray)
     assert isinstance(dout_arr, _nd.NDArray)
     assert isinstance(in_dfilter, _nd.NDArray)
     assert isinstance(dinput_arr, _nd.NDArray)
-    if dataformat=="NCHW":
-        dataformat=0
-    elif dataformat=="NHWC":
-        dataformat=1
-    else:
-        assert 0
-    if padding=="SAME":
-        padding=1
-    elif padding=="VALID":
-        padding=0
-    else:
-        assert 0
-    _LIB.DLGpuConvolution3DBackward(in_arr.handle,dout_arr.handle,in_filter.handle,in_dfilter.handle, dinput_arr.handle,dataformat,padding, s1, s2, s3)
+    _LIB.DLGpuConvolution3DBackward(in_arr.handle,dout_arr.handle,in_filter.handle,in_dfilter.handle, dinput_arr.handle,cudnnlist)
 
 
 
-def pooling_1d_forward(in_arr, out_arr, dataformat,poolingMode, pad_w, v, filter_w):
+def pooling_1d_forward(in_arr, out_arr, cudnnlist):
     assert isinstance(in_arr, _nd.NDArray)
     assert isinstance(out_arr, _nd.NDArray)
-    if dataformat=="NCHW":
-        dataformat=0
-    elif dataformat=="NHWC":
-        dataformat=1
-    else:
-        assert 0
-    if poolingMode=="max":
-        poolingMode=0
-    elif poolingMode=="mean":
-        poolingMode=1
-    else:
-        assert 0
-    _LIB.DLGpuPooling1DForward(in_arr.handle, out_arr.handle, dataformat,poolingMode, pad_w, v,filter_w)
+    _LIB.DLGpuPooling1DForward(in_arr.handle, out_arr.handle,cudnnlist)
 
-def pooling_2d_forward(in_arr, out_arr,dataformat,poolingMode, pad_h, pad_w, u, v,filter_h,filter_w):
+def pooling_2d_forward(in_arr, out_arr,cudnnlist):
     assert isinstance(in_arr, _nd.NDArray)
     assert isinstance(out_arr, _nd.NDArray)
-    if dataformat=="NCHW":
-        dataformat=0
-    elif dataformat=="NHWC":
-        dataformat=1
-    else:
-        assert 0
-    if poolingMode=="max":
-        poolingMode=0
-    elif poolingMode=="mean":
-        poolingMode=1
-    else:
-        assert 0
-    _LIB.DLGpuPooling2DForward(in_arr.handle, out_arr.handle,dataformat,poolingMode, pad_h, pad_w, u, v,filter_h,filter_w)
 
-def pooling_3d_forward(in_arr, out_arr,dataformat,poolingMode, pad1, pad2,pad3, s1, s2,s3,filter1,filter2,filter3):
+    _LIB.DLGpuPooling2DForward(in_arr.handle, out_arr.handle,cudnnlist)
+
+def pooling_3d_forward(in_arr, out_arr,cudnnlist):
     assert isinstance(in_arr, _nd.NDArray)
     assert isinstance(out_arr, _nd.NDArray)
-    if dataformat=="NCHW":
-        dataformat=0
-    elif dataformat=="NHWC":
-        dataformat=1
-    else:
-        assert 0
-    if poolingMode=="max":
-        poolingMode=0
-    elif poolingMode=="mean":
-        poolingMode=1
-    else:
-        assert 0
-    _LIB.DLGpuPooling3DForward(in_arr.handle, out_arr.handle,dataformat,poolingMode, pad1, pad2, pad3, s1, s2, s3,filter1,filter2,filter3)
+    _LIB.DLGpuPooling3DForward(in_arr.handle, out_arr.handle,cudnnlist)
 
-def pooling_1d_backward(in_arr, out_arr,  dout_arr,din_arr,dataformat,poolingMode,pad_w, v, filter_w):
+def pooling_1d_backward(in_arr, out_arr,  dout_arr,din_arr,cudnnlist):
     assert isinstance(in_arr, _nd.NDArray)
     assert isinstance(out_arr, _nd.NDArray)
     assert isinstance(din_arr, _nd.NDArray)
     assert isinstance(dout_arr, _nd.NDArray)
-    if dataformat=="NCHW":
-        dataformat=0
-    elif dataformat=="NHWC":
-        dataformat=1
-    else:
-        assert 0
-    if poolingMode=="max":
-        poolingMode=0
-    elif poolingMode=="mean":
-        poolingMode=1
-    else:
-        assert 0
-    _LIB.DLGpuPooling1DBackward(in_arr.handle, out_arr.handle,  dout_arr.handle,din_arr.handle,dataformat,poolingMode,pad_w, v,filter_w)
+    _LIB.DLGpuPooling1DBackward(in_arr.handle, out_arr.handle,  dout_arr.handle,din_arr.handle,cudnnlist)
 
-def pooling_2d_backward(in_arr, out_arr,  dout_arr,din_arr,dataformat,poolingMode,pad_h, pad_w, u, v,filter_h,filter_w):
+def pooling_2d_backward(in_arr, out_arr,  dout_arr,din_arr,cudnnlist):
     assert isinstance(in_arr, _nd.NDArray)
     assert isinstance(out_arr, _nd.NDArray)
     assert isinstance(din_arr, _nd.NDArray)
     assert isinstance(dout_arr, _nd.NDArray)
-    if dataformat=="NCHW":
-        dataformat=0
-    elif dataformat=="NHWC":
-        dataformat=1
-    else:
-        assert 0
-    if poolingMode=="max":
-        poolingMode=0
-    elif poolingMode=="mean":
-        poolingMode=1
-    else:
-        assert 0
-    _LIB.DLGpuPooling2DBackward(in_arr.handle, out_arr.handle,  dout_arr.handle,din_arr.handle,dataformat,poolingMode,pad_h, pad_w, u, v,filter_h,filter_w)
+    _LIB.DLGpuPooling2DBackward(in_arr.handle, out_arr.handle,  dout_arr.handle,din_arr.handle,cudnnlist)
 
-def pooling_3d_backward(in_arr, out_arr,  dout_arr,din_arr,dataformat,poolingMode,pad1, pad2,pad3, s1, s2,s3,filter1,filter2,filter3):
+def pooling_3d_backward(in_arr, out_arr,  dout_arr,din_arr,cudnnlist):
     assert isinstance(in_arr, _nd.NDArray)
     assert isinstance(out_arr, _nd.NDArray)
     assert isinstance(din_arr, _nd.NDArray)
     assert isinstance(dout_arr, _nd.NDArray)
-    if dataformat=="NCHW":
-        dataformat=0
-    elif dataformat=="NHWC":
-        dataformat=1
-    else:
-        assert 0
-    if poolingMode=="max":
-        poolingMode=0
-    elif poolingMode=="mean":
-        poolingMode=1
-    else:
-        assert 0
-    _LIB.DLGpuPooling3DBackward(in_arr.handle, out_arr.handle,  dout_arr.handle,din_arr.handle,dataformat,poolingMode,pad1, pad2, pad3, s1, s2, s3,filter1,filter2,filter3)
+    _LIB.DLGpuPooling3DBackward(in_arr.handle, out_arr.handle,  dout_arr.handle,din_arr.handle,cudnnlist)
 
 
 def convolution_1d_forward_get_out_shape(input_shapes,filter_shapes,dataformat,padding,v):
@@ -405,8 +274,13 @@ def convolution_1d_forward_get_out_shape(input_shapes,filter_shapes,dataformat,p
 
     c_filter_shapes = c_array(ctypes.c_int, filter_shapes)
     c_output_shapes = c_array(ctypes.c_int, output_shapes)
-    _LIB.DLGpuConvolution1DForwardGetOutShape(c_input_shapes,c_filter_shapes,c_output_shapes,dataformat,padding,v)
-    return (c_output_shapes[0],c_output_shapes[1],c_output_shapes[2])
+
+    cudnnlist = ctypes.c_int(0)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    _LIB.DLGpuConvolution1DForwardGetOutShape(c_input_shapes,c_filter_shapes,c_output_shapes,dataformat,padding,v,cudnnlist)
+    return (c_output_shapes[0],c_output_shapes[1],c_output_shapes[2]),cudnnlist
 
 def activation_forward(input,output,dataformat,activationMode):
     assert isinstance(input, _nd.NDArray)
@@ -427,19 +301,18 @@ def activation_forward(input,output,dataformat,activationMode):
         activationMode=3
     else:
         assert 0
-    _LIB.DLGpuActivationForward(input.handle,output.handle,dataformat,activationMode)
+    cudnnlist = ctypes.c_int(0)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    _LIB.DLGpuActivationForward(input.handle,output.handle,dataformat,activationMode,cudnnlist)
+    return cudnnlist
 
-def activation_backward(input, dinput, output, doutput,dataformat,activationMode):
+def activation_backward(input, dinput, output, doutput,activationMode,cudnnlist):
     assert isinstance(input, _nd.NDArray)
     assert isinstance(output, _nd.NDArray)
     assert isinstance(dinput, _nd.NDArray)
     assert isinstance(doutput, _nd.NDArray)
-    if dataformat=="NCHW":
-        dataformat=0
-    elif dataformat=="NHWC":
-        dataformat=1
-    else:
-        assert 0
     if activationMode == "sigmoid":
         activationMode=0
     elif activationMode == "relu":
@@ -450,7 +323,7 @@ def activation_backward(input, dinput, output, doutput,dataformat,activationMode
         activationMode=3
     else:
         assert 0
-    _LIB.DLGpuActivationBackward(input.handle, dinput.handle, output.handle, doutput.handle,dataformat,activationMode)
+    _LIB.DLGpuActivationBackward(input.handle, dinput.handle, output.handle, doutput.handle,activationMode,cudnnlist)
 
 
 def pooling_1d_forward_get_out_shape(input_shapes,dataformat,poolingMode,padding_w,v,filter_w):
@@ -470,8 +343,12 @@ def pooling_1d_forward_get_out_shape(input_shapes,dataformat,poolingMode,padding
     assert len(input_shapes)==3  and len(output_shapes) == 3
     c_input_shapes = c_array(ctypes.c_int, input_shapes)
     c_output_shapes = c_array(ctypes.c_int, output_shapes)
-    _LIB.DLGpuPooling1DForwardGetOutShape(c_input_shapes,c_output_shapes,dataformat,poolingMode,padding_w,v,filter_w)
-    return (c_output_shapes[0],c_output_shapes[1],c_output_shapes[2])
+    cudnnlist = ctypes.c_int(0)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    _LIB.DLGpuPooling1DForwardGetOutShape(c_input_shapes,c_output_shapes,dataformat,poolingMode,padding_w,v,filter_w,cudnnlist)
+    return (c_output_shapes[0],c_output_shapes[1],c_output_shapes[2]),cudnnlist
 
 def convolution_2d_forward_get_out_shape(input_shapes,filter_shapes,dataformat,padding,u,v):
     output_shapes=(0,0,0,0)
@@ -493,8 +370,17 @@ def convolution_2d_forward_get_out_shape(input_shapes,filter_shapes,dataformat,p
 
     c_filter_shapes = c_array(ctypes.c_int, filter_shapes)
     c_output_shapes = c_array(ctypes.c_int, output_shapes)
-    _LIB.DLGpuConvolution2DForwardGetOutShape(c_input_shapes,c_filter_shapes,c_output_shapes,dataformat,padding,u,v)
-    return (c_output_shapes[0],c_output_shapes[1],c_output_shapes[2],c_output_shapes[3])
+
+    cudnnlist = ctypes.c_int(0)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    cudnnlist = ctypes.pointer(cudnnlist)
+
+    _LIB.DLGpuConvolution2DForwardGetOutShape(c_input_shapes,c_filter_shapes,c_output_shapes,dataformat,padding,u,v,cudnnlist)
+    return (c_output_shapes[0],c_output_shapes[1],c_output_shapes[2],c_output_shapes[3]), cudnnlist
+
+# def test(y):
+#     _LIB.Test(y)
 
 
 def convolution_3d_forward_get_out_shape(input_shapes,filter_shapes,dataformat,padding,s1,s2,s3):
@@ -517,8 +403,12 @@ def convolution_3d_forward_get_out_shape(input_shapes,filter_shapes,dataformat,p
 
     c_filter_shapes = c_array(ctypes.c_int, filter_shapes)
     c_output_shapes = c_array(ctypes.c_int, output_shapes)
-    _LIB.DLGpuConvolution3DForwardGetOutShape(c_input_shapes,c_filter_shapes,c_output_shapes,dataformat,padding,s1,s2,s3)
-    return (c_output_shapes[0],c_output_shapes[1],c_output_shapes[2],c_output_shapes[3],c_output_shapes[4])
+    cudnnlist = ctypes.c_int(0)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    _LIB.DLGpuConvolution3DForwardGetOutShape(c_input_shapes,c_filter_shapes,c_output_shapes,dataformat,padding,s1,s2,s3,cudnnlist)
+    return (c_output_shapes[0],c_output_shapes[1],c_output_shapes[2],c_output_shapes[3],c_output_shapes[4]),cudnnlist
 
 
 def pooling_2d_forward_get_out_shape(input_shapes,dataformat,poolingMode,padding_h,padding_w,u,v,filter_h,filter_w):
@@ -538,9 +428,14 @@ def pooling_2d_forward_get_out_shape(input_shapes,dataformat,poolingMode,padding
     assert len(input_shapes)==4  and len(output_shapes) == 4
     c_input_shapes = c_array(ctypes.c_int, input_shapes)
     c_output_shapes = c_array(ctypes.c_int, output_shapes)
-    _LIB.DLGpuPooling2DForwardGetOutShape(c_input_shapes,c_output_shapes,dataformat,poolingMode,padding_h,padding_w,u,v,filter_h,filter_w)
 
-    return (c_output_shapes[0],c_output_shapes[1],c_output_shapes[2],c_output_shapes[3])
+    cudnnlist = ctypes.c_int(0)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    cudnnlist = ctypes.pointer(cudnnlist)
+
+    _LIB.DLGpuPooling2DForwardGetOutShape(c_input_shapes,c_output_shapes,dataformat,poolingMode,padding_h,padding_w,u,v,filter_h,filter_w,cudnnlist)
+    return (c_output_shapes[0],c_output_shapes[1],c_output_shapes[2],c_output_shapes[3]),cudnnlist
 
 
 def pooling_3d_forward_get_out_shape(input_shapes,dataformat,poolingMode,padding1,padding2,padding3,s1,s2,s3,filter1,filter2,filter3):
@@ -561,9 +456,14 @@ def pooling_3d_forward_get_out_shape(input_shapes,dataformat,poolingMode,padding
     c_input_shapes = c_array(ctypes.c_int, input_shapes)
     c_output_shapes = c_array(ctypes.c_int, output_shapes)
 
-    _LIB.DLGpuPooling3DForwardGetOutShape(c_input_shapes,c_output_shapes,dataformat,poolingMode,padding1,padding2,padding3,s1,s2,s3,filter1,filter2,filter3)
+    cudnnlist = ctypes.c_int(0)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    cudnnlist = ctypes.pointer(cudnnlist)
 
-    return (c_output_shapes[0],c_output_shapes[1],c_output_shapes[2],c_output_shapes[3],c_output_shapes[4])
+    _LIB.DLGpuPooling3DForwardGetOutShape(c_input_shapes,c_output_shapes,dataformat,poolingMode,padding1,padding2,padding3,s1,s2,s3,filter1,filter2,filter3,cudnnlist)
+
+    return (c_output_shapes[0],c_output_shapes[1],c_output_shapes[2],c_output_shapes[3],c_output_shapes[4]),cudnnlist
 
 
 def dropout_forward(input,output,dataformat,dropout,seed):
@@ -581,25 +481,21 @@ def dropout_forward(input,output,dataformat,dropout,seed):
     reserveSpace_p = ctypes.c_int(0)
     reserveSpace_p = ctypes.pointer(reserveSpace_p)
     reserveSpace_p = ctypes.pointer(reserveSpace_p)
-    _LIB.DLGpuDropoutForward(input.handle,output.handle,dataformat,dropout,seed,reserveSpace_p)
 
-    return reserveSpace_p
+    cudnnlist = ctypes.c_int(0)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    _LIB.DLGpuDropoutForward(input.handle,output.handle,dataformat,dropout,seed,reserveSpace_p,cudnnlist)
+
+    return reserveSpace_p,cudnnlist
 
 
-def dropout_backward(doutput,dinput,dataformat,dropout,seed,reserveSpace_p):
+def dropout_backward(doutput,dinput,reserveSpace_p,cudnnlist):
     assert isinstance(dinput, _nd.NDArray)
     assert isinstance(doutput, _nd.NDArray)
-    if dataformat=="NCHW":
-        dataformat=0
-    elif dataformat=="NHWC":
-        dataformat=1
-    else:
-        assert 0
-    assert seed >= 0
-    dropout = ctypes.c_float(dropout)
-    seed = ctypes.c_int(seed)
 
-    _LIB.DLGpuDropoutBackward(doutput.handle,dinput.handle,dataformat,dropout,seed,reserveSpace_p)
+    _LIB.DLGpuDropoutBackward(doutput.handle,dinput.handle,reserveSpace_p,cudnnlist)
 
 def cross_entropy(in_arr_a, in_arr_b, out_arr):
     assert isinstance(in_arr_a, _nd.NDArray)
@@ -653,3 +549,170 @@ def l2regular_gradient(in_arr,in_grad_arr, out_arr):
     assert isinstance(in_grad_arr, _nd.NDArray)
     assert isinstance(out_arr, _nd.NDArray)
     _LIB.DLGpuL2regularGradient(in_arr.handle,in_grad_arr.handle, out_arr.handle)
+def concat_forward(in_arr_a, in_arr_b, out_arr):
+    assert isinstance(in_arr_a, _nd.NDArray)
+    assert isinstance(in_arr_b, _nd.NDArray)
+    assert isinstance(out_arr, _nd.NDArray)
+    _LIB.DLGpuConcatForward(
+        in_arr_a.handle, in_arr_b.handle, out_arr.handle)
+def concat_backward(in_arr_a, in_arr_b, out_arr,din_arr_a, din_arr_b):
+    assert isinstance(in_arr_a, _nd.NDArray)
+    assert isinstance(in_arr_b, _nd.NDArray)
+    assert isinstance(din_arr_a, _nd.NDArray)
+    assert isinstance(din_arr_b, _nd.NDArray)
+    assert isinstance(out_arr, _nd.NDArray)
+    _LIB.DLGpuConcatBackward(
+        in_arr_a.handle, in_arr_b.handle, out_arr.handle,din_arr_a.handle, din_arr_b.handle, )
+
+def bn_forward(input,output,dataformat,batchNormMode,n):
+    assert isinstance(input, _nd.NDArray)
+    assert isinstance(output, _nd.NDArray)
+    if dataformat=="NCHW":
+        dataformat=0
+    elif dataformat=="NHWC":
+        dataformat=1
+    else:
+        assert 0
+    if batchNormMode=="pre_activation":
+        batchNormMode=0
+    elif batchNormMode=="spatial":
+        batchNormMode=1
+    else:
+        assert 0
+    mean_p = ctypes.c_int(0)
+    mean_p = ctypes.pointer(mean_p)
+    mean_p = ctypes.pointer(mean_p)
+    var_p = ctypes.c_int(0)
+    var_p = ctypes.pointer(var_p)
+    var_p = ctypes.pointer(var_p)
+    n = ctypes.c_int(n)
+    cudnnlist = ctypes.c_int(0)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    _LIB.DLGpuBatchNormalizationForward(input.handle,output.handle,dataformat,batchNormMode,n,mean_p,var_p,cudnnlist)
+    return mean_p,var_p,cudnnlist
+
+
+def bn_backward(input,doutput,dinput,batchNormMode,mean_p,var_p,cudnnlist):
+    assert isinstance(input, _nd.NDArray)
+    assert isinstance(dinput, _nd.NDArray)
+    assert isinstance(doutput, _nd.NDArray)
+    if batchNormMode=="pre_activation":
+        batchNormMode=0
+    elif batchNormMode=="spatial":
+        batchNormMode=1
+    else:
+        assert 0
+    _LIB.DLGpuBatchNormalizationBackward(input.handle,doutput.handle,dinput.handle,batchNormMode, mean_p,var_p,cudnnlist)
+
+
+def adam_compute(output, m, v, b1t, b2t, e, learning_rate):
+    assert isinstance(output, _nd.NDArray)
+    assert isinstance(m, _nd.NDArray)
+    assert isinstance(v, _nd.NDArray)
+    b1t = ctypes.c_float(b1t)
+    b2t = ctypes.c_float(b2t)
+    e = ctypes.c_float(e)
+    learning_rate = ctypes.c_float(learning_rate)
+    _LIB.DLGpuAdam(output.handle, m.handle, v.handle, b1t, b2t, e, learning_rate)
+
+
+def adam_mv(m,v, g, b1,b2):
+    assert isinstance(m, _nd.NDArray)
+    assert isinstance(v, _nd.NDArray)
+    assert isinstance(g, _nd.NDArray)
+    b1 = ctypes.c_float(b1)
+    b2 = ctypes.c_float(b2)
+    _LIB.DLGpuAdam_mv(m.handle,v.handle, g.handle, b1,b2)
+
+
+
+
+
+
+def sgd_update(output, g, learning_rate):
+    assert isinstance(output, _nd.NDArray)
+    assert isinstance(g, _nd.NDArray)
+    learning_rate = ctypes.c_float(learning_rate)
+    _LIB.DLGpuSgdUpdate(output.handle, g.handle, learning_rate)
+
+
+def get_index_to_VaribaleNumber_cuda_pointer(index_to_Variable, prefix_list, index_count):
+    index_count = ctypes.c_int(index_count)
+    index_to_Variable = c_array(ctypes.c_int,index_to_Variable)
+    prefix_list = c_array(ctypes.c_int,prefix_list)
+    return _LIB.DLGpuGetIndextoVaribaleNumberCudaPointer(index_to_Variable, prefix_list, index_count)
+
+def get_index_to_VaribaleNumber_cuda_pointer(index_to_Variable, prefix_list, index_count):
+    index_count = ctypes.c_int(index_count)
+
+    index_to_Variable = c_array(ctypes.c_int,index_to_Variable)
+    prefix_list = c_array(ctypes.c_int,prefix_list)
+
+    cudnnlist = ctypes.c_int(0)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    cudnnlist = ctypes.pointer(cudnnlist)
+
+    _LIB.DLGpuGetIndextoVaribaleNumberCudaPointer(index_to_Variable, prefix_list, index_count,cudnnlist)
+
+    return cudnnlist
+
+
+def get_n2_cuda_pointer(output, g, number):
+    output = c_array(ctypes.c_void_p, output)
+    g = c_array(ctypes.c_void_p, g)
+    number = ctypes.c_int(number)
+
+    cudnnlist = ctypes.c_int(0)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    _LIB.DLGpuGetN2CudaPointer(output, g, number,cudnnlist)
+    return cudnnlist
+
+
+def get_n4_cuda_pointer(output, m, v, g, number):
+    output = c_array(ctypes.c_void_p, output)
+    m = c_array(ctypes.c_void_p, m)
+    v = c_array(ctypes.c_void_p, v)
+    g = c_array(ctypes.c_void_p, g)
+    number = ctypes.c_int(number)
+    cudnnlist = ctypes.c_int(0)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    _LIB.DLGpuGetN4CudaPointer(output, m, v, g, number,cudnnlist)
+    return cudnnlist
+
+def sgd_compute_o(n2list,indexinfolist,count, learning_rate):
+
+
+    count = ctypes.c_int(count)
+    learning_rate = ctypes.c_float(learning_rate)
+
+    _LIB.DLGpuSgd_o(n2list, indexinfolist,count, learning_rate)
+
+def adam_compute_o(n4list,indexinfolist,count, b1, b2, b1t, b2t, e, learning_rate):
+
+
+    count = ctypes.c_int(count)
+    b1 = ctypes.c_float(b1)
+    b2 = ctypes.c_float(b2)
+    b1t = ctypes.c_float(b1t)
+    b2t = ctypes.c_float(b2t)
+    e = ctypes.c_float(e)
+    learning_rate = ctypes.c_float(learning_rate)
+
+    _LIB.DLGpuAdam_o(n4list, indexinfolist,count, b1, b2 , b1t, b2t, e, learning_rate)
+
+
+
+
+
+
+
+

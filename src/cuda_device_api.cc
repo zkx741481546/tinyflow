@@ -10,7 +10,7 @@
 
 #define CUDA_CALL(func)                                                        \
   {                                                                            \
-    cudaError_t e = (func);                                                    \
+    cudaError_t e = (func);                                                              \
     assert((e == cudaSuccess) || (e == cudaErrorCudartUnloading));             \
   }
 

@@ -9,14 +9,22 @@
 #include <cudnn.h>
 #include <stdlib.h>
 #include <iostream>
+
 //��-
 using namespace std;
 #define MAX_THREADS_NUM 512
 #define MAX_BLOCKS_NUM 4096
 #define BLOCK_NUM(count) min(((count + MAX_THREADS_NUM - 1) / MAX_THREADS_NUM), MAX_BLOCKS_NUM)
+#define BLOCK_NUM_2(count,threads) min(((count + threads - 1) / threads), MAX_BLOCKS_NUM)
 #define CUDA_1D_KERNEL_LOOP(i, n) \
   for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
         i += blockDim.x * gridDim.x)
+#define CUDA_1D_KERNEL_LOOP_2(i, n) \
+  for (size_t i = blockIdx.x ; i < (n); \
+        i += gridDim.x)
+#define CUDA_1D_KERNEL_LOOP_3(i, n) \
+  for (size_t i = threadIdx.x ; i < (n); \
+        i += blockDim.x)
 
 //��
 #define CUDNN_CALL(f) { \
@@ -36,12 +44,137 @@ __global__ void matrix_array_set_kernel(int count,
   }
 }
 
-__global__ void matrix_broadcast_to_kernel(int inputCount, float* inputArr,
+__global__ void matrix_broadcast_to_kernel0(int inputCount, float* inputArr,
                                            int outputCount, float* outputArr) {
   CUDA_1D_KERNEL_LOOP(index, outputCount) {
       outputArr[index] = inputArr[index % inputCount];
   }
 }
+
+__global__ void matrix_broadcast_to_backward_kernel0(float* inputArr,
+                                                    int outputCount, float* outputArr,
+                                                    int moreDim) {
+    CUDA_1D_KERNEL_LOOP(index, outputCount) {
+        float sum = 0;
+        for(int i=0; i < moreDim; i++) {
+            sum += inputArr[index + i * outputCount];
+        }
+        outputArr[index] = sum;
+    }
+}
+
+
+__global__ void matrix_broadcast_to_backward_kernel0_o(float* inputArr,
+                                                        int outputCount, float* outputArr,
+                                                        int moreDim) {
+
+    __shared__ float  tmp[MAX_THREADS_NUM];
+    CUDA_1D_KERNEL_LOOP_2(i, outputCount) {
+
+        int sum = 0;
+
+        CUDA_1D_KERNEL_LOOP_2(j, moreDim) {
+
+            tmp[threadIdx.x] = inputArr[i+j*outputCount];
+
+            __syncthreads();
+
+
+            for (int index = 1; index < blockDim.x; index *= 2)        //归约求和
+            {
+                if (threadIdx.x % (2 * index) == 0 && j+index < moreDim)
+                {
+                    tmp[threadIdx.x] += tmp[threadIdx.x+index];
+                }
+                __syncthreads();
+            }
+            
+            if(threadIdx.x == 0){
+
+                sum += tmp[0];
+            }
+
+        }
+
+        if(threadIdx.x == 0){
+            outputArr[i] = sum;
+        }
+
+
+    }
+}
+
+
+__global__ void matrix_broadcast_to_kernel11(float* inputArr,
+                                            int outputCount, float* outputArr,
+                                            int outputlow) {
+    CUDA_1D_KERNEL_LOOP(index, outputCount) {
+        outputArr[index] = inputArr[index / outputlow];
+    }
+}
+
+__global__ void matrix_broadcast_to_kernel12(int inputCount, float* inputArr,
+                                            int outputCount, float* outputArr) {
+    CUDA_1D_KERNEL_LOOP(index, outputCount) {
+        if(index >= inputCount){
+            outputArr[index] = inputArr[index % inputCount];
+        }
+    }
+}
+
+__global__ void matrix_broadcast_to_backward_kernel1(float* inputArr,
+                                                    int outputCount, float* outputArr,
+                                                    int moreDim) {
+    CUDA_1D_KERNEL_LOOP(index, outputCount) {
+        float sum = 0;
+        for(int i=0; i < moreDim; i++) {
+            sum += inputArr[index*moreDim + i];
+        }
+        outputArr[index] = sum;
+    }
+}
+
+
+__global__ void matrix_broadcast_to_backward_kernel1_o(float* inputArr,
+                                                        int outputCount, float* outputArr,
+                                                        int moreDim) {
+
+    __shared__ float  tmp[MAX_THREADS_NUM];
+    CUDA_1D_KERNEL_LOOP_2(i, outputCount) {
+
+        int sum = 0;
+
+        CUDA_1D_KERNEL_LOOP_2(j, moreDim) {
+
+            tmp[threadIdx.x] = inputArr[i*moreDim+j];
+
+            __syncthreads();
+
+
+            for (int index = 1; index < blockDim.x; index *= 2)        //归约求和
+            {
+                if (threadIdx.x % (2 * index) == 0 && j+index < moreDim)
+                {
+                    tmp[threadIdx.x] += tmp[threadIdx.x+index];
+                }
+                __syncthreads();
+            }
+            
+            if(threadIdx.x == 0){
+
+                sum += tmp[0];
+            }
+
+        }
+
+        if(threadIdx.x == 0){
+            outputArr[i] = sum;
+        }
+
+
+    }
+}
+
 
 __global__ void matrix_reduce_sum_axis_zero_kernel(float* inputArr,
                                                    int outputCount, float* outputArr,
@@ -206,19 +339,176 @@ int DLGpuArraySet(DLArrayHandle arr, float value) {
   return 0;
 }
 
-int DLGpuBroadcastTo(const DLArrayHandle input, DLArrayHandle output) {
-  assert(input->ndim + 1 == output->ndim);
-  int inputCount = 1, outputCount = output->shape[0];
-  for (int i = 0; i < input->ndim; ++i) {
-      assert(input->shape[i] == output->shape[i + 1]);
-      inputCount *= input->shape[i];
-      outputCount *= output->shape[i + 1];
-  }
-  float* inputArr = (float*) input->data;
-  float* outputArr = (float*) output->data;
-  matrix_broadcast_to_kernel<<<BLOCK_NUM(outputCount), MAX_THREADS_NUM>>>(
+int DLGpuBroadcastTo0(const DLArrayHandle input, DLArrayHandle output) {
+    //assert(input->ndim + 1 == output->ndim);
+    int inputCount = 1, outputCount = 1;
+    for (int i = 0; i < input->ndim; ++i) {
+        inputCount *= input->shape[i];
+        if(output->ndim==1){
+            assert(input->ndim==1 && input->shape[0]==1);
+        }else if(input->ndim==1 && input->shape[0]==1){
+            continue;
+        }
+        else{
+            assert(input->shape[(input->ndim)-1-i] == output->shape[(output->ndim)-1-i]);
+        }
+    }
+    for (int i = 0; i < output->ndim; ++i) {
+        outputCount *= output->shape[i];
+    }
+ 
+    float* inputArr = (float*) input->data;
+    float* outputArr = (float*) output->data;
+    matrix_broadcast_to_kernel0<<<BLOCK_NUM(outputCount), MAX_THREADS_NUM>>>(
     inputCount, inputArr, outputCount, outputArr);
-  return 0;
+    return 0;
+}
+
+int DLGpuBroadcastToBackward0(const DLArrayHandle input, DLArrayHandle output) {
+    //assert(input->ndim + 1 == output->ndim);
+    int outputCount = 1;
+    int inputCount = 1;
+    for (int i = 0; i < output->ndim; ++i) {
+        outputCount *= output->shape[i];
+        inputCount *= input->shape[i];
+        if(input->ndim==1){
+            assert(output->ndim==1 && output->shape[0]==1);
+        }
+        else if(output->ndim==1 && output->shape[0]==1){
+            continue;
+        }
+        else{
+            assert(input->shape[(input->ndim)-1-i] == output->shape[(output->ndim)-1-i]);
+        }
+    }
+    for (int i = output->ndim; i < input->ndim; ++i) {
+        inputCount *= input->shape[i];
+    }
+ 
+    float* inputArr = (float*) input->data;
+    float* outputArr = (float*) output->data;
+
+    int tmpoutputCount = inputCount/input->shape[0];
+
+
+
+    if((input->ndim) == 1){
+        // matrix_broadcast_to_backward_kernel0<<<BLOCK_NUM(tmpoutputCount), MAX_THREADS_NUM>>>(
+        //     inputArr, tmpoutputCount, outputArr,input->shape[0]);
+        matrix_broadcast_to_backward_kernel0_o<<<tmpoutputCount, MAX_THREADS_NUM>>>(
+            inputArr, tmpoutputCount, outputArr,input->shape[0]);
+    }
+    else{
+        float* tmpArr;
+        cudaMalloc((void**)&tmpArr, sizeof(float)*tmpoutputCount);
+
+        // matrix_broadcast_to_backward_kernel0<<<BLOCK_NUM(tmpoutputCount), MAX_THREADS_NUM>>>(
+        //     inputArr, tmpoutputCount, tmpArr,input->shape[0]);
+
+        matrix_broadcast_to_backward_kernel0_o<<<tmpoutputCount, MAX_THREADS_NUM>>>(
+            inputArr, tmpoutputCount, tmpArr,input->shape[0]);
+    
+        int i;
+        for(i=1;i < input->ndim;i++){
+    
+            tmpoutputCount /= input->shape[i];
+            if(tmpoutputCount <= outputCount){
+                break;
+            }
+    
+            // matrix_broadcast_to_backward_kernel0<<<BLOCK_NUM(tmpoutputCount), MAX_THREADS_NUM>>>(
+            //     tmpArr, tmpoutputCount, tmpArr,input->shape[i]);
+
+            matrix_broadcast_to_backward_kernel0_o<<<tmpoutputCount, MAX_THREADS_NUM>>>(
+                tmpArr, tmpoutputCount, tmpArr,input->shape[i]);
+    
+        }    
+        // matrix_broadcast_to_backward_kernel0<<<BLOCK_NUM(tmpoutputCount), MAX_THREADS_NUM>>>(
+        //     tmpArr, tmpoutputCount, outputArr,input->shape[i]);
+
+        matrix_broadcast_to_backward_kernel0_o<<<tmpoutputCount, MAX_THREADS_NUM>>>(
+            tmpArr, tmpoutputCount, outputArr,input->shape[i]);
+
+        cudaFree(tmpArr);
+
+    }
+    
+    return 0;
+}
+
+
+int DLGpuBroadcastTo1(const DLArrayHandle input, DLArrayHandle output) {
+
+    assert(input->ndim  == 1 &&input->shape[0] == output->shape[1]);
+    int outputlow = 1;
+    
+    for (int i = 2; i < output->ndim; ++i) {
+        outputlow *= output->shape[i];
+    }
+    int count1 = outputlow*output->shape[1];
+    int count2 = count1 * output->shape[0];
+
+    float* inputArr = (float*) input->data;
+    float* outputArr = (float*) output->data;
+    matrix_broadcast_to_kernel11<<<BLOCK_NUM(count1), MAX_THREADS_NUM>>>(
+    inputArr, count1, outputArr, outputlow);
+
+    matrix_broadcast_to_kernel12<<<BLOCK_NUM(count2), MAX_THREADS_NUM>>>(
+    count1, outputArr, count2, outputArr);
+
+    return 0;
+}
+
+int DLGpuBroadcastToBackward1(const DLArrayHandle input, DLArrayHandle output) {
+    //assert(input->ndim + 1 == output->ndim);
+    assert(output->ndim  == 1 &&output->shape[0] == input->shape[1]);
+
+    float* inputArr = (float*) input->data;
+    float* outputArr = (float*) output->data;
+
+    int outcn = 1;
+    for (int i = 1; i < input->ndim; ++i) {
+        outcn *= input->shape[i];
+    }
+
+    float* tmpArr,*tmpArr2;
+    cudaMalloc((void**)&tmpArr, sizeof(float)*outcn);
+    //n
+
+    // matrix_broadcast_to_backward_kernel0<<<BLOCK_NUM(outcn), MAX_THREADS_NUM>>>(
+    //     inputArr, outcn, tmpArr,input->shape[0]);
+
+    matrix_broadcast_to_backward_kernel0_o<<<outcn, MAX_THREADS_NUM>>>(
+        inputArr, outcn, tmpArr,input->shape[0]);
+
+    //hw
+    outcn = outcn/input->shape[(input->ndim)-1];
+    cudaMalloc((void**)&tmpArr2, sizeof(float)*outcn);
+
+    for(int i=(input->ndim)-1;i>2;i--){
+
+        // matrix_broadcast_to_backward_kernel1<<<BLOCK_NUM(outcn), MAX_THREADS_NUM>>>(
+        //     tmpArr, outcn, tmpArr2,input->shape[i]);
+
+        matrix_broadcast_to_backward_kernel1_o<<<outcn, MAX_THREADS_NUM>>>(
+            tmpArr, outcn, tmpArr2,input->shape[i]);
+        
+        outcn = outcn/input->shape[i-1];
+        float *tmptmp = tmpArr2;
+        tmpArr2 = tmpArr;
+        tmpArr = tmptmp;
+    }
+
+    // matrix_broadcast_to_backward_kernel1<<<BLOCK_NUM(outcn), MAX_THREADS_NUM>>>(
+    //     tmpArr, outcn, outputArr,input->shape[2]);
+
+    matrix_broadcast_to_backward_kernel1_o<<<outcn, MAX_THREADS_NUM>>>(
+        tmpArr, outcn, outputArr,input->shape[2]);
+
+    cudaFree(tmpArr);
+    cudaFree(tmpArr2);
+
+    return 0;
 }
 
 
@@ -384,19 +674,106 @@ int DLGpuReduceSumAllBackward(const DLArrayHandle input, DLArrayHandle output) {
 
 
 int DLGpuReduceSumAxisZero(const DLArrayHandle input, DLArrayHandle output) {
-  assert(input->ndim == output->ndim + 1);
-  int zeroDim = input->shape[0], outputCount = 1;
+    assert(input->ndim == output->ndim + 1);
+    int zeroDim = input->shape[0], outputCount = 1;
     for (int i = 0; i < output->ndim; ++i) {
         assert(input->shape[i+1] == output->shape[i]);
         outputCount *= output->shape[i];
     }
-  float* inputArr = (float*) input->data;
-  float* outputArr = (float*) output->data;
-  matrix_reduce_sum_axis_zero_kernel<<<BLOCK_NUM(outputCount), MAX_THREADS_NUM>>>(
-          inputArr, outputCount, outputArr, zeroDim);
-  return 0;
+    float* inputArr = (float*) input->data;
+    float* outputArr = (float*) output->data;
+    matrix_reduce_sum_axis_zero_kernel<<<BLOCK_NUM(outputCount), MAX_THREADS_NUM>>>(
+            inputArr, outputCount, outputArr, zeroDim);
+    return 0;
 }
 
+
+
+__global__ void matrix_concat_to_kernel(int count1,const float* inputArr1,int count2,const float* inputArr2,
+                                        int outputCount, float* outputArr,int  count) {
+  CUDA_1D_KERNEL_LOOP(index, outputCount) {
+      int index1,index2;
+      index1=index%count;
+      index2=index/count;
+      if(index1<count1)
+        outputArr[index]=inputArr1[index2*count1+index1];
+      else
+        outputArr[index]=inputArr2[index2*count2+index1-count1];
+  }
+}
+
+
+int DLGpuConcatForward(const DLArrayHandle input1, const DLArrayHandle input2,DLArrayHandle output) {
+  assert(input1->ndim == input2->ndim);
+  int inputCount1 = 1,inputCount2 = 1;
+  int Count,count,OutputCount,Count1,Count2;
+  for (int i = 0; i < input1->ndim; ++i) {
+      if(i!=1)
+        assert(input1->shape[i] == input2->shape[i]);
+      inputCount1 *= input1->shape[i];
+      inputCount2 *= input2->shape[i];
+  }
+    Count=input1->shape[0];
+    OutputCount=inputCount1+inputCount2;
+    count=OutputCount/Count;
+    Count1=inputCount1/Count;
+    Count2=inputCount2/Count;
+    const float* input_data_a = (const float*)input1->data;
+    const float* input_data_b = (const float*)input2->data;
+    float* output_data = (float*)output->data;
+    matrix_concat_to_kernel<<<BLOCK_NUM(OutputCount), MAX_THREADS_NUM>>>(
+     Count1,input_data_a,Count2, input_data_b,OutputCount,output_data,count);
+    return 0;
+}
+
+
+__global__ void matrix_concatbackward_to_kernel(int count1,const float* inputArr1,int count2, const float* inputArr2,
+                                        int outputCount,const float* doutputArr,int  count,
+                                        float* dinputArr1,float* dinputArr2) {
+  CUDA_1D_KERNEL_LOOP(index, outputCount) {
+      int index1,index2;
+      index1=index%count;
+      index2=index/count;
+      if(index1<count1)
+        dinputArr1[index2*count1+index1]=doutputArr[index];
+      else
+        dinputArr2[index2*count2+index1-count1]=doutputArr[index];
+  }
+}
+
+
+int DLGpuConcatBackward(const DLArrayHandle input1,const DLArrayHandle input2,const DLArrayHandle doutput,
+                        DLArrayHandle dinput1,DLArrayHandle dinput2) {
+  assert(input1->ndim == input2->ndim);
+  int inputCount1 = 1,inputCount2 = 1;
+  int Count,count,OutputCount,Count1,Count2;
+  for (int i = 0; i < input1->ndim; ++i) {
+      if(i!=1)
+        assert(input1->shape[i] == input2->shape[i]);
+      inputCount1 *= input1->shape[i];
+      inputCount2 *= input2->shape[i];
+  }
+    Count=input1->shape[0];
+    OutputCount=inputCount1+inputCount2;
+    count=OutputCount/Count;
+    Count1=inputCount1/Count;
+    Count2=inputCount2/Count;
+    
+    const float* input_data_a = (const float*)input1->data;
+    const float* input_data_b = (const float*)input2->data;
+    const float* doutput_data = (float*)doutput->data;
+    float* dinput_data_a = (float*)dinput1->data;
+    float* dinput_data_b = (float*)dinput2->data;
+    matrix_concatbackward_to_kernel<<<BLOCK_NUM(OutputCount), MAX_THREADS_NUM>>>(
+     Count1,input_data_a,Count2, input_data_b,OutputCount,doutput_data,count,dinput_data_a,dinput_data_b);
+    return 0;
+}
+
+
+
+
+
+//can ndarray
 int DLGpuMatrixElementwiseAdd(const DLArrayHandle matA,
                               const DLArrayHandle matB, DLArrayHandle output) {
   assert(matA->ndim == output->ndim);
@@ -652,126 +1029,30 @@ int DLGpuMatrixPow(const DLArrayHandle input,const float val, DLArrayHandle outp
 int DLGpuConvolution1DForward(const DLArrayHandle input,
     const DLArrayHandle filter,
     DLArrayHandle output,
-    cudnnTensorFormat_t dataformat,
-    const paddingStatus_t padding,
-    const int v         /*filter stride */) {
+    void ***cudnnlist) {
 
     //cout<<dataformat<<endl;
    // cout<<padding<<endl;
     assert(input->ndim == 3);
     assert(filter->ndim == 3);
 
-
-
-    int input_n = input->shape[0];
-    int input_c = input->shape[2];
-    int input_h = 1;
-    int input_w = input->shape[1];
-
-    int filter_n = filter->shape[0];
-    int filter_c = filter->shape[2];
-    int filter_h = 1;
-    int filter_w = filter->shape[1];
-
-    if (dataformat == 0) {
-        input_n = input->shape[0];
-        input_c = input->shape[1];
-        input_h = 1;
-        input_w = input->shape[2];
-
-        filter_n = filter->shape[0];
-        filter_c = filter->shape[1];
-        filter_h = 1;
-        filter_w = filter->shape[2];
-    }
-
-    int out_n;
-    int out_c;
-    int out_h;
-    int out_w;
-
-    int pad_h = 0;
-    int pad_w = 0;
-
-    int u = 1;
-
-    if (padding == 1) {
-        pad_w = filter_w / 2;
-    }
-
-
     //handle
     cudnnHandle_t handle;
     CUDNN_CALL(cudnnCreate(&handle));
 
     //input
-    cudnnTensorDescriptor_t input_descriptor;
-    CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
-    CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
-        dataformat,
-        CUDNN_DATA_FLOAT,
-        input_n,
-        input_c,
-        input_h,
-        input_w));
+    cudnnTensorDescriptor_t input_descriptor = (cudnnTensorDescriptor_t)((*cudnnlist)[0]);
 
-
-    //������
-    cudnnFilterDescriptor_t filter_descriptor;
-    CUDNN_CALL(cudnnCreateFilterDescriptor(&filter_descriptor));
-    CUDNN_CALL(cudnnSetFilter4dDescriptor(filter_descriptor,
-        CUDNN_DATA_FLOAT,
-        dataformat,
-        filter_n,
-        filter_c,
-        filter_h,
-        filter_w));
+    //filter
+    cudnnFilterDescriptor_t filter_descriptor = (cudnnFilterDescriptor_t)((*cudnnlist)[1]);
 
 
     //��ķ�ʽ��������padding
-    cudnnConvolutionDescriptor_t conv_descriptor;
-    CUDNN_CALL(cudnnCreateConvolutionDescriptor(&conv_descriptor));
-    CUDNN_CALL(cudnnSetConvolution2dDescriptor(conv_descriptor,
-        pad_h, pad_w, // zero-padding
-        u, v, // stride
-        1, 1,
-        CUDNN_CROSS_CORRELATION, CUDNN_DATA_FLOAT));
-
-    //����output��4��ά��
-    CUDNN_CALL(cudnnGetConvolution2dForwardOutputDim(
-        conv_descriptor,
-        input_descriptor,
-        filter_descriptor,
-        &out_n,
-        &out_c,
-        &out_h,
-        &out_w));
-
-    if (dataformat == 0) {
-        assert(output->shape[0] == out_n);
-        assert(output->shape[1] == out_c);
-        assert(1 == out_h);
-        assert(output->shape[2] == out_w);
-    }
-    else {
-        assert(output->shape[0] == out_n);
-        assert(output->shape[2] == out_c);
-        assert(1 == out_h);
-        assert(output->shape[1] == out_w);
-    }
-
-
+    cudnnConvolutionDescriptor_t conv_descriptor = (cudnnConvolutionDescriptor_t)((*cudnnlist)[2]);
 
     //output��Ϣ
-    cudnnTensorDescriptor_t output_descriptor;
-    CUDNN_CALL(cudnnCreateTensorDescriptor(&output_descriptor));
-    CUDNN_CALL(cudnnSetTensor4dDescriptor(output_descriptor,
-        dataformat,
-        CUDNN_DATA_FLOAT,
-        out_n,
-        out_c,
-        out_h,
-        out_w));
+    cudnnTensorDescriptor_t output_descriptor = (cudnnTensorDescriptor_t)((*cudnnlist)[3]);
+
 
     //�������㷨
     cudnnConvolutionFwdAlgo_t algo;
@@ -814,10 +1095,6 @@ int DLGpuConvolution1DForward(const DLArrayHandle input,
         output->data));
     //�ڴ�
     cudaFree(workspace);
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(output_descriptor));
-    CUDNN_CALL(cudnnDestroyConvolutionDescriptor(conv_descriptor));
-    CUDNN_CALL(cudnnDestroyFilterDescriptor(filter_descriptor));
     CUDNN_CALL(cudnnDestroy(handle));
 
     return 0;
@@ -830,7 +1107,8 @@ int DLGpuConvolution1DForwardGetOutShape(const int* input_shapes,
     int* output_shapes,
     cudnnTensorFormat_t dataformat,
     const paddingStatus_t padding,
-    const int v          /*filter stride */) {
+    const int v,
+    void ***cudnnlist) {
 
    // cout << dataformat << endl;
    // cout << padding << endl;
@@ -875,9 +1153,6 @@ int DLGpuConvolution1DForwardGetOutShape(const int* input_shapes,
     }
 
 
-    //handle
-    cudnnHandle_t handle;
-    CUDNN_CALL(cudnnCreate(&handle));
 
     //input
     cudnnTensorDescriptor_t input_descriptor;
@@ -935,134 +1210,6 @@ int DLGpuConvolution1DForwardGetOutShape(const int* input_shapes,
         output_shapes[2] = out_c;
     }
 
-
-
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
-    CUDNN_CALL(cudnnDestroyConvolutionDescriptor(conv_descriptor));
-    CUDNN_CALL(cudnnDestroyFilterDescriptor(filter_descriptor));
-    CUDNN_CALL(cudnnDestroy(handle));
-
-    return 0;
-
-}
-
-
-int DLGpuConvolution1DBackward(const DLArrayHandle input,
-    const DLArrayHandle doutput,
-    const DLArrayHandle filter,
-    DLArrayHandle dfilter,
-    DLArrayHandle dinput,
-    cudnnTensorFormat_t dataformat,
-    const paddingStatus_t padding,
-    const int v          /*filter stride */) {
-
-    assert(input->ndim == 3);
-    assert(filter->ndim == 3);
-        
-
-     int input_n = input->shape[0];
-     int input_c = input->shape[2];
-     int input_h = 1;
-     int input_w = input->shape[1];
-
-     int filter_n = filter->shape[0];
-     int filter_c = filter->shape[2];
-     int filter_h = 1;
-     int filter_w = filter->shape[1];
-
-
-    if (dataformat == 0) {
-        input_n = input->shape[0];
-        input_c = input->shape[1];
-        input_h = 1;
-        input_w = input->shape[2];
-
-        filter_n = filter->shape[0];
-        filter_c = filter->shape[1];
-        filter_h = 1;
-        filter_w = filter->shape[2];
-    }
-
-
-
-    int out_n;
-    int out_c;
-    int out_h;
-    int out_w;
-
-    int pad_h = 0;
-    int pad_w = 0;
-
-    int u = 1;
-
-    if (padding == 1) {
-        pad_w = filter_w / 2;
-    }
-
-
-    //handle
-    cudnnHandle_t handle;
-    CUDNN_CALL(cudnnCreate(&handle));
-
-    //input
-    cudnnTensorDescriptor_t input_descriptor;
-    CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
-    CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
-        dataformat,
-        CUDNN_DATA_FLOAT,
-        input_n,
-        input_c,
-        input_h,
-        input_w));
-
-
-    //������
-    cudnnFilterDescriptor_t filter_descriptor;
-    CUDNN_CALL(cudnnCreateFilterDescriptor(&filter_descriptor));
-    CUDNN_CALL(cudnnSetFilter4dDescriptor(filter_descriptor,
-        CUDNN_DATA_FLOAT,
-        dataformat,
-        filter_n,
-        filter_c,
-        filter_h,
-        filter_w));
-
-
-    //��ķ�ʽ��������padding
-    cudnnConvolutionDescriptor_t conv_descriptor;
-    CUDNN_CALL(cudnnCreateConvolutionDescriptor(&conv_descriptor));
-    CUDNN_CALL(cudnnSetConvolution2dDescriptor(conv_descriptor,
-        pad_h, pad_w, // zero-padding
-        u, v, // stride
-        1, 1,
-        CUDNN_CROSS_CORRELATION, CUDNN_DATA_FLOAT));
-
-    //����output��4��ά��
-    CUDNN_CALL(cudnnGetConvolution2dForwardOutputDim(
-        conv_descriptor,
-        input_descriptor,
-        filter_descriptor,
-        &out_n,
-        &out_c,
-        &out_h,
-        &out_w));
-
-  
-
-    if (dataformat == 0) {
-        assert(doutput->shape[0] == out_n);
-        assert(doutput->shape[1] == out_c);
-        assert(1 == out_h);
-        assert(doutput->shape[2] == out_w);
-    }
-    else {
-        assert(doutput->shape[0] == out_n);
-        assert(doutput->shape[2] == out_c);
-        assert(1 == out_h);
-        assert(doutput->shape[1] == out_w);
-    }
-
-
     //output��Ϣ
     cudnnTensorDescriptor_t output_descriptor;
     CUDNN_CALL(cudnnCreateTensorDescriptor(&output_descriptor));
@@ -1074,6 +1221,45 @@ int DLGpuConvolution1DBackward(const DLArrayHandle input,
         out_h,
         out_w));
 
+    * cudnnlist = (void **)malloc(sizeof(void *)*4);
+    (* cudnnlist)[0] = input_descriptor;
+    (* cudnnlist)[1] = filter_descriptor;
+    (* cudnnlist)[2] = conv_descriptor;
+    (* cudnnlist)[3] = output_descriptor;
+
+    return 0;
+
+}
+
+
+int DLGpuConvolution1DBackward(const DLArrayHandle input,
+    const DLArrayHandle doutput,
+    const DLArrayHandle filter,
+    DLArrayHandle dfilter,
+    DLArrayHandle dinput,
+    void ***cudnnlist) {
+
+    assert(input->ndim == 3);
+    assert(filter->ndim == 3);
+
+
+    //handle
+    cudnnHandle_t handle;
+    CUDNN_CALL(cudnnCreate(&handle));
+
+    
+    //input
+    cudnnTensorDescriptor_t input_descriptor = (cudnnTensorDescriptor_t)((*cudnnlist)[0]);
+
+    //filter
+    cudnnFilterDescriptor_t filter_descriptor = (cudnnFilterDescriptor_t)((*cudnnlist)[1]);
+
+
+    //��ķ�ʽ��������padding
+    cudnnConvolutionDescriptor_t conv_descriptor = (cudnnConvolutionDescriptor_t)((*cudnnlist)[2]);
+
+    //output��Ϣ
+    cudnnTensorDescriptor_t output_descriptor = (cudnnTensorDescriptor_t)((*cudnnlist)[3]);
     
 
     
@@ -1159,12 +1345,7 @@ int DLGpuConvolution1DBackward(const DLArrayHandle input,
     //�ڴ�
     cudaFree(workspace1);
     cudaFree(workspace2);
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(output_descriptor));
-    CUDNN_CALL(cudnnDestroyConvolutionDescriptor(conv_descriptor));
-    CUDNN_CALL(cudnnDestroyFilterDescriptor(filter_descriptor));
     CUDNN_CALL(cudnnDestroy(handle));
-
     return 0;
 
 }
@@ -1173,131 +1354,35 @@ int DLGpuConvolution1DBackward(const DLArrayHandle input,
 
 
 
-//4ά
 int DLGpuConvolution2DForward(const DLArrayHandle input,
     const DLArrayHandle filter,
     DLArrayHandle output,
-    cudnnTensorFormat_t dataformat,
-    const paddingStatus_t padding,
-    const int u,          /* vertical filter stride */
-    const int v          /* horizontal filter stride */){
+    void ***cudnnlist) {
 
     assert(input->ndim == 4);
     assert(filter->ndim == 4);
-
-
-    int input_n = input->shape[0];
-    int input_c = input->shape[3];
-    int input_h = input->shape[1];
-    int input_w = input->shape[2];
-
-    int filter_n = filter->shape[0];
-    int filter_c = filter->shape[3];
-    int filter_h = filter->shape[1];
-    int filter_w = filter->shape[2];
-
-
-    if (dataformat == 0) {
-        input_n = input->shape[0];
-        input_c = input->shape[1];
-        input_h = input->shape[2];
-        input_w = input->shape[3];
-
-        filter_n = filter->shape[0];
-        filter_c = filter->shape[1];
-        filter_h = filter->shape[2];
-        filter_w = filter->shape[3];
-    }
-
-
-
-    int out_n;
-    int out_c;
-    int out_h;
-    int out_w;
-
-    int pad_h = 0;
-    int pad_w = 0;
-
-    if (padding == 1) {
-        pad_h = filter_h / 2;
-        pad_w = filter_w / 2;
-    }
 
 
     //handle
     cudnnHandle_t handle;
     CUDNN_CALL(cudnnCreate(&handle));
 
-    //input
-    cudnnTensorDescriptor_t input_descriptor;
-    CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
-    CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
-        dataformat,
-        CUDNN_DATA_FLOAT,
-        input_n, 
-        input_c, 
-        input_h, 
-        input_w));
+    cudnnTensorDescriptor_t input_descriptor = (cudnnTensorDescriptor_t)((*cudnnlist)[0]);
 
 
-    //������
-    cudnnFilterDescriptor_t filter_descriptor;
-    CUDNN_CALL(cudnnCreateFilterDescriptor(&filter_descriptor));
-    CUDNN_CALL(cudnnSetFilter4dDescriptor(filter_descriptor,
-        CUDNN_DATA_FLOAT,
-        dataformat,
-        filter_n, 
-        filter_c, 
-        filter_h, 
-        filter_w));
+
+    //filter
+    cudnnFilterDescriptor_t filter_descriptor = (cudnnFilterDescriptor_t)((*cudnnlist)[1]);
 
 
     //��ķ�ʽ��������padding
-    cudnnConvolutionDescriptor_t conv_descriptor;
-    CUDNN_CALL(cudnnCreateConvolutionDescriptor(&conv_descriptor));
-    CUDNN_CALL(cudnnSetConvolution2dDescriptor(conv_descriptor,
-        pad_h, pad_w, // zero-padding
-        u, v, // stride
-        1, 1,
-        CUDNN_CROSS_CORRELATION, CUDNN_DATA_FLOAT));
-
-    //����output��4��ά��
-    CUDNN_CALL(cudnnGetConvolution2dForwardOutputDim(
-        conv_descriptor,
-        input_descriptor,
-        filter_descriptor,
-        &out_n,
-        &out_c,
-        &out_h,
-        &out_w));
-
-   
-
-    if (dataformat == 0) {
-        assert(output->shape[0] == out_n);
-        assert(output->shape[1] == out_c);
-        assert(output->shape[2] == out_h);
-        assert(output->shape[3] == out_w);
-    }
-    else {
-        assert(output->shape[0] == out_n);
-        assert(output->shape[3] == out_c);
-        assert(output->shape[1] == out_h);
-        assert(output->shape[2] == out_w);
-    }
-
+    cudnnConvolutionDescriptor_t conv_descriptor = (cudnnConvolutionDescriptor_t)((*cudnnlist)[2]);
 
     //output��Ϣ
-    cudnnTensorDescriptor_t output_descriptor;
-    CUDNN_CALL(cudnnCreateTensorDescriptor(&output_descriptor));
-    CUDNN_CALL(cudnnSetTensor4dDescriptor(output_descriptor,
-        dataformat,
-        CUDNN_DATA_FLOAT,
-        out_n,
-        out_c,
-        out_h,
-        out_w));
+    cudnnTensorDescriptor_t output_descriptor = (cudnnTensorDescriptor_t)((*cudnnlist)[3]);
+
+
+
 
     //�������㷨
     cudnnConvolutionFwdAlgo_t algo;
@@ -1341,10 +1426,6 @@ int DLGpuConvolution2DForward(const DLArrayHandle input,
 
     //�ڴ�
     cudaFree(workspace);
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(output_descriptor));
-    CUDNN_CALL(cudnnDestroyConvolutionDescriptor(conv_descriptor));
-    CUDNN_CALL(cudnnDestroyFilterDescriptor(filter_descriptor));
     CUDNN_CALL(cudnnDestroy(handle));
     return 0;
 }
@@ -1355,8 +1436,8 @@ int DLGpuConvolution2DForwardGetOutShape(const int* input_shapes,
     cudnnTensorFormat_t dataformat,
     const paddingStatus_t padding,
     const int u,          /* vertical filter stride */
-    const int v          /* horizontal filter stride */) {
-
+    const int v,
+    void ***cudnnlist) {
    // cout << dataformat << endl;
    // cout << padding << endl;
 
@@ -1399,9 +1480,9 @@ int DLGpuConvolution2DForwardGetOutShape(const int* input_shapes,
     }
 
 
-    //handle
-    cudnnHandle_t handle;
-    CUDNN_CALL(cudnnCreate(&handle));
+    // //handle
+    // cudnnHandle_t handle;
+    // CUDNN_CALL(cudnnCreate(&handle));
 
     //input
     cudnnTensorDescriptor_t input_descriptor;
@@ -1461,129 +1542,8 @@ int DLGpuConvolution2DForwardGetOutShape(const int* input_shapes,
         output_shapes[3] = out_c;
     }
 
+    
 
-
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
-    CUDNN_CALL(cudnnDestroyConvolutionDescriptor(conv_descriptor));
-    CUDNN_CALL(cudnnDestroyFilterDescriptor(filter_descriptor));
-    CUDNN_CALL(cudnnDestroy(handle));
-
-    return 0;
-
-}
-
-
-
-int DLGpuConvolution2DBackward(const DLArrayHandle input,
-    const DLArrayHandle doutput,
-    const DLArrayHandle filter,
-    DLArrayHandle dfilter,
-    DLArrayHandle dinput,
-    cudnnTensorFormat_t dataformat,
-    const paddingStatus_t padding,
-    const int u,          /* vertical filter stride */
-    const int v          /* horizontal filter stride */){
-
-    assert(input->ndim == 4);
-    assert(filter->ndim == 4);
-
-    int input_n = input->shape[0];
-    int input_c = input->shape[3];
-    int input_h = input->shape[1];
-    int input_w = input->shape[2];
-
-    int filter_n = filter->shape[0];
-    int filter_c = filter->shape[3];
-    int filter_h = filter->shape[1];
-    int filter_w = filter->shape[2];
-
-
-    if (dataformat == 0) {
-        input_n = input->shape[0];
-        input_c = input->shape[1];
-        input_h = input->shape[2];
-        input_w = input->shape[3];
-
-        filter_n = filter->shape[0];
-        filter_c = filter->shape[1];
-        filter_h = filter->shape[2];
-        filter_w = filter->shape[3];
-    }
-
-
-
-
-
-    int out_n;
-    int out_c;
-    int out_h;
-    int out_w;
-
-    int pad_h = 0;
-    int pad_w = 0;
-
-    if (padding == 1) {
-        pad_h = filter_h / 2;
-        pad_w = filter_w / 2;
-    }
-
-
-    //handle
-    cudnnHandle_t handle;
-    CUDNN_CALL(cudnnCreate(&handle));
-
-    //input
-    cudnnTensorDescriptor_t input_descriptor;
-    CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
-    CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
-        dataformat,
-        CUDNN_DATA_FLOAT,
-        input_n,
-        input_c,
-        input_h,
-        input_w));
-
-
-    //������
-    cudnnFilterDescriptor_t filter_descriptor;
-    CUDNN_CALL(cudnnCreateFilterDescriptor(&filter_descriptor));
-    CUDNN_CALL(cudnnSetFilter4dDescriptor(filter_descriptor,
-        CUDNN_DATA_FLOAT,
-        dataformat,
-        filter_n,
-        filter_c,
-        filter_h,
-        filter_w));
-
-
-    //��ķ�ʽ��������padding
-    cudnnConvolutionDescriptor_t conv_descriptor;
-    CUDNN_CALL(cudnnCreateConvolutionDescriptor(&conv_descriptor));
-    CUDNN_CALL(cudnnSetConvolution2dDescriptor(conv_descriptor,
-        pad_h, pad_w, // zero-padding
-        u, v, // stride
-        1, 1,
-        CUDNN_CROSS_CORRELATION, CUDNN_DATA_FLOAT));
-
-    //����output��4��ά��
-    CUDNN_CALL(cudnnGetConvolution2dForwardOutputDim(
-        conv_descriptor,
-        input_descriptor,
-        filter_descriptor,
-        &out_n,
-        &out_c,
-        &out_h,
-        &out_w));
-
-    assert(doutput->shape[0] == out_n);
-    assert(doutput->shape[1] == out_c);
-    assert(doutput->shape[2] == out_h);
-    assert(doutput->shape[3] == out_w);
-
-
-
-
-    //output��Ϣ
     cudnnTensorDescriptor_t output_descriptor;
     CUDNN_CALL(cudnnCreateTensorDescriptor(&output_descriptor));
     CUDNN_CALL(cudnnSetTensor4dDescriptor(output_descriptor,
@@ -1593,6 +1553,89 @@ int DLGpuConvolution2DBackward(const DLArrayHandle input,
         out_c,
         out_h,
         out_w));
+
+     * cudnnlist = (void **)malloc(sizeof(void *)*4);
+    (* cudnnlist)[0] = input_descriptor;
+    (* cudnnlist)[1] = filter_descriptor;
+    (* cudnnlist)[2] = conv_descriptor;
+    (* cudnnlist)[3] = output_descriptor;
+
+
+
+    return 0;
+
+}
+
+// int Test(cudnnTensorDescriptor_t i){
+
+
+//     printf("%p\n",i);
+//     cudnnDataType_t *dataType = (cudnnDataType_t *)malloc(sizeof(cudnnDataType_t *));
+
+//     int                     n=0;
+//         int                     c=0;
+//         int                     h=0;
+//         int                     w=0;
+//         int                     nStride=0;
+//         int                     cStride=0;
+//         int                     hStride=0;
+//         int                     wStride=0;
+//     cudnnGetTensor4dDescriptor(
+//         i,
+//         dataType,
+//         &n,
+//         &c,
+//                             &h,
+//                           &w,
+//                              &nStride,
+//                              &cStride,
+//                             &hStride,
+//                              &wStride);
+
+//     printf("%d\n",n);
+//     printf("%d\n",c);
+//     printf("%d\n",h);
+//     printf("%d\n",w);
+
+    
+
+
+
+//     return 0;
+
+
+// }
+
+
+
+int DLGpuConvolution2DBackward(const DLArrayHandle input,
+    const DLArrayHandle doutput,
+    const DLArrayHandle filter,
+    DLArrayHandle dfilter,
+    DLArrayHandle dinput,
+    void ***cudnnlist) {
+
+    assert(input->ndim == 4);
+    assert(filter->ndim == 4);
+
+   
+
+
+    //handle
+    cudnnHandle_t handle;
+    CUDNN_CALL(cudnnCreate(&handle));
+
+    cudnnTensorDescriptor_t input_descriptor = (cudnnTensorDescriptor_t)((*cudnnlist)[0]);
+
+    //filter
+    cudnnFilterDescriptor_t filter_descriptor = (cudnnFilterDescriptor_t)((*cudnnlist)[1]);
+
+
+    //��ķ�ʽ��������padding
+    cudnnConvolutionDescriptor_t conv_descriptor = (cudnnConvolutionDescriptor_t)((*cudnnlist)[2]);
+
+    //output��Ϣ
+    cudnnTensorDescriptor_t output_descriptor = (cudnnTensorDescriptor_t)((*cudnnlist)[3]);
 
     cudnnConvolutionBwdFilterAlgo_t  algo1;
     CUDNN_CALL(cudnnGetConvolutionBackwardFilterAlgorithm(handle,
@@ -1677,10 +1720,6 @@ int DLGpuConvolution2DBackward(const DLArrayHandle input,
     //�ڴ�
     cudaFree(workspace1);
     cudaFree(workspace2);
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(output_descriptor));
-    CUDNN_CALL(cudnnDestroyConvolutionDescriptor(conv_descriptor));
-    CUDNN_CALL(cudnnDestroyFilterDescriptor(filter_descriptor));
     CUDNN_CALL(cudnnDestroy(handle));
     return 0;
 }
@@ -1689,122 +1728,28 @@ int DLGpuConvolution2DBackward(const DLArrayHandle input,
 int DLGpuConvolution3DForward(const DLArrayHandle input,
     const DLArrayHandle filter,
     DLArrayHandle output,
-    cudnnTensorFormat_t dataformat,
-    const paddingStatus_t padding,
-    const int s1,          
-    const int s2,     
-    const int s3) {
+    void ***cudnnlist) {
 
     assert(input->ndim == 5);
     assert(filter->ndim == 5);
 
-    int* input_shape, * output_shape, * filter_shape, * inputstrides,*outputstrides;
-
-    int* padA, * filterStrideA, * dilationA;
-
-    input_shape = (int*)malloc(sizeof(int) * 5);
-    filter_shape = (int*)malloc(sizeof(int) * 5);
-    output_shape = (int*)malloc(sizeof(int) * 5);
-    inputstrides = (int*)malloc(sizeof(int) * 5);
-    outputstrides = (int*)malloc(sizeof(int) * 5);
-    padA = (int*)malloc(sizeof(int) * 3);
-    filterStrideA = (int*)malloc(sizeof(int) * 3);
-    dilationA = (int*)malloc(sizeof(int) * 3);
-
-    for (int i=0;i<5;i++)
-    {
-        input_shape[i]=input->shape[i];
-        filter_shape[i]=filter->shape[i];
-    }
-
-
-    for (int i = 0; i < 3; i++) {
-        padA[i] = 0;
-        dilationA[i] = 1;
-    }
-
-    if (padding == 1) {
-        for (int i = 0; i < 3; i++) {
-            padA[i] = filter_shape[i+2]/2;
-            
-        }
-    }
-
-
-    filterStrideA[0] = s1;
-    filterStrideA[1] = s2;
-    filterStrideA[2] = s3;
-
-
-    inputstrides[4] = 1;
-    for (int i = 1; i < 5; i++) {
-        inputstrides[4 - i] = inputstrides[5 - i] * input_shape[5 - i];
-    }
-
-
+    
 
      cudnnHandle_t handle;
     CUDNN_CALL(cudnnCreate(&handle));
 
 
-    //input
-    cudnnTensorDescriptor_t input_descriptor;
-    CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
-    CUDNN_CALL(cudnnSetTensorNdDescriptorEx(input_descriptor,
-        dataformat,
-        CUDNN_DATA_FLOAT,
-        5,
-        input_shape));
+    cudnnTensorDescriptor_t input_descriptor = (cudnnTensorDescriptor_t)((*cudnnlist)[0]);
 
-    //�˺���
-    cudnnFilterDescriptor_t filter_descriptor;
-    CUDNN_CALL(cudnnCreateFilterDescriptor(&filter_descriptor));
-    CUDNN_CALL(cudnnSetFilterNdDescriptor(filter_descriptor,
-        CUDNN_DATA_FLOAT,
-        dataformat,
-        5,
-        filter_shape));
+    //filter
+    cudnnFilterDescriptor_t filter_descriptor = (cudnnFilterDescriptor_t)((*cudnnlist)[1]);
+
 
     //��ķ�ʽ��������padding
-    cudnnConvolutionDescriptor_t conv_descriptor;
-    CUDNN_CALL(cudnnCreateConvolutionDescriptor(&conv_descriptor));
-    CUDNN_CALL(cudnnSetConvolutionNdDescriptor(conv_descriptor,
-        3,
-        padA,
-        filterStrideA,
-        dilationA,
-        CUDNN_CROSS_CORRELATION, CUDNN_DATA_FLOAT));
+    cudnnConvolutionDescriptor_t conv_descriptor = (cudnnConvolutionDescriptor_t)((*cudnnlist)[2]);
 
-    //output��shape
-    CUDNN_CALL(cudnnGetConvolutionNdForwardOutputDim(
-        conv_descriptor,
-        input_descriptor,
-        filter_descriptor,
-        5,
-        output_shape));
-
-
-    assert(output->shape[0] == output_shape[0]);
-    assert(output->shape[1] == output_shape[1]);
-    assert(output->shape[2] == output_shape[2]);
-    assert(output->shape[3] == output_shape[3]);
-    assert(output->shape[4] == output_shape[4]);
-
-
-    outputstrides[4] = 1;
-    for (int i = 1; i < 5; i++) {
-        outputstrides[4 - i] = outputstrides[5 - i] * output_shape[5 - i];
-    }
-
-
-    //output
-    cudnnTensorDescriptor_t output_descriptor;
-    CUDNN_CALL(cudnnCreateTensorDescriptor(&output_descriptor));
-    CUDNN_CALL(cudnnSetTensorNdDescriptorEx(output_descriptor,
-        dataformat,
-        CUDNN_DATA_FLOAT,
-        5,
-        output_shape));
+    //output��Ϣ
+    cudnnTensorDescriptor_t output_descriptor = (cudnnTensorDescriptor_t)((*cudnnlist)[3]);
 
     //�������㷨
     cudnnConvolutionFwdAlgo_t algo;
@@ -1848,10 +1793,6 @@ int DLGpuConvolution3DForward(const DLArrayHandle input,
 
     //�ڴ�
     cudaFree(workspace);
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(output_descriptor));
-    CUDNN_CALL(cudnnDestroyConvolutionDescriptor(conv_descriptor));
-    CUDNN_CALL(cudnnDestroyFilterDescriptor(filter_descriptor));
     CUDNN_CALL(cudnnDestroy(handle));
 
 
@@ -1870,7 +1811,8 @@ int DLGpuConvolution3DForwardGetOutShape(const int* input_shapes,
     const paddingStatus_t padding,
     const int s1,
     const int s2,
-    const int s3) {
+    const int s3,
+    void ***cudnnlist) {
 
     int* padA, * filterStrideA, * dilationA;
 
@@ -1939,10 +1881,19 @@ int DLGpuConvolution3DForwardGetOutShape(const int* input_shapes,
 
 
 
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
-    CUDNN_CALL(cudnnDestroyConvolutionDescriptor(conv_descriptor));
-    CUDNN_CALL(cudnnDestroyFilterDescriptor(filter_descriptor));
-    CUDNN_CALL(cudnnDestroy(handle));
+    cudnnTensorDescriptor_t output_descriptor;
+    CUDNN_CALL(cudnnCreateTensorDescriptor(&output_descriptor));
+    CUDNN_CALL(cudnnSetTensorNdDescriptorEx(output_descriptor,
+        dataformat,
+        CUDNN_DATA_FLOAT,
+        5,
+        output_shapes));
+
+     * cudnnlist = (void **)malloc(sizeof(void *)*4);
+    (* cudnnlist)[0] = input_descriptor;
+    (* cudnnlist)[1] = filter_descriptor;
+    (* cudnnlist)[2] = conv_descriptor;
+    (* cudnnlist)[3] = output_descriptor;
 
     return 0;
 
@@ -1953,124 +1904,30 @@ int DLGpuConvolution3DBackward(const DLArrayHandle input,
     const DLArrayHandle filter,
     DLArrayHandle dfilter,
     DLArrayHandle dinput,
-    cudnnTensorFormat_t dataformat,
-    const paddingStatus_t padding,
-    const int s1,
-    const int s2,
-    const int s3) {
+    void ***cudnnlist) {
 
     assert(input->ndim == 5);
     assert(filter->ndim == 5);
 
-    int* input_shape, * output_shape, * filter_shape, * inputstrides,*outputstrides;
-
-    int* padA, * filterStrideA, * dilationA;
-
-    input_shape = (int*)malloc(sizeof(int) * 5);
-    filter_shape = (int*)malloc(sizeof(int) * 5);
-    output_shape = (int*)malloc(sizeof(int) * 5);
-    inputstrides = (int*)malloc(sizeof(int) * 5);
-    outputstrides = (int*)malloc(sizeof(int) * 5);
-    padA = (int*)malloc(sizeof(int) * 3);
-    filterStrideA = (int*)malloc(sizeof(int) * 3);
-    dilationA = (int*)malloc(sizeof(int) * 3);
-
-    for (int i=0;i<5;i++)
-    {
-        input_shape[i]=input->shape[i];
-        filter_shape[i]=filter->shape[i];
-    }
-
-
-    for (int i = 0; i < 3; i++) {
-        padA[i] = 0;
-        dilationA[i] = 1;
-    }
-
-    if (padding == 1) {
-        for (int i = 0; i < 3; i++) {
-            padA[i] = filter_shape[i+2]/2;
-
-        }
-    }
-
-
-    filterStrideA[0] = s1;
-    filterStrideA[1] = s2;
-    filterStrideA[2] = s3;
-
-
-    inputstrides[4] = 1;
-    for (int i = 1; i < 5; i++) {
-        inputstrides[4 - i] = inputstrides[5 - i] * input_shape[5 - i];
-    }
-
-
+    
 
      cudnnHandle_t handle;
     CUDNN_CALL(cudnnCreate(&handle));
 
 
-    //input
-    cudnnTensorDescriptor_t input_descriptor;
-    CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
-    CUDNN_CALL(cudnnSetTensorNdDescriptorEx(input_descriptor,
-        dataformat,
-        CUDNN_DATA_FLOAT,
-        5,
-        input_shape));
+    cudnnTensorDescriptor_t input_descriptor = (cudnnTensorDescriptor_t)((*cudnnlist)[0]);
 
-    //�˺���
-    cudnnFilterDescriptor_t filter_descriptor;
-    CUDNN_CALL(cudnnCreateFilterDescriptor(&filter_descriptor));
-    CUDNN_CALL(cudnnSetFilterNdDescriptor(filter_descriptor,
-        CUDNN_DATA_FLOAT,
-        dataformat,
-        5,
-        filter_shape));
+    //filter
+    cudnnFilterDescriptor_t filter_descriptor = (cudnnFilterDescriptor_t)((*cudnnlist)[1]);
+
 
     //��ķ�ʽ��������padding
-    cudnnConvolutionDescriptor_t conv_descriptor;
-    CUDNN_CALL(cudnnCreateConvolutionDescriptor(&conv_descriptor));
-    CUDNN_CALL(cudnnSetConvolutionNdDescriptor(conv_descriptor,
-        3,
-        padA,
-        filterStrideA,
-        dilationA,
-        CUDNN_CROSS_CORRELATION, CUDNN_DATA_FLOAT));
+    cudnnConvolutionDescriptor_t conv_descriptor = (cudnnConvolutionDescriptor_t)((*cudnnlist)[2]);
 
-    //output��shape
-    CUDNN_CALL(cudnnGetConvolutionNdForwardOutputDim(
-        conv_descriptor,
-        input_descriptor,
-        filter_descriptor,
-        5,
-        output_shape));
+    //output��Ϣ
+    cudnnTensorDescriptor_t output_descriptor = (cudnnTensorDescriptor_t)((*cudnnlist)[3]);
 
-
-    assert(doutput->shape[0] == output_shape[0]);
-    assert(doutput->shape[1] == output_shape[1]);
-    assert(doutput->shape[2] == output_shape[2]);
-    assert(doutput->shape[3] == output_shape[3]);
-    assert(doutput->shape[4] == output_shape[4]);
-
-
-    outputstrides[4] = 1;
-    for (int i = 1; i < 5; i++) {
-        outputstrides[4 - i] = outputstrides[5 - i] * output_shape[5 - i];
-    }
-
-
-    //output
-    cudnnTensorDescriptor_t output_descriptor;
-    CUDNN_CALL(cudnnCreateTensorDescriptor(&output_descriptor));
-    CUDNN_CALL(cudnnSetTensorNdDescriptorEx(output_descriptor,
-        dataformat,
-        CUDNN_DATA_FLOAT,
-        5,
-        output_shape));
-
-       cudnnConvolutionBwdFilterAlgo_t  algo1;
+    cudnnConvolutionBwdFilterAlgo_t  algo1;
     CUDNN_CALL(cudnnGetConvolutionBackwardFilterAlgorithm(handle,
         input_descriptor,
         output_descriptor,
@@ -2153,10 +2010,6 @@ int DLGpuConvolution3DBackward(const DLArrayHandle input,
     //�ڴ�
     cudaFree(workspace1);
     cudaFree(workspace2);
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(output_descriptor));
-    CUDNN_CALL(cudnnDestroyConvolutionDescriptor(conv_descriptor));
-    CUDNN_CALL(cudnnDestroyFilterDescriptor(filter_descriptor));
     CUDNN_CALL(cudnnDestroy(handle));
     return 0;
 }
@@ -2165,40 +2018,9 @@ int DLGpuConvolution3DBackward(const DLArrayHandle input,
 
 int DLGpuPooling1DForward(const DLArrayHandle input,
     DLArrayHandle output,
-    cudnnTensorFormat_t dataformat,
-    cudnnPoolingMode_t poolingMode,
-    const int padding_w,
-    const int v,
-    const int filter_w) {
-
-    int padding_h = 0;
-    int u = 1;
-    int filter_h = 1;
+    void ***cudnnlist) {
 
 
-    int input_n = input->shape[0];
-    int input_c = input->shape[2];
-    int input_h = 1;
-    int input_w = input->shape[1];
-
-   
-
-
-
-    if (dataformat == 0) {
-        input_n = input->shape[0];
-        input_c = input->shape[1];
-        input_h = 1;
-        input_w = input->shape[2];
-    }
-
-
-
-
-    int output_n;
-    int output_c;
-    int output_h;
-    int output_w;
 
 
     //handle
@@ -2206,61 +2028,15 @@ int DLGpuPooling1DForward(const DLArrayHandle input,
     CUDNN_CALL(cudnnCreate(&handle));
 
 
-    cudnnPoolingDescriptor_t pool_descriptor;
-    CUDNN_CALL(cudnnCreatePoolingDescriptor(&pool_descriptor));
-    CUDNN_CALL(cudnnSetPooling2dDescriptor(pool_descriptor,
-        poolingMode,
-        CUDNN_NOT_PROPAGATE_NAN,
-        filter_h, filter_w,
-        padding_h, padding_w, // zero-padding
-        u, v // stride
-    ));
+    cudnnTensorDescriptor_t input_descriptor = (cudnnTensorDescriptor_t)((*cudnnlist)[0]);
+
+    //filter
+    cudnnPoolingDescriptor_t pool_descriptor = (cudnnPoolingDescriptor_t)((*cudnnlist)[1]);
 
 
-    //input
-    cudnnTensorDescriptor_t input_descriptor;
-    CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
-    CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
-        dataformat,
-        CUDNN_DATA_FLOAT,
-        input_n,
-        input_c,
-        input_h,
-        input_w));
+    //��ķ�ʽ��������padding
+    cudnnTensorDescriptor_t output_descriptor = (cudnnTensorDescriptor_t)((*cudnnlist)[2]);
 
-
-
-    CUDNN_CALL(cudnnGetPooling2dForwardOutputDim(
-        pool_descriptor,
-        input_descriptor,
-        &output_n,
-        &output_c,
-        &output_h,
-        &output_w));
-
-    if (dataformat == 0) {
-        assert(output->shape[0] == output_n);
-        assert(output->shape[1] == output_c);
-        assert(1 == output_h);
-        assert(output->shape[2] == output_w);
-    }
-    else {
-        assert(output->shape[0] == output_n);
-        assert(output->shape[2] == output_c);
-        assert(1 == output_h);
-        assert(output->shape[1] == output_w);
-    }
-    
-
-    cudnnTensorDescriptor_t output_descriptor;
-    CUDNN_CALL(cudnnCreateTensorDescriptor(&output_descriptor));
-    CUDNN_CALL(cudnnSetTensor4dDescriptor(output_descriptor,
-        dataformat,
-        CUDNN_DATA_FLOAT,
-        output_n,
-        output_c,
-        output_h,
-        output_w));
 
 
     auto alpha = 1.0f, beta = 0.0f;
@@ -2273,9 +2049,6 @@ int DLGpuPooling1DForward(const DLArrayHandle input,
         output_descriptor,
         output->data));
 
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(output_descriptor));
-    CUDNN_CALL(cudnnDestroyPoolingDescriptor(pool_descriptor));
     CUDNN_CALL(cudnnDestroy(handle));
     return 0;
 }
@@ -2287,7 +2060,8 @@ int DLGpuPooling1DForwardGetOutShape(const int* input_shapes,
     cudnnPoolingMode_t poolingMode,
     const int padding_w,
     const int v,
-    const int filter_w){
+    const int filter_w,
+    void ***cudnnlist){
 
 
 
@@ -2363,101 +2137,6 @@ int DLGpuPooling1DForwardGetOutShape(const int* input_shapes,
         output_shapes[2] = output_c;
     }
 
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
-    CUDNN_CALL(cudnnDestroyPoolingDescriptor(pool_descriptor));
-    CUDNN_CALL(cudnnDestroy(handle));
-    return 0;
-
-
-}
-
-int DLGpuPooling1DBackward(const DLArrayHandle input,
-    const DLArrayHandle output,
-    const DLArrayHandle doutput,
-    DLArrayHandle dinput,
-    cudnnTensorFormat_t dataformat,
-    cudnnPoolingMode_t poolingMode,
-    const int padding_w,
-    const int v,
-    const int filter_w) {
-
-    int padding_h = 0;
-    int u = 1;
-    int filter_h = 1;
-
-
-    int input_n = input->shape[0];
-    int input_c = input->shape[2];
-    int input_h = 1;
-    int input_w = input->shape[1];
-
-    if (dataformat == 0) {
-        input_n = input->shape[0];
-        input_c = input->shape[1];
-        input_h = 1;
-        input_w = input->shape[2];
-    }
-
-
-    int output_n;
-    int output_c;
-    int output_h;
-    int output_w;
-
-
-    //handle
-    cudnnHandle_t handle;
-    CUDNN_CALL(cudnnCreate(&handle));
-
-
-    cudnnPoolingDescriptor_t pool_descriptor;
-    CUDNN_CALL(cudnnCreatePoolingDescriptor(&pool_descriptor));
-    CUDNN_CALL(cudnnSetPooling2dDescriptor(pool_descriptor,
-        poolingMode,
-        CUDNN_NOT_PROPAGATE_NAN,
-        filter_h, filter_w,
-        padding_h, padding_w, // zero-padding
-        u, v // stride
-    ));
-
-
-    //input
-    cudnnTensorDescriptor_t input_descriptor;
-    CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
-    CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
-        dataformat,
-        CUDNN_DATA_FLOAT,
-        input_n,
-        input_c,
-        input_h,
-        input_w));
-
-
-
-    CUDNN_CALL(cudnnGetPooling2dForwardOutputDim(
-        pool_descriptor,
-        input_descriptor,
-        &output_n,
-        &output_c,
-        &output_h,
-        &output_w));
-
-
-   
-
-    if (dataformat == 0) {
-        assert(output->shape[0] == output_n);
-        assert(output->shape[1] == output_c);
-        assert(1 == output_h);
-        assert(output->shape[2] == output_w);
-    }
-    else {
-        assert(output->shape[0] == output_n);
-        assert(output->shape[2] == output_c);
-        assert(1 == output_h);
-        assert(output->shape[1] == output_w);
-    }
-
     cudnnTensorDescriptor_t output_descriptor;
     CUDNN_CALL(cudnnCreateTensorDescriptor(&output_descriptor));
     CUDNN_CALL(cudnnSetTensor4dDescriptor(output_descriptor,
@@ -2467,6 +2146,39 @@ int DLGpuPooling1DBackward(const DLArrayHandle input,
         output_c,
         output_h,
         output_w));
+
+     *cudnnlist = (void **)malloc(sizeof(void *)*3);
+    (*cudnnlist)[0] = input_descriptor;
+    (*cudnnlist)[1] = pool_descriptor;
+    (*cudnnlist)[2] = output_descriptor;
+
+    return 0;
+
+
+}
+
+int DLGpuPooling1DBackward(const DLArrayHandle input,
+    const DLArrayHandle output,
+    const DLArrayHandle doutput,
+    DLArrayHandle dinput,
+    void ***cudnnlist) {
+
+
+
+
+    //handle
+    cudnnHandle_t handle;
+    CUDNN_CALL(cudnnCreate(&handle));
+
+
+    cudnnTensorDescriptor_t input_descriptor = (cudnnTensorDescriptor_t)((*cudnnlist)[0]);
+
+    //filter
+    cudnnPoolingDescriptor_t pool_descriptor = (cudnnPoolingDescriptor_t)((*cudnnlist)[1]);
+
+
+    //��ķ�ʽ��������padding
+    cudnnTensorDescriptor_t output_descriptor = (cudnnTensorDescriptor_t)((*cudnnlist)[2]);
 
 
     auto alpha = 1.0f, beta = 0.0f;
@@ -2483,9 +2195,7 @@ int DLGpuPooling1DBackward(const DLArrayHandle input,
         input_descriptor,
         dinput->data));
 
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(output_descriptor));
-    CUDNN_CALL(cudnnDestroyPoolingDescriptor(pool_descriptor));
+
     CUDNN_CALL(cudnnDestroy(handle));
     return 0;
 }
@@ -2494,80 +2204,26 @@ int DLGpuPooling1DBackward(const DLArrayHandle input,
 
 int DLGpuPooling2DForward(const DLArrayHandle input,
     DLArrayHandle output,
-    cudnnTensorFormat_t dataformat,
-    cudnnPoolingMode_t poolingMode,
-    const int padding_h,
-    const int padding_w,
-    const int u,
-    const int v,
-    const int filter_h,
-    const int filter_w)
+    void ***cudnnlist)
 {
 
-    int input_n = input->shape[0];
-    int input_c = input->shape[3];
-    int input_h = input->shape[1];
-    int input_w = input->shape[2];
-    if (dataformat == 0) {
-        input_n = input->shape[0];
-        input_c = input->shape[1];
-        input_h = input->shape[2];
-        input_w = input->shape[3];
-    }
 
-
-
-    int output_n;
-    int output_c;
-    int output_h;
-    int output_w;
 
     //handle
     cudnnHandle_t handle;
     CUDNN_CALL(cudnnCreate(&handle));
+    // printf("%p",cudnnlist);
 
+    cudnnTensorDescriptor_t input_descriptor = (cudnnTensorDescriptor_t)((*cudnnlist)[0]);
+    // printf("dddddd");
+    //filter
+    cudnnPoolingDescriptor_t pool_descriptor = (cudnnPoolingDescriptor_t)((*cudnnlist)[1]);
 
-    cudnnPoolingDescriptor_t pool_descriptor;
-    CUDNN_CALL(cudnnCreatePoolingDescriptor(&pool_descriptor));
-    CUDNN_CALL(cudnnSetPooling2dDescriptor(pool_descriptor,
-        poolingMode,
-        CUDNN_NOT_PROPAGATE_NAN,
-        filter_h, filter_w,
-        padding_h, padding_w, // zero-padding
-        u, v // stride
-    ));
-    //input
-    cudnnTensorDescriptor_t input_descriptor;
-    CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
-    CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
-        dataformat,
-        CUDNN_DATA_FLOAT,
-        input_n,
-        input_c,
-        input_h,
-        input_w));
+    // printf("dddddd");
+    //��ķ�ʽ��������padding
+    cudnnTensorDescriptor_t output_descriptor = (cudnnTensorDescriptor_t)((*cudnnlist)[2]);
 
-
-
-
-    CUDNN_CALL(cudnnGetPooling2dForwardOutputDim(
-        pool_descriptor,
-        input_descriptor,
-        &output_n,
-        &output_c,
-        &output_h,
-        &output_w));
-
-    cudnnTensorDescriptor_t output_descriptor;
-    CUDNN_CALL(cudnnCreateTensorDescriptor(&output_descriptor));
-    CUDNN_CALL(cudnnSetTensor4dDescriptor(output_descriptor,
-        dataformat,
-        CUDNN_DATA_FLOAT,
-        output_n,
-        output_c,
-        output_h,
-        output_w));
-
+    // printf("dddddd");
 
     auto alpha = 1.0f, beta = 0.0f;
     CUDNN_CALL(cudnnPoolingForward(handle,
@@ -2579,11 +2235,9 @@ int DLGpuPooling2DForward(const DLArrayHandle input,
         output_descriptor,
         output->data));
 
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(output_descriptor));
-    CUDNN_CALL(cudnnDestroyPoolingDescriptor(pool_descriptor));
+
     CUDNN_CALL(cudnnDestroy(handle));
-   return 0;
+    return 0;
 }
 
 int DLGpuPooling2DForwardGetOutShape(const int* input_shapes,
@@ -2595,7 +2249,8 @@ int DLGpuPooling2DForwardGetOutShape(const int* input_shapes,
     const int u,
     const int v,
     const int filter_h,
-    const int filter_w){
+    const int filter_w,
+    void ***cudnnlist){
 
 
 
@@ -2668,82 +2323,6 @@ int DLGpuPooling2DForwardGetOutShape(const int* input_shapes,
         output_shapes[3] = output_c;
     }
 
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
-    CUDNN_CALL(cudnnDestroyPoolingDescriptor(pool_descriptor));
-    CUDNN_CALL(cudnnDestroy(handle));
-    return 0;
-
-
-}
-
-int DLGpuPooling2DBackward(const DLArrayHandle input,
-    const DLArrayHandle output,
-    const DLArrayHandle doutput,
-    DLArrayHandle dinput,
-    cudnnTensorFormat_t dataformat,
-    cudnnPoolingMode_t poolingMode,
-    const int padding_h,
-    const int padding_w,
-    const int u,
-    const int v,
-    const int filter_h,
-    const int filter_w)
-{
-    int input_n = input->shape[0];
-    int input_c = input->shape[3];
-    int input_h = input->shape[1];
-    int input_w = input->shape[2];
-
-    if (dataformat == 0) {
-        input_n = input->shape[0];
-        input_c = input->shape[1];
-        input_h = input->shape[2];
-        input_w = input->shape[3];
-    }
-
-
-
-    int output_n;
-    int output_c;
-    int output_h;
-    int output_w;
-
-    //handle
-    cudnnHandle_t handle;
-    CUDNN_CALL(cudnnCreate(&handle));
-
-
-    cudnnPoolingDescriptor_t pool_descriptor;
-    CUDNN_CALL(cudnnCreatePoolingDescriptor(&pool_descriptor));
-    CUDNN_CALL(cudnnSetPooling2dDescriptor(pool_descriptor,
-        poolingMode,
-        CUDNN_NOT_PROPAGATE_NAN,
-        filter_h, filter_w,
-        padding_h, padding_w, // zero-padding
-        u, v // stride
-    ));
-    //input
-    cudnnTensorDescriptor_t input_descriptor;
-    CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
-    CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
-        dataformat,
-        CUDNN_DATA_FLOAT,
-        input_n,
-        input_c,
-        input_h,
-        input_w));
-
-
-
-
-    CUDNN_CALL(cudnnGetPooling2dForwardOutputDim(
-        pool_descriptor,
-        input_descriptor,
-        &output_n,
-        &output_c,
-        &output_h,
-        &output_w));
-
     cudnnTensorDescriptor_t output_descriptor;
     CUDNN_CALL(cudnnCreateTensorDescriptor(&output_descriptor));
     CUDNN_CALL(cudnnSetTensor4dDescriptor(output_descriptor,
@@ -2754,6 +2333,36 @@ int DLGpuPooling2DBackward(const DLArrayHandle input,
         output_h,
         output_w));
 
+    *cudnnlist = (void **)malloc(sizeof(void *)*3);
+    (*cudnnlist)[0] = input_descriptor;
+    (*cudnnlist)[1] = pool_descriptor;
+    (*cudnnlist)[2] = output_descriptor;
+
+    return 0;
+
+
+}
+
+int DLGpuPooling2DBackward(const DLArrayHandle input,
+    const DLArrayHandle output,
+    const DLArrayHandle doutput,
+    DLArrayHandle dinput,
+    void ***cudnnlist)
+{
+
+    //handle
+    cudnnHandle_t handle;
+    CUDNN_CALL(cudnnCreate(&handle));
+
+
+   cudnnTensorDescriptor_t input_descriptor = (cudnnTensorDescriptor_t)((*cudnnlist)[0]);
+
+    //filter
+    cudnnPoolingDescriptor_t pool_descriptor = (cudnnPoolingDescriptor_t)((*cudnnlist)[1]);
+
+
+    //��ķ�ʽ��������padding
+    cudnnTensorDescriptor_t output_descriptor = (cudnnTensorDescriptor_t)((*cudnnlist)[2]);
 
     auto alpha = 1.0f, beta = 0.0f;
     CUDNN_CALL(cudnnPoolingBackward(handle,
@@ -2769,11 +2378,9 @@ int DLGpuPooling2DBackward(const DLArrayHandle input,
         input_descriptor,
         dinput->data));
 
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(output_descriptor));
-    CUDNN_CALL(cudnnDestroyPoolingDescriptor(pool_descriptor));
+
     CUDNN_CALL(cudnnDestroy(handle));
-   return 0;
+    return 0;
 }
 
 
@@ -2781,104 +2388,25 @@ int DLGpuPooling2DBackward(const DLArrayHandle input,
 
 int DLGpuPooling3DForward(const DLArrayHandle input,
     DLArrayHandle output,
-    cudnnTensorFormat_t dataformat,
-    cudnnPoolingMode_t poolingMode,
-    const int padding1,
-    const int padding2,
-    const int padding3,
-    const int s1,
-    const int s2,
-    const int s3,
-    const int filter1,
-    const int filter2,
-    const int filter3)
+    void ***cudnnlist)
 {
     assert(input->ndim == 5);
 
 
-    int* input_shape, * output_shape, * filter_shape, * inputstrides, * outputstrides;
-
-
-    int* padA, * filterStrideA;
-    input_shape = (int*)malloc(sizeof(int) * 5);
-    filter_shape = (int*)malloc(sizeof(int) * 3);
-    output_shape = (int*)malloc(sizeof(int) * 5);
-    inputstrides = (int*)malloc(sizeof(int) * 5);
-    outputstrides = (int*)malloc(sizeof(int) * 5);
-    padA = (int*)malloc(sizeof(int) * 3);
-    filterStrideA = (int*)malloc(sizeof(int) * 3);
-    for(int i=0;i<5;i++)
-    {
-        input_shape[i]= input->shape[i];
-    }
-    filter_shape[0] = filter1;
-    filter_shape[1] = filter2;
-    filter_shape[2] = filter3;
-    filterStrideA[0] = s1;
-    filterStrideA[1] = s2;
-    filterStrideA[2] = s3;
-    padA[0] = padding1;
-    padA[1] = padding2;
-    padA[2] = padding3;
-
-
-    inputstrides[4] = 1;
-    for (int i = 1; i < 5; i++) {
-        inputstrides[4 - i] = inputstrides[5 - i] * input_shape[5 - i];
-    }
 
     //handle
     cudnnHandle_t handle;
     CUDNN_CALL(cudnnCreate(&handle));
 
+    cudnnTensorDescriptor_t input_descriptor = (cudnnTensorDescriptor_t)((*cudnnlist)[0]);
 
-    cudnnPoolingDescriptor_t pool_descriptor;
-    CUDNN_CALL(cudnnCreatePoolingDescriptor(&pool_descriptor));
-    CUDNN_CALL(cudnnSetPoolingNdDescriptor(pool_descriptor,
-        poolingMode,
-        CUDNN_NOT_PROPAGATE_NAN,
-        3,
-        filter_shape,
-        padA,
-        filterStrideA));
-    
-
-    //input
-    cudnnTensorDescriptor_t input_descriptor;
-    CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
-    CUDNN_CALL(cudnnSetTensorNdDescriptorEx(input_descriptor,
-        dataformat,
-        CUDNN_DATA_FLOAT,
-        5,
-        input_shape));
+    //filter
+    cudnnPoolingDescriptor_t pool_descriptor = (cudnnPoolingDescriptor_t)((*cudnnlist)[1]);
 
 
-    CUDNN_CALL(cudnnGetPoolingNdForwardOutputDim(
-        pool_descriptor,
-        input_descriptor,
-        5,
-        output_shape));
+    //��ķ�ʽ��������padding
+    cudnnTensorDescriptor_t output_descriptor = (cudnnTensorDescriptor_t)((*cudnnlist)[2]);
 
-    assert(output->shape[0] == output_shape[0]);
-    assert(output->shape[1] == output_shape[1]);
-    assert(output->shape[2] == output_shape[2]);
-    assert(output->shape[3] == output_shape[3]);
-    assert(output->shape[4] == output_shape[4]);
-
-    outputstrides[4] = 1;
-    for (int i = 1; i < 5; i++) {
-        outputstrides[4 - i] = outputstrides[5 - i] * output_shape[5 - i];
-    }
-
-
-    //output
-    cudnnTensorDescriptor_t output_descriptor;
-    CUDNN_CALL(cudnnCreateTensorDescriptor(&output_descriptor));
-    CUDNN_CALL(cudnnSetTensorNdDescriptorEx(output_descriptor,
-        dataformat,
-        CUDNN_DATA_FLOAT,
-        5,
-        output_shape));
 
 
     auto alpha = 1.0f, beta = 0.0f;
@@ -2891,9 +2419,7 @@ int DLGpuPooling3DForward(const DLArrayHandle input,
         output_descriptor,
         output->data));
 
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(output_descriptor));
-    CUDNN_CALL(cudnnDestroyPoolingDescriptor(pool_descriptor));
+
     CUDNN_CALL(cudnnDestroy(handle));
     return 0;
 
@@ -2911,7 +2437,8 @@ int DLGpuPooling3DForwardGetOutShape(const int* input_shapes,
     const int s3,
     const int filter1,
     const int filter2,
-    const int filter3){
+    const int filter3,
+    void ***cudnnlist){
 
     int* filter_shape,*padA,*filterStrideA;
 
@@ -2962,9 +2489,19 @@ int DLGpuPooling3DForwardGetOutShape(const int* input_shapes,
         5,
         output_shapes));
 
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
-    CUDNN_CALL(cudnnDestroyPoolingDescriptor(pool_descriptor));
-    CUDNN_CALL(cudnnDestroy(handle));
+    cudnnTensorDescriptor_t output_descriptor;
+    CUDNN_CALL(cudnnCreateTensorDescriptor(&output_descriptor));
+    CUDNN_CALL(cudnnSetTensorNdDescriptorEx(output_descriptor,
+        dataformat,
+        CUDNN_DATA_FLOAT,
+        5,
+        output_shapes));
+
+    *cudnnlist = (void **)malloc(sizeof(void *)*3);
+    (*cudnnlist)[0] = input_descriptor;
+    (*cudnnlist)[1] = pool_descriptor;
+    (*cudnnlist)[2] = output_descriptor;
+
     return 0;
 
 
@@ -2975,104 +2512,26 @@ int DLGpuPooling3DBackward(const DLArrayHandle input,
     const DLArrayHandle output,
     const DLArrayHandle doutput,
     DLArrayHandle dinput,
-    cudnnTensorFormat_t dataformat,
-    cudnnPoolingMode_t poolingMode,
-    const int padding1,
-    const int padding2,
-    const int padding3,
-    const int s1,
-    const int s2,
-    const int s3,
-    const int filter1,
-    const int filter2,
-    const int filter3)
+    void ***cudnnlist)
 {
     assert(input->ndim == 5);
 
 
-    int* input_shape, * output_shape, * filter_shape, * inputstrides, * outputstrides;
 
-
-    int* padA, * filterStrideA;
-    input_shape = (int*)malloc(sizeof(int) * 5);
-    filter_shape = (int*)malloc(sizeof(int) * 3);
-    output_shape = (int*)malloc(sizeof(int) * 5);
-    inputstrides = (int*)malloc(sizeof(int) * 5);
-    outputstrides = (int*)malloc(sizeof(int) * 5);
-    padA = (int*)malloc(sizeof(int) * 3);
-    filterStrideA = (int*)malloc(sizeof(int) * 3);
-    for(int i=0;i<5;i++)
-    {
-        input_shape[i]= input->shape[i];
-    }
-    filter_shape[0] = filter1;
-    filter_shape[1] = filter2;
-    filter_shape[2] = filter3;
-    filterStrideA[0] = s1;
-    filterStrideA[1] = s2;
-    filterStrideA[2] = s3;
-    padA[0] = padding1;
-    padA[1] = padding2;
-    padA[2] = padding3;
-
-
-    inputstrides[4] = 1;
-    for (int i = 1; i < 5; i++) {
-        inputstrides[4 - i] = inputstrides[5 - i] * input_shape[5 - i];
-    }
 
     //handle
     cudnnHandle_t handle;
     CUDNN_CALL(cudnnCreate(&handle));
 
 
-    cudnnPoolingDescriptor_t pool_descriptor;
-    CUDNN_CALL(cudnnCreatePoolingDescriptor(&pool_descriptor));
-    CUDNN_CALL(cudnnSetPoolingNdDescriptor(pool_descriptor,
-        poolingMode,
-        CUDNN_NOT_PROPAGATE_NAN,
-        3,
-        filter_shape,
-        padA,
-        filterStrideA));
+   cudnnTensorDescriptor_t input_descriptor = (cudnnTensorDescriptor_t)((*cudnnlist)[0]);
+
+    //filter
+    cudnnPoolingDescriptor_t pool_descriptor = (cudnnPoolingDescriptor_t)((*cudnnlist)[1]);
 
 
-    //input
-    cudnnTensorDescriptor_t input_descriptor;
-    CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
-    CUDNN_CALL(cudnnSetTensorNdDescriptorEx(input_descriptor,
-        dataformat,
-        CUDNN_DATA_FLOAT,
-        5,
-        input_shape));
-
-
-    CUDNN_CALL(cudnnGetPoolingNdForwardOutputDim(
-        pool_descriptor,
-        input_descriptor,
-        5,
-        output_shape));
-
-    assert(output->shape[0] == output_shape[0]);
-    assert(output->shape[1] == output_shape[1]);
-    assert(output->shape[2] == output_shape[2]);
-    assert(output->shape[3] == output_shape[3]);
-    assert(output->shape[4] == output_shape[4]);
-
-    outputstrides[4] = 1;
-    for (int i = 1; i < 5; i++) {
-        outputstrides[4 - i] = outputstrides[5 - i] * output_shape[5 - i];
-    }
-
-
-    //output
-    cudnnTensorDescriptor_t output_descriptor;
-    CUDNN_CALL(cudnnCreateTensorDescriptor(&output_descriptor));
-    CUDNN_CALL(cudnnSetTensorNdDescriptorEx(output_descriptor,
-        dataformat,
-        CUDNN_DATA_FLOAT,
-        5,
-        output_shape));
+    //��ķ�ʽ��������padding
+    cudnnTensorDescriptor_t output_descriptor = (cudnnTensorDescriptor_t)((*cudnnlist)[2]);
 
 
     auto alpha = 1.0f, beta = 0.0f;
@@ -3089,9 +2548,7 @@ int DLGpuPooling3DBackward(const DLArrayHandle input,
         input_descriptor,
         dinput->data));
 
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(output_descriptor));
-    CUDNN_CALL(cudnnDestroyPoolingDescriptor(pool_descriptor));
+
     CUDNN_CALL(cudnnDestroy(handle));
     return 0;
 
@@ -3103,10 +2560,12 @@ int DLGpuPooling3DBackward(const DLArrayHandle input,
 
 
 //activation
+//activation
 int DLGpuActivationForward(const DLArrayHandle input,
     DLArrayHandle output,
     cudnnTensorFormat_t dataformat,
-    cudnnActivationMode_t activationMode) {
+    cudnnActivationMode_t activationMode,
+    void ***cudnnlist) {
 
     assert(input->ndim==4||input->ndim==3||input->ndim==5);
 
@@ -3186,9 +2645,14 @@ int DLGpuActivationForward(const DLArrayHandle input,
             5,
             input_shape));
 
-        
+
 
     }
+
+    * cudnnlist = (void **)malloc(sizeof(void *)*2);
+    (*cudnnlist)[0] = input_descriptor;
+
+
     auto alpha = 1.0f, beta = 0.0f;
     if (activationMode != 3 ){
         // 描述激活
@@ -3199,7 +2663,7 @@ int DLGpuActivationForward(const DLArrayHandle input,
             CUDNN_PROPAGATE_NAN,
             /*relu_coef=*/0));
 
-       
+
         CUDNN_CALL(cudnnActivationForward(handle,
             activation_descriptor,
             &alpha,
@@ -3208,8 +2672,10 @@ int DLGpuActivationForward(const DLArrayHandle input,
             &beta,
             input_descriptor,
             output->data));
-        CUDNN_CALL(cudnnDestroyActivationDescriptor(activation_descriptor));
-       
+
+        (*cudnnlist)[1] = activation_descriptor;
+
+
     }else{
 
         CUDNN_CALL(cudnnSoftmaxForward(handle,
@@ -3221,13 +2687,15 @@ int DLGpuActivationForward(const DLArrayHandle input,
             &beta,
             input_descriptor,
             output->data));
+
+
     }
 
 
-    
-   
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
+
+
     CUDNN_CALL(cudnnDestroy(handle));
+
     return 0;
 
 
@@ -3240,103 +2708,30 @@ int DLGpuActivationBackward(const DLArrayHandle input,
     DLArrayHandle dinput,
     const DLArrayHandle output,
     const DLArrayHandle doutput,
-    cudnnTensorFormat_t dataformat,
-    cudnnActivationMode_t activationMode) {
+    cudnnActivationMode_t activationMode,
+    void ***cudnnlist) {
 
     assert(input->ndim==4||input->ndim==3||input->ndim==5);
 
     //handle
     cudnnHandle_t handle;
     CUDNN_CALL(cudnnCreate(&handle));
+
     //input
-    cudnnTensorDescriptor_t input_descriptor;
-
-    int input_n;
-    int input_c;
-    int input_h;
-    int input_w;
-
-    if(input->ndim == 3){
-        if (dataformat == 0) {
-            input_n = input->shape[0];
-            input_c = input->shape[1];
-            input_h = 1;
-            input_w = input->shape[2];
-        }else{
-            input_n = input->shape[0];
-            input_c = input->shape[2];
-            input_h = 1;
-            input_w = input->shape[1];
-        }
-        //input
-        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
-        CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
-            dataformat,
-            CUDNN_DATA_FLOAT,
-            input_n,
-            input_c,
-            input_h,
-            input_w));
-
-    }
+    cudnnTensorDescriptor_t input_descriptor = (cudnnTensorDescriptor_t)((*cudnnlist)[0]);
 
 
-    if(input->ndim == 4){
-        if (dataformat == 0) {
-            input_n = input->shape[0];
-            input_c = input->shape[1];
-            input_h = input->shape[2];
-            input_w = input->shape[3];
-        }else{
-            input_n = input->shape[0];
-            input_c = input->shape[3];
-            input_h = input->shape[1];
-            input_w = input->shape[2];
-        }
-        //input
-        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
-        CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
-            dataformat,
-            CUDNN_DATA_FLOAT,
-            input_n,
-            input_c,
-            input_h,
-            input_w));
 
-    }
 
-    if(input->ndim == 5){
 
-        int* input_shape;
-        input_shape = (int*)malloc(sizeof(int) * 5);
-        for(int i=0;i<5;i++){
-            input_shape[i]= input->shape[i];
-        }
-
-        //input
-        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
-        CUDNN_CALL(cudnnSetTensorNdDescriptorEx(input_descriptor,
-            dataformat,
-            CUDNN_DATA_FLOAT,
-            5,
-            input_shape));
-
-        
-
-    }
     auto alpha = 1.0f, beta = 0.0f;
     if(activationMode != 3){
 
         // 描述激活
-        cudnnActivationDescriptor_t activation_descriptor;
-        CUDNN_CALL(cudnnCreateActivationDescriptor(&activation_descriptor));
-        CUDNN_CALL(cudnnSetActivationDescriptor(activation_descriptor,
-            activationMode,
-            CUDNN_PROPAGATE_NAN,
-            /*relu_coef=*/0));
+        cudnnActivationDescriptor_t activation_descriptor = (cudnnActivationDescriptor_t)((*cudnnlist)[1]);
 
         // 激活函数求导
-       
+
         CUDNN_CALL(cudnnActivationBackward(handle,
             activation_descriptor,
             &alpha,
@@ -3370,6 +2765,7 @@ int DLGpuActivationBackward(const DLArrayHandle input,
 
     CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
     CUDNN_CALL(cudnnDestroy(handle));
+    free(*cudnnlist);
     return 0;
 
 
@@ -3382,7 +2778,8 @@ int DLGpuDropoutForward(const DLArrayHandle input,
     cudnnTensorFormat_t dataformat,
     const float dropout,
     const int seed,
-    void **reserveSpace_p/*back use*/){
+    void **reserveSpace_p,/*back use*/
+    void ***cudnnlist){
 
 
 
@@ -3463,7 +2860,7 @@ int DLGpuDropoutForward(const DLArrayHandle input,
             5,
             input_shape));
 
-        
+
 
     }
     size_t stateSizeInBytes = 1;
@@ -3503,10 +2900,16 @@ int DLGpuDropoutForward(const DLArrayHandle input,
         *reserveSpace_p,
         reserveSpaceSizeInBytes));
 
-    CUDNN_CALL(cudnnDestroyDropoutDescriptor(dropout_descriptor));
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
+
+
+
     CUDNN_CALL(cudnnDestroy(handle));
     cudaFree(states);
+
+    * cudnnlist = (void **)malloc(sizeof(void *)*2);
+    (*cudnnlist)[0] = input_descriptor;
+    (*cudnnlist)[1] = dropout_descriptor;
+
     return 0;
 
 }
@@ -3516,10 +2919,8 @@ int DLGpuDropoutForward(const DLArrayHandle input,
 
 int DLGpuDropoutBackward(const DLArrayHandle doutput,
     DLArrayHandle dinput,
-    cudnnTensorFormat_t dataformat,
-    const float dropout,
-    const int seed,
-    void **reserveSpace_p/*back use*/){
+    void **reserveSpace_p,/*back use*/
+    void ***cudnnlist){
 
 
 
@@ -3531,106 +2932,21 @@ int DLGpuDropoutBackward(const DLArrayHandle doutput,
     CUDNN_CALL(cudnnCreate(&handle));
 
     //input
-    cudnnTensorDescriptor_t input_descriptor;
-
-    int input_n;
-    int input_c;
-    int input_h;
-    int input_w;
-
-    if(dinput->ndim == 3){
-        if (dataformat == 0) {
-            input_n = dinput->shape[0];
-            input_c = dinput->shape[1];
-            input_h = 1;
-            input_w = dinput->shape[2];
-        }else{
-            input_n = dinput->shape[0];
-            input_c = dinput->shape[2];
-            input_h = 1;
-            input_w = dinput->shape[1];
-        }
-        //input
-        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
-        CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
-            dataformat,
-            CUDNN_DATA_FLOAT,
-            input_n,
-            input_c,
-            input_h,
-            input_w));
-
-    }
-
-
-    if(dinput->ndim == 4){
-        if (dataformat == 0) {
-            input_n = dinput->shape[0];
-            input_c = dinput->shape[1];
-            input_h = dinput->shape[2];
-            input_w = dinput->shape[3];
-        }else{
-            input_n = dinput->shape[0];
-            input_c = dinput->shape[3];
-            input_h = dinput->shape[1];
-            input_w = dinput->shape[2];
-        }
-        //input
-        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
-        CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
-            dataformat,
-            CUDNN_DATA_FLOAT,
-            input_n,
-            input_c,
-            input_h,
-            input_w));
-
-    }
-
-    if(dinput->ndim == 5){
-
-        int* input_shape;
-        input_shape = (int*)malloc(sizeof(int) * 5);
-        for(int i=0;i<5;i++){
-            input_shape[i]= dinput->shape[i];
-        }
-
-        //input
-        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
-        CUDNN_CALL(cudnnSetTensorNdDescriptorEx(input_descriptor,
-            dataformat,
-            CUDNN_DATA_FLOAT,
-            5,
-            input_shape));
-
-        
-
-    }
+    cudnnTensorDescriptor_t input_descriptor = (cudnnTensorDescriptor_t)((*cudnnlist)[0]);
 
 
 
-    size_t stateSizeInBytes = 1;
+
     size_t reserveSpaceSizeInBytes = 1;
-    void *states;
-    //unsigned long long  seed = 0;//ini rand seed
-    CUDNN_CALL(cudnnDropoutGetStatesSize(handle,
-        &stateSizeInBytes));
+
 
     CUDNN_CALL(cudnnDropoutGetReserveSpaceSize(input_descriptor,
         &reserveSpaceSizeInBytes));
 
-    cudnnDropoutDescriptor_t dropout_descriptor;
-    CUDNN_CALL(cudnnCreateDropoutDescriptor(&dropout_descriptor));
-
-    cudaMalloc((void**)&states, stateSizeInBytes);
+    cudnnDropoutDescriptor_t dropout_descriptor = (cudnnDropoutDescriptor_t)((*cudnnlist)[1]);
 
 
-    CUDNN_CALL(cudnnSetDropoutDescriptor(dropout_descriptor,
-        handle,
-        dropout,
-        states,
-        stateSizeInBytes,
-        seed));
+
 
 
     CUDNN_CALL(cudnnDropoutBackward(handle,
@@ -3646,8 +2962,8 @@ int DLGpuDropoutBackward(const DLArrayHandle doutput,
     CUDNN_CALL(cudnnDestroyDropoutDescriptor(dropout_descriptor));
     CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
     CUDNN_CALL(cudnnDestroy(handle));
-    cudaFree(states);
     cudaFree(*reserveSpace_p);
+    free(*cudnnlist);
     return 0;
 
 }
@@ -4057,6 +3373,470 @@ int DLGpuL2regularGradient(const DLArrayHandle input, const DLArrayHandle in_gra
 }
 
 
+//BatchNormalization
+int DLGpuBatchNormalizationForward(const DLArrayHandle input,
+    DLArrayHandle output,
+    cudnnTensorFormat_t dataformat,
+    cudnnBatchNormMode_t batchNormMode,
+    int n,//第n+1次使用
+    void **mean_p,
+    void **Variance_p,
+    void ***cudnnlist) {
+
+    assert(input->ndim==4||input->ndim==3||input->ndim==5);
+
+    
+    
+
+
+
+    //handle
+    cudnnHandle_t handle;
+    CUDNN_CALL(cudnnCreate(&handle));
+    //input
+    cudnnTensorDescriptor_t input_descriptor;
+
+    int input_n;
+    int input_c;
+    int input_h;
+    int input_w;
+
+    if(input->ndim == 3){
+        if (dataformat == 0) {
+            input_n = input->shape[0];
+            input_c = input->shape[1];
+            input_h = 1;
+            input_w = input->shape[2];
+        }else{
+            input_n = input->shape[0];
+            input_c = input->shape[2];
+            input_h = 1;
+            input_w = input->shape[1];
+        }
+
+        //input
+        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
+        CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
+            dataformat,
+            CUDNN_DATA_FLOAT,
+            input_n,
+            input_c,
+            input_h,
+            input_w));
+
+    }
+
+
+    if(input->ndim == 4){
+        if (dataformat == 0) {
+            input_n = input->shape[0];
+            input_c = input->shape[1];
+            input_h = input->shape[2];
+            input_w = input->shape[3];
+        }else{
+            input_n = input->shape[0];
+            input_c = input->shape[3];
+            input_h = input->shape[1];
+            input_w = input->shape[2];
+        }
+     
+        //input
+        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
+        CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
+            dataformat,
+            CUDNN_DATA_FLOAT,
+            input_n,
+            input_c,
+            input_h,
+            input_w));
+
+    }
+
+
+
+
+    if(input->ndim == 5){
+
+        int* input_shape;
+        input_shape = (int*)malloc(sizeof(int) * 5);
+        for(int i=0;i<5;i++){
+            input_shape[i]= input->shape[i];
+        }
+        //input
+        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
+        CUDNN_CALL(cudnnSetTensorNdDescriptorEx(input_descriptor,
+            dataformat,
+            CUDNN_DATA_FLOAT,
+            5,
+            input_shape));
+
+        
+
+    }   
+
+
+    auto alpha = 1.0f, beta = 0.0f;
+
+
+    cudnnTensorDescriptor_t derivedBnDesc;
+    CUDNN_CALL(cudnnCreateTensorDescriptor(&derivedBnDesc));
+    CUDNN_CALL(cudnnDeriveBNTensorDescriptor(derivedBnDesc,
+        input_descriptor,
+        batchNormMode));
+
+
+    size_t *s = (size_t *)malloc(sizeof(size_t));
+    CUDNN_CALL(cudnnGetTensorSizeInBytes(derivedBnDesc,
+        s));
+    
+
+    
+
+    float *bnScalec = (float*)malloc(*s);
+    float *bnBiasc = (float*)malloc(*s);
+    for(int i=0;i< *s / sizeof(float);i++){
+        bnScalec[i] = 1.0;
+        bnBiasc[i] =  0.0;
+    }
+    float *bnScale,*bnBias;
+    cudaMalloc((void**)&bnScale, *s);
+    cudaMalloc((void**)&bnBias, *s);
+    cudaMemcpy(bnScale, bnScalec, *s, cudaMemcpyHostToDevice);
+    cudaMemcpy(bnBias, bnBiasc, *s, cudaMemcpyHostToDevice);
+
+    double exponentialAverageFactor = 1.0 /(n+1);
+
+    float *resultRunningMean = nullptr;
+    float *resultRunningVariance = nullptr;
+    //cudaMalloc((void**)&resultRunningMean, sizeof(float)*chw);
+    //cudaMalloc((void**)&resultRunningVariance, sizeof(float)*chw);
+    //cudaMemcpy(resultRunningVariance, bnScalec, sizeof(float)*chw, cudaMemcpyHostToDevice);
+    //cudaMemcpy(resultRunningMean, bnBiasc, sizeof(float)*chw, cudaMemcpyHostToDevice);
+
+
+    float *resultSaveMean;
+    float *resultSaveInvVariance;
+    cudaMalloc((void**)&resultSaveMean, *s);
+    cudaMalloc((void**)&resultSaveInvVariance, *s);
+
+
+
+    CUDNN_CALL(cudnnBatchNormalizationForwardTraining(handle,
+        batchNormMode,
+        &alpha,
+        &beta,
+        input_descriptor,
+        input->data,
+        input_descriptor,
+        output->data,
+        derivedBnDesc,
+        bnScale,
+        bnBias,
+        exponentialAverageFactor,
+        resultRunningMean,
+        resultRunningVariance,
+        0.00001,
+        resultSaveMean,
+        resultSaveInvVariance));
+    
+    
+
+    *mean_p = resultSaveMean;
+    *Variance_p = resultSaveInvVariance;
+
+    *cudnnlist = (void **)malloc(sizeof(void *)*3);
+    (*cudnnlist)[0] = input_descriptor;
+    (*cudnnlist)[1] = derivedBnDesc;
+    (*cudnnlist)[2] = bnScale;
+
+
+
+
+    cudaFree(bnBias);
+    cudaFree(resultRunningMean);
+    cudaFree(resultRunningVariance);
+    CUDNN_CALL(cudnnDestroy(handle));
+    return 0;
+
+
+
+}
+
+int DLGpuBatchNormalizationBackward(const DLArrayHandle input,
+    const DLArrayHandle doutput,
+    DLArrayHandle dinput,
+    cudnnBatchNormMode_t batchNormMode,
+    void **mean_p,
+    void **Variance_p,
+    void ***cudnnlist) {
+
+    assert(input->ndim==4||input->ndim==3||input->ndim==5);
+
+    //handle
+    cudnnHandle_t handle;
+    CUDNN_CALL(cudnnCreate(&handle));
+
+    //input
+    cudnnTensorDescriptor_t input_descriptor = (cudnnTensorDescriptor_t)((*cudnnlist)[0]);
+
+    //filter
+    cudnnTensorDescriptor_t bnScaleBiasDiffDesc = (cudnnTensorDescriptor_t)((*cudnnlist)[1]);
+
+
+    //��ķ�ʽ��������padding
+    float *bnScale = (float *)((*cudnnlist)[2]);
+    size_t *s = (size_t *)malloc(sizeof(size_t));
+    CUDNN_CALL(cudnnGetTensorSizeInBytes(bnScaleBiasDiffDesc,
+        s));
+
+    auto alpha = 1.0f, beta = 0.0f;
+
+
+    float *resultBnScaleDiff;
+    float *resultBnBiasDiff;
+    cudaMalloc((void**)&resultBnScaleDiff, *s);
+    cudaMalloc((void**)&resultBnBiasDiff, *s);
+    CUDNN_CALL(cudnnBatchNormalizationBackward(handle,
+        batchNormMode,
+        &alpha,
+        &beta,
+        &alpha,
+        &beta,
+        input_descriptor,
+        input->data,
+        input_descriptor,
+        doutput->data,
+        input_descriptor,
+        dinput->data,
+        bnScaleBiasDiffDesc,
+        bnScale,
+        resultBnScaleDiff,
+        resultBnBiasDiff,
+        0.00001,
+        *mean_p,
+        *Variance_p));
+
+    cudaFree(bnScale);
+    cudaFree(resultBnBiasDiff);
+    cudaFree(resultBnScaleDiff);
+    cudaFree(*mean_p);
+    cudaFree(*Variance_p);
+    CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
+    CUDNN_CALL(cudnnDestroyTensorDescriptor(bnScaleBiasDiffDesc));
+    CUDNN_CALL(cudnnDestroy(handle));
+    return 0;
+
+
+
+}
+
+
+__global__ void adam_kernel(float* outputArr, float* mArr, float* vArr, 
+                            float b1t,float b2t,float e,float learning_rate,
+                            int count) {
+    CUDA_1D_KERNEL_LOOP(index, count) {
+    outputArr[index] = outputArr[index] - learning_rate * mArr[index] / (1 - b1t) / (sqrt(vArr[index] / (1 - b2t)) + e);
+    }
+}
+
+
+
+int DLGpuAdam(DLArrayHandle output,
+              const DLArrayHandle m, const DLArrayHandle v,
+              float b1t,float b2t,float e,float learning_rate) {
+    assert(m->ndim == output->ndim);
+    assert(v->ndim == output->ndim);
+    int count = 1;
+    for (int i = 0; i < output->ndim; ++i) {
+        count *= output->shape[i];
+    }
+    float* mData = (float*) m->data;
+    float* vData = (float*) v->data;
+    float* outputData = (float*) output->data;
+    adam_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM>>>(
+        outputData, mData, vData,  
+        b1t, b2t, e, learning_rate,
+        count);
+    return 0;
+}
+
+
+
+
+
+__global__ void adam_mv_kernel(float* mArr, float* vArr, float* gArr,
+                                float b1,float b2, int count, int reduce) {
+    CUDA_1D_KERNEL_LOOP(index, count) {
+        if(index<reduce){
+            mArr[index] = mArr[index] * b1 +  gArr[index] * (1 - b1);
+        }
+        else{
+            int realindex = index-reduce;
+            vArr[realindex] = vArr[realindex] * b2 +  pow(gArr[realindex],2) * (1 - b2);
+        }
+            
+    }
+}
+
+
+
+int DLGpuAdam_mv(DLArrayHandle m,
+                DLArrayHandle v,
+                const DLArrayHandle g,
+                float b1,
+                float b2) {
+    assert(v->ndim == g->ndim);
+    assert(m->ndim == g->ndim);
+    int count = 1;
+    for (int i = 0; i < g->ndim; ++i) {
+        count *= g->shape[i];
+    }
+
+    float* mData = (float*) m->data;
+    float* vData = (float*) v->data;
+    float* gData = (float*) g->data;
+    adam_mv_kernel<<<BLOCK_NUM(count*2), MAX_THREADS_NUM>>>(
+    mData, vData, gData,
+    b1,b2,
+    count*2,
+    count);
+    return 0;
+}
+
+
+
+
+
+__global__ void sgd_update_kernel(float* outputArr, float* mArr, 
+                                    float b, int count) {
+    CUDA_1D_KERNEL_LOOP(index, count) {
+    outputArr[index] = outputArr[index]  - b * mArr[index] ;
+    }
+}
+
+
+
+int DLGpuSgdUpdate(DLArrayHandle output,
+                    const DLArrayHandle m,
+                    float b) {
+    assert(m->ndim == output->ndim);
+    int count = 1;
+    for (int i = 0; i < output->ndim; ++i) {
+        count *= output->shape[i];
+    }
+    float* mData = (float*) m->data;
+    float* outputData = (float*) output->data;
+    sgd_update_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM>>>(
+    outputData, mData, 
+    b,
+    count);
+    return 0;
+}
+
+
+int DLGpuGetIndextoVaribaleNumberCudaPointer(int *index_to_number,
+                                            int *prefix,
+                                            int count,
+                                            void *** result) {
+
+    int *cuda_index_to_number, *cuda_prefix;
+
+    cudaMalloc((void**)&cuda_index_to_number, sizeof(int)*count);
+    cudaMalloc((void**)&cuda_prefix, sizeof(int)*count);
+
+    cudaMemcpy(cuda_index_to_number,index_to_number,sizeof(int)*count,cudaMemcpyHostToDevice);
+    cudaMemcpy(cuda_prefix,prefix,sizeof(int)*count,cudaMemcpyHostToDevice);
+
+    *result = (void **)malloc(sizeof(int*)*2);
+
+    (*result)[0] = cuda_index_to_number;
+    (*result)[1] = cuda_prefix;
+
+
+    return 0;
+
+}
+
+
+int DLGpuGetN2CudaPointer(void** output, void** g, int number,void **** result){
+
+
+    float** outputData,** gData;
+    cudaMalloc((void **)&outputData,sizeof(float*)*(number));
+    cudaMalloc((void **)&gData,sizeof(float*)*(number));
+
+    cudaMemcpy(outputData,output,sizeof(float*)*(number),cudaMemcpyHostToDevice);
+    cudaMemcpy(gData,g,sizeof(float*)*(number),cudaMemcpyHostToDevice);
+
+    *result = (void ***)malloc(sizeof(float**)*2);
+
+    (*result)[0] = (void **)outputData;
+    (*result)[1] = (void **)gData;
+
+
+    return 0;
+
+}
+
+int DLGpuGetN4CudaPointer(void** output, void** m, void** v, void** g, int number,void **** result){
+
+
+    float** outputData,** mData,** vData,** gData;
+    cudaMalloc((void **)&outputData,sizeof(float*)*(number));
+    cudaMalloc((void **)&mData,sizeof(float*)*(number));
+    cudaMalloc((void **)&vData,sizeof(float*)*(number));
+    cudaMalloc((void **)&gData,sizeof(float*)*(number));
+
+    cudaMemcpy(outputData,output,sizeof(float*)*(number),cudaMemcpyHostToDevice);
+    cudaMemcpy(mData,m,sizeof(float*)*(number),cudaMemcpyHostToDevice);
+    cudaMemcpy(vData,v,sizeof(float*)*(number),cudaMemcpyHostToDevice);
+    cudaMemcpy(gData,g,sizeof(float*)*(number),cudaMemcpyHostToDevice);
+
+    *result = (void***)malloc(sizeof(float**)*4);
+
+    (*result)[0] = (void **)outputData;
+    (*result)[1] = (void **)mData;
+    (*result)[2] = (void **)vData;
+    (*result)[3] = (void **)gData;
+
+
+
+    return 0;
+
+}
+
+
+// __global__ void adam_mv_o_1_kernel(float** mArr, float** vArr, float** gArr, const int *index_to_number, const int *prefix,
+//                                 const float b1, const float b2, const int count, const int reduce) {
+//     CUDA_1D_KERNEL_LOOP(index, count) {
+//         if(index<reduce){
+//             int realnumber = index_to_number[index];
+//             int realArrindex = prefix[index];
+//             (mArr[realnumber])[realArrindex] = (mArr[realnumber])[realArrindex] * b1 +  (gArr[realnumber])[realArrindex] * (1 - b1);
+//         }
+//         else{
+//             int realindex = index-reduce;
+//             int realnumber = index_to_number[realindex];
+//             int realArrindex = prefix[realindex];
+//             (vArr[realnumber])[realArrindex] = (vArr[realnumber])[realArrindex] * b2 +  pow((gArr[realnumber])[realArrindex],2) * (1 - b2);
+//         }
+
+//     }
+// }
+
+// __global__ void adam_mv_o_2_kernel(float** outputArr, float** mArr, float** vArr, const int *index_to_number, const int *prefix,
+//                                     const float b1t, const float b2t, const float e, const float learning_rate, const int count) {
+//     CUDA_1D_KERNEL_LOOP(index, count) {
+
+//         int realnumber = index_to_number[index];
+//         int realArrindex = prefix[index];
+//         (outputArr[realnumber])[realArrindex] = ((outputArr[realnumber])[realArrindex]) -
+//          learning_rate * (mArr[realnumber])[realArrindex] / (1 - b1t) / (sqrt((vArr[realnumber])[realArrindex] / (1 - b2t)) + e);
+
+
+
+//     }
+// }
 
 
 
@@ -4064,6 +3844,156 @@ int DLGpuL2regularGradient(const DLArrayHandle input, const DLArrayHandle in_gra
 
 
 
+
+
+
+
+__global__ void adam_mv_o_1_kernel(float** outputArr, float** mArr, float** vArr, float **gArr, const int *index_to_number, const int *prefix,
+    const float b1, const float b2, const float b1t, const float b2t, const float e, const float learning_rate, const int count) {
+
+    __shared__ float  mv[MAX_THREADS_NUM];
+
+
+    CUDA_1D_KERNEL_LOOP(index, count) {
+        int realindex = index/2;
+        int ism = index%2;
+        int realnumber,realArrindex;
+        if(ism==0){
+            realnumber = index_to_number[realindex];
+            realArrindex = prefix[realindex];
+            float mm = (mArr[realnumber])[realArrindex] * b1 +  (gArr[realnumber])[realArrindex] * (1 - b1);
+            (mArr[realnumber])[realArrindex] = mm;
+            mv[threadIdx.x] = learning_rate * mm / (1 - b1t);
+
+
+        }
+        else{
+            realnumber = index_to_number[realindex];
+            realArrindex = prefix[realindex];
+            float vv = (vArr[realnumber])[realArrindex] * b2 +  pow((gArr[realnumber])[realArrindex],2) * (1 - b2);
+            (vArr[realnumber])[realArrindex] = vv;
+            mv[threadIdx.x] = sqrt(vv / (1 - b2t)) + e;
+        }
+
+        __syncthreads();
+
+        if(ism==0){
+
+            (outputArr[realnumber])[realArrindex] -= mv[threadIdx.x] / mv[threadIdx.x+1];
+
+        }
+
+    }
+}
+
+
+
+
+
+// int DLGpuAdam_o(float *** n4list,
+//                 const int **indexlist,
+//                 const int number,
+//                 const int count,
+//                 const float b1,
+//                 const float b2,
+//                 const float b1t,
+//                 const float b2t,
+//                 const float e,
+//                 const float learning_rate) {
+
+//     // clock_t start, finish;
+//     // start = clock();
+
+
+
+//     adam_mv_o_1_kernel<<<BLOCK_NUM(count*2), MAX_THREADS_NUM>>>(
+//         n4list[1], n4list[2], n4list[3], indexlist[0], indexlist[1],
+//         b1,b2,
+//         count*2,
+//         count);
+
+//     adam_mv_o_2_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM>>>(
+//         n4list[0], n4list[1], n4list[2], indexlist[0], indexlist[1],
+//         b1t,b2t,e,learning_rate,
+//         count);
+
+
+//     // finish = clock();
+//     // double duration = (double)(finish - start) / CLOCKS_PER_SEC;
+//     // printf( "Total elapsed %lf seconds\n", duration);
+//     return 0;
+
+// }
+
+
+__global__ void sgd_o_1_kernel(float** outputArr, float** gArr, const int *index_to_number, const int *prefix,
+                                 const float learning_rate, const int count) {
+    CUDA_1D_KERNEL_LOOP(index, count) {
+
+        int realnumber = index_to_number[index];
+        int realArrindex = prefix[index];
+        (outputArr[realnumber])[realArrindex] = ((outputArr[realnumber])[realArrindex]) -
+         learning_rate * (gArr[realnumber])[realArrindex];
+
+
+
+    }
+}
+
+
+
+int DLGpuSgd_o(void **** n2list,
+                const void ***indexlist,
+                const int count,
+                const float learning_rate) {
+
+    // clock_t start, finish;
+    // start = clock();
+
+
+
+    sgd_o_1_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM>>>(
+    (float**)((*n2list)[0]), (float**)((*n2list)[1]), (int *)((*indexlist)[0]), (int *)((*indexlist)[1]),
+    learning_rate,
+    count);
+
+
+
+    // finish = clock();
+    // double duration = (double)(finish - start) / CLOCKS_PER_SEC;
+    // printf( "Total elapsed %lf seconds\n", duration);
+    return 0;
+
+}
+
+int DLGpuAdam_o(void **** n4list,
+                const void ***indexlist,
+                const int count,
+                const float b1,
+                const float b2,
+                const float b1t,
+                const float b2t,
+                const float e,
+                const float learning_rate) {
+
+    // clock_t start, finish;
+    // start = clock();
+
+
+
+    adam_mv_o_1_kernel<<<BLOCK_NUM(count*2), MAX_THREADS_NUM>>>(
+        (float**)((*n4list)[0]), (float**)((*n4list)[1]), (float**)((*n4list)[2]),(float**)((*n4list)[3]), (int *)((*indexlist)[0]), (int *)((*indexlist)[1]),
+        b1,b2,b1t,b2t,e,learning_rate,
+        count*2);
+
+
+
+    // finish = clock();
+    // double duration = (double)(finish - start) / CLOCKS_PER_SEC;
+    // printf( "Total elapsed %lf seconds\n", duration);
+    return 0;
+
+}
 
 
 
