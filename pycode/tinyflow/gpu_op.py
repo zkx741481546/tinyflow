@@ -282,15 +282,10 @@ def convolution_1d_forward_get_out_shape(input_shapes,filter_shapes,dataformat,p
     _LIB.DLGpuConvolution1DForwardGetOutShape(c_input_shapes,c_filter_shapes,c_output_shapes,dataformat,padding,v,cudnnlist)
     return (c_output_shapes[0],c_output_shapes[1],c_output_shapes[2]),cudnnlist
 
-def activation_forward(input,output,dataformat,activationMode):
+def activation_forward(input,output,activationMode,cudnnlist):
     assert isinstance(input, _nd.NDArray)
     assert isinstance(output, _nd.NDArray)
-    if dataformat=="NCHW":
-        dataformat=0
-    elif dataformat=="NHWC":
-        dataformat=1
-    else:
-        assert 0
+
     if activationMode == "sigmoid":
         activationMode=0
     elif activationMode == "relu":
@@ -301,12 +296,8 @@ def activation_forward(input,output,dataformat,activationMode):
         activationMode=3
     else:
         assert 0
-    cudnnlist = ctypes.c_int(0)
-    cudnnlist = ctypes.pointer(cudnnlist)
-    cudnnlist = ctypes.pointer(cudnnlist)
-    cudnnlist = ctypes.pointer(cudnnlist)
-    _LIB.DLGpuActivationForward(input.handle,output.handle,dataformat,activationMode,cudnnlist)
-    return cudnnlist
+    _LIB.DLGpuActivationForward(input.handle,output.handle,activationMode,cudnnlist)
+
 
 def activation_backward(input, dinput, output, doutput,activationMode,cudnnlist):
     assert isinstance(input, _nd.NDArray)
@@ -324,6 +315,52 @@ def activation_backward(input, dinput, output, doutput,activationMode,cudnnlist)
     else:
         assert 0
     _LIB.DLGpuActivationBackward(input.handle, dinput.handle, output.handle, doutput.handle,activationMode,cudnnlist)
+
+
+def activation_get_cudnnlist(input_shapes, dataformat, activationMode):
+    if dataformat=="NCHW":
+        dataformat=0
+    elif dataformat=="NHWC":
+        dataformat=1
+    else:
+        assert 0
+    if activationMode == "sigmoid":
+        activationMode=0
+    elif activationMode == "relu":
+        activationMode=1
+    elif activationMode == "tanh":
+        activationMode=2
+    elif activationMode == "softmax":
+        activationMode=3
+    else:
+        assert 0
+    c_input_shapes = c_array(ctypes.c_int, input_shapes)
+    cudnnlist = ctypes.c_int(0)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    _LIB.DLGpuActivationGetCudnnlist(c_input_shapes,len(input_shapes),dataformat,activationMode,cudnnlist)
+    return cudnnlist
+
+def get_input_descriptor(input_shapes, dataformat):
+    if dataformat=="NCHW":
+        dataformat=0
+    elif dataformat=="NHWC":
+        dataformat=1
+    else:
+        assert 0
+
+    c_input_shapes = c_array(ctypes.c_int, input_shapes)
+    inputd = ctypes.c_int(0)
+    inputd = ctypes.pointer(inputd)
+    inputd = ctypes.pointer(inputd)
+    inputd = ctypes.pointer(inputd)
+    _LIB.DLGpuGetInputDescriptor(c_input_shapes,len(input_shapes),dataformat,inputd)
+    return inputd
+
+
+
+
 
 
 def pooling_1d_forward_get_out_shape(input_shapes,dataformat,poolingMode,padding_w,v,filter_w):
@@ -466,7 +503,7 @@ def pooling_3d_forward_get_out_shape(input_shapes,dataformat,poolingMode,padding
     return (c_output_shapes[0],c_output_shapes[1],c_output_shapes[2],c_output_shapes[3],c_output_shapes[4]),cudnnlist
 
 
-def dropout_forward(input,output,dataformat,dropout,seed):
+def dropout_forward(input,output,dataformat,dropout,seed,inputd):
     assert isinstance(input, _nd.NDArray)
     assert isinstance(output, _nd.NDArray)
     if dataformat=="NCHW":
@@ -486,7 +523,7 @@ def dropout_forward(input,output,dataformat,dropout,seed):
     cudnnlist = ctypes.pointer(cudnnlist)
     cudnnlist = ctypes.pointer(cudnnlist)
     cudnnlist = ctypes.pointer(cudnnlist)
-    _LIB.DLGpuDropoutForward(input.handle,output.handle,dataformat,dropout,seed,reserveSpace_p,cudnnlist)
+    _LIB.DLGpuDropoutForward(input.handle,output.handle,dataformat,dropout,seed,reserveSpace_p,inputd,cudnnlist)
 
     return reserveSpace_p,cudnnlist
 
@@ -564,7 +601,7 @@ def concat_backward(in_arr_a, in_arr_b, out_arr,din_arr_a, din_arr_b):
     _LIB.DLGpuConcatBackward(
         in_arr_a.handle, in_arr_b.handle, out_arr.handle,din_arr_a.handle, din_arr_b.handle, )
 
-def bn_forward(input,output,dataformat,batchNormMode,n):
+def bn_forward(input,output,dataformat,batchNormMode,n,inputd):
     assert isinstance(input, _nd.NDArray)
     assert isinstance(output, _nd.NDArray)
     if dataformat=="NCHW":
@@ -590,7 +627,7 @@ def bn_forward(input,output,dataformat,batchNormMode,n):
     cudnnlist = ctypes.pointer(cudnnlist)
     cudnnlist = ctypes.pointer(cudnnlist)
     cudnnlist = ctypes.pointer(cudnnlist)
-    _LIB.DLGpuBatchNormalizationForward(input.handle,output.handle,dataformat,batchNormMode,n,mean_p,var_p,cudnnlist)
+    _LIB.DLGpuBatchNormalizationForward(input.handle,output.handle,dataformat,batchNormMode,n,mean_p,var_p,inputd,cudnnlist)
     return mean_p,var_p,cudnnlist
 
 

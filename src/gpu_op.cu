@@ -2563,7 +2563,6 @@ int DLGpuPooling3DBackward(const DLArrayHandle input,
 //activation
 int DLGpuActivationForward(const DLArrayHandle input,
     DLArrayHandle output,
-    cudnnTensorFormat_t dataformat,
     cudnnActivationMode_t activationMode,
     void ***cudnnlist) {
 
@@ -2572,96 +2571,18 @@ int DLGpuActivationForward(const DLArrayHandle input,
     //handle
     cudnnHandle_t handle;
     CUDNN_CALL(cudnnCreate(&handle));
-    //input
-    cudnnTensorDescriptor_t input_descriptor;
+    
 
-    int input_n;
-    int input_c;
-    int input_h;
-    int input_w;
-
-    if(input->ndim == 3){
-        if (dataformat == 0) {
-            input_n = input->shape[0];
-            input_c = input->shape[1];
-            input_h = 1;
-            input_w = input->shape[2];
-        }else{
-            input_n = input->shape[0];
-            input_c = input->shape[2];
-            input_h = 1;
-            input_w = input->shape[1];
-        }
-        //input
-        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
-        CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
-            dataformat,
-            CUDNN_DATA_FLOAT,
-            input_n,
-            input_c,
-            input_h,
-            input_w));
-
-    }
+    cudnnTensorDescriptor_t input_descriptor = (cudnnTensorDescriptor_t)((*cudnnlist)[0]);
 
 
-    if(input->ndim == 4){
-        if (dataformat == 0) {
-            input_n = input->shape[0];
-            input_c = input->shape[1];
-            input_h = input->shape[2];
-            input_w = input->shape[3];
-        }else{
-            input_n = input->shape[0];
-            input_c = input->shape[3];
-            input_h = input->shape[1];
-            input_w = input->shape[2];
-        }
-        //input
-        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
-        CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
-            dataformat,
-            CUDNN_DATA_FLOAT,
-            input_n,
-            input_c,
-            input_h,
-            input_w));
-
-    }
-
-    if(input->ndim == 5){
-
-        int* input_shape;
-        input_shape = (int*)malloc(sizeof(int) * 5);
-        for(int i=0;i<5;i++){
-            input_shape[i]= input->shape[i];
-        }
-
-        //input
-        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
-        CUDNN_CALL(cudnnSetTensorNdDescriptorEx(input_descriptor,
-            dataformat,
-            CUDNN_DATA_FLOAT,
-            5,
-            input_shape));
-
-
-
-    }
-
-    * cudnnlist = (void **)malloc(sizeof(void *)*2);
-    (*cudnnlist)[0] = input_descriptor;
 
 
     auto alpha = 1.0f, beta = 0.0f;
     if (activationMode != 3 ){
         // 描述激活
-        cudnnActivationDescriptor_t activation_descriptor;
-        CUDNN_CALL(cudnnCreateActivationDescriptor(&activation_descriptor));
-        CUDNN_CALL(cudnnSetActivationDescriptor(activation_descriptor,
-            activationMode,
-            CUDNN_PROPAGATE_NAN,
-            /*relu_coef=*/0));
+        cudnnActivationDescriptor_t activation_descriptor = (cudnnActivationDescriptor_t)((*cudnnlist)[1]);
+
 
 
         CUDNN_CALL(cudnnActivationForward(handle,
@@ -2673,7 +2594,7 @@ int DLGpuActivationForward(const DLArrayHandle input,
             input_descriptor,
             output->data));
 
-        (*cudnnlist)[1] = activation_descriptor;
+
 
 
     }else{
@@ -2698,6 +2619,201 @@ int DLGpuActivationForward(const DLArrayHandle input,
 
     return 0;
 
+
+
+}
+
+int DLGpuGetInputDescriptor(const int *input_shapes,
+    const int sizeofshape,
+    cudnnTensorFormat_t dataformat,
+    void ***inputd){
+    
+    cudnnTensorDescriptor_t input_descriptor;
+
+    int input_n;
+    int input_c;
+    int input_h;
+    int input_w;
+
+    if(sizeofshape == 3){
+        if (dataformat == 0) {
+            input_n = input_shapes[0];
+            input_c = input_shapes[1];
+            input_h = 1;
+            input_w = input_shapes[2];
+        }else{
+            input_n = input_shapes[0];
+            input_c = input_shapes[2];
+            input_h = 1;
+            input_w = input_shapes[1];
+        }
+        //input
+        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
+        CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
+            dataformat,
+            CUDNN_DATA_FLOAT,
+            input_n,
+            input_c,
+            input_h,
+            input_w));
+
+    }
+
+
+    if(sizeofshape == 4){
+        if (dataformat == 0) {
+            input_n = input_shapes[0];
+            input_c = input_shapes[1];
+            input_h = input_shapes[2];
+            input_w = input_shapes[3];
+        }else{
+            input_n = input_shapes[0];
+            input_c = input_shapes[3];
+            input_h = input_shapes[1];
+            input_w = input_shapes[2];
+        }
+        //input
+        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
+        CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
+            dataformat,
+            CUDNN_DATA_FLOAT,
+            input_n,
+            input_c,
+            input_h,
+            input_w));
+
+    }
+
+    if(sizeofshape == 5){
+
+        int* input_shape;
+        input_shape = (int*)malloc(sizeof(int) * 5);
+        for(int i=0;i<5;i++){
+            input_shape[i]= input_shapes[i];
+        }
+
+        //input
+        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
+        CUDNN_CALL(cudnnSetTensorNdDescriptorEx(input_descriptor,
+            dataformat,
+            CUDNN_DATA_FLOAT,
+            5,
+            input_shape));
+
+
+
+    }
+
+    * inputd = (void **)malloc(sizeof(void *)*1);
+    (*inputd)[0] = input_descriptor;
+    return 0;
+}
+
+
+int DLGpuActivationGetCudnnlist(const int *input_shapes,
+    const int sizeofshape,
+    cudnnTensorFormat_t dataformat,
+    cudnnActivationMode_t activationMode,
+    void ***cudnnlist){
+
+
+        //input
+    cudnnTensorDescriptor_t input_descriptor;
+
+    int input_n;
+    int input_c;
+    int input_h;
+    int input_w;
+
+    if(sizeofshape == 3){
+        if (dataformat == 0) {
+            input_n = input_shapes[0];
+            input_c = input_shapes[1];
+            input_h = 1;
+            input_w = input_shapes[2];
+        }else{
+            input_n = input_shapes[0];
+            input_c = input_shapes[2];
+            input_h = 1;
+            input_w = input_shapes[1];
+        }
+        //input
+        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
+        CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
+            dataformat,
+            CUDNN_DATA_FLOAT,
+            input_n,
+            input_c,
+            input_h,
+            input_w));
+
+    }
+
+
+    if(sizeofshape == 4){
+        if (dataformat == 0) {
+            input_n = input_shapes[0];
+            input_c = input_shapes[1];
+            input_h = input_shapes[2];
+            input_w = input_shapes[3];
+        }else{
+            input_n = input_shapes[0];
+            input_c = input_shapes[3];
+            input_h = input_shapes[1];
+            input_w = input_shapes[2];
+        }
+        //input
+        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
+        CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
+            dataformat,
+            CUDNN_DATA_FLOAT,
+            input_n,
+            input_c,
+            input_h,
+            input_w));
+
+    }
+
+    if(sizeofshape == 5){
+
+        int* input_shape;
+        input_shape = (int*)malloc(sizeof(int) * 5);
+        for(int i=0;i<5;i++){
+            input_shape[i]= input_shapes[i];
+        }
+
+        //input
+        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
+        CUDNN_CALL(cudnnSetTensorNdDescriptorEx(input_descriptor,
+            dataformat,
+            CUDNN_DATA_FLOAT,
+            5,
+            input_shape));
+
+
+
+    }
+
+    * cudnnlist = (void **)malloc(sizeof(void *)*2);
+    (*cudnnlist)[0] = input_descriptor;
+
+
+  
+    if (activationMode != 3 ){
+        // 描述激活
+        cudnnActivationDescriptor_t activation_descriptor;
+        CUDNN_CALL(cudnnCreateActivationDescriptor(&activation_descriptor));
+        CUDNN_CALL(cudnnSetActivationDescriptor(activation_descriptor,
+            activationMode,
+            CUDNN_PROPAGATE_NAN,
+            /*relu_coef=*/0));
+
+        (*cudnnlist)[1] = activation_descriptor;
+
+
+    }
+
+    return 0;
 
 
 }
@@ -2744,7 +2860,7 @@ int DLGpuActivationBackward(const DLArrayHandle input,
             &beta,
             input_descriptor,
             dinput->data));
-        CUDNN_CALL(cudnnDestroyActivationDescriptor(activation_descriptor));
+
     }else{
 
 
@@ -2763,9 +2879,9 @@ int DLGpuActivationBackward(const DLArrayHandle input,
 
     }
 
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
+
     CUDNN_CALL(cudnnDestroy(handle));
-    free(*cudnnlist);
+
     return 0;
 
 
@@ -2779,6 +2895,7 @@ int DLGpuDropoutForward(const DLArrayHandle input,
     const float dropout,
     const int seed,
     void **reserveSpace_p,/*back use*/
+    void ***inputd,
     void ***cudnnlist){
 
 
@@ -2788,81 +2905,9 @@ int DLGpuDropoutForward(const DLArrayHandle input,
     CUDNN_CALL(cudnnCreate(&handle));
 
     //input
-    cudnnTensorDescriptor_t input_descriptor;
+    cudnnTensorDescriptor_t input_descriptor = (cudnnTensorDescriptor_t)((*inputd)[0]);;
 
-    int input_n;
-    int input_c;
-    int input_h;
-    int input_w;
-
-    if(input->ndim == 3){
-        if (dataformat == 0) {
-            input_n = input->shape[0];
-            input_c = input->shape[1];
-            input_h = 1;
-            input_w = input->shape[2];
-        }else{
-            input_n = input->shape[0];
-            input_c = input->shape[2];
-            input_h = 1;
-            input_w = input->shape[1];
-        }
-        //input
-        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
-        CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
-            dataformat,
-            CUDNN_DATA_FLOAT,
-            input_n,
-            input_c,
-            input_h,
-            input_w));
-
-    }
-
-
-    if(input->ndim == 4){
-        if (dataformat == 0) {
-            input_n = input->shape[0];
-            input_c = input->shape[1];
-            input_h = input->shape[2];
-            input_w = input->shape[3];
-        }else{
-            input_n = input->shape[0];
-            input_c = input->shape[3];
-            input_h = input->shape[1];
-            input_w = input->shape[2];
-        }
-        //input
-        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
-        CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
-            dataformat,
-            CUDNN_DATA_FLOAT,
-            input_n,
-            input_c,
-            input_h,
-            input_w));
-
-    }
-
-    if(input->ndim == 5){
-
-        int* input_shape;
-        input_shape = (int*)malloc(sizeof(int) * 5);
-        for(int i=0;i<5;i++){
-            input_shape[i]= input->shape[i];
-        }
-
-        //input
-        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
-        CUDNN_CALL(cudnnSetTensorNdDescriptorEx(input_descriptor,
-            dataformat,
-            CUDNN_DATA_FLOAT,
-            5,
-            input_shape));
-
-
-
-    }
+    
     size_t stateSizeInBytes = 1;
     size_t reserveSpaceSizeInBytes = 1;
     void *states;
@@ -2917,6 +2962,8 @@ int DLGpuDropoutForward(const DLArrayHandle input,
 
 
 
+
+
 int DLGpuDropoutBackward(const DLArrayHandle doutput,
     DLArrayHandle dinput,
     void **reserveSpace_p,/*back use*/
@@ -2960,7 +3007,6 @@ int DLGpuDropoutBackward(const DLArrayHandle doutput,
 
 
     CUDNN_CALL(cudnnDestroyDropoutDescriptor(dropout_descriptor));
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
     CUDNN_CALL(cudnnDestroy(handle));
     cudaFree(*reserveSpace_p);
     free(*cudnnlist);
@@ -3373,6 +3419,8 @@ int DLGpuL2regularGradient(const DLArrayHandle input, const DLArrayHandle in_gra
 }
 
 
+
+
 //BatchNormalization
 int DLGpuBatchNormalizationForward(const DLArrayHandle input,
     DLArrayHandle output,
@@ -3381,6 +3429,7 @@ int DLGpuBatchNormalizationForward(const DLArrayHandle input,
     int n,//第n+1次使用
     void **mean_p,
     void **Variance_p,
+    void ***inputd,
     void ***cudnnlist) {
 
     assert(input->ndim==4||input->ndim==3||input->ndim==5);
@@ -3394,85 +3443,8 @@ int DLGpuBatchNormalizationForward(const DLArrayHandle input,
     cudnnHandle_t handle;
     CUDNN_CALL(cudnnCreate(&handle));
     //input
-    cudnnTensorDescriptor_t input_descriptor;
+    cudnnTensorDescriptor_t input_descriptor = (cudnnTensorDescriptor_t)((*inputd)[0]);
 
-    int input_n;
-    int input_c;
-    int input_h;
-    int input_w;
-
-    if(input->ndim == 3){
-        if (dataformat == 0) {
-            input_n = input->shape[0];
-            input_c = input->shape[1];
-            input_h = 1;
-            input_w = input->shape[2];
-        }else{
-            input_n = input->shape[0];
-            input_c = input->shape[2];
-            input_h = 1;
-            input_w = input->shape[1];
-        }
-
-        //input
-        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
-        CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
-            dataformat,
-            CUDNN_DATA_FLOAT,
-            input_n,
-            input_c,
-            input_h,
-            input_w));
-
-    }
-
-
-    if(input->ndim == 4){
-        if (dataformat == 0) {
-            input_n = input->shape[0];
-            input_c = input->shape[1];
-            input_h = input->shape[2];
-            input_w = input->shape[3];
-        }else{
-            input_n = input->shape[0];
-            input_c = input->shape[3];
-            input_h = input->shape[1];
-            input_w = input->shape[2];
-        }
-     
-        //input
-        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
-        CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
-            dataformat,
-            CUDNN_DATA_FLOAT,
-            input_n,
-            input_c,
-            input_h,
-            input_w));
-
-    }
-
-
-
-
-    if(input->ndim == 5){
-
-        int* input_shape;
-        input_shape = (int*)malloc(sizeof(int) * 5);
-        for(int i=0;i<5;i++){
-            input_shape[i]= input->shape[i];
-        }
-        //input
-        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
-        CUDNN_CALL(cudnnSetTensorNdDescriptorEx(input_descriptor,
-            dataformat,
-            CUDNN_DATA_FLOAT,
-            5,
-            input_shape));
-
-        
-
-    }   
 
 
     auto alpha = 1.0f, beta = 0.0f;
@@ -3621,7 +3593,6 @@ int DLGpuBatchNormalizationBackward(const DLArrayHandle input,
     cudaFree(resultBnScaleDiff);
     cudaFree(*mean_p);
     cudaFree(*Variance_p);
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(input_descriptor));
     CUDNN_CALL(cudnnDestroyTensorDescriptor(bnScaleBiasDiffDesc));
     CUDNN_CALL(cudnnDestroy(handle));
     return 0;

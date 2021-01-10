@@ -912,12 +912,13 @@ class ActivationForwardOp(Op):
 
     def compute(self, node, input_vals, output_val, use_numpy=False):
         assert use_numpy==False
-        node.cudnnlist[0] = gpu_op.activation_forward(input_vals[0],output_val,node.dataformat,node.activationMode)
+        gpu_op.activation_forward(input_vals[0],output_val,node.activationMode,node.cudnnlist[0])
         node.output[0] = output_val
     def gradient(self, node, output_grad):
 
         return [activation_backward_op(node.inputs[0],output_grad,node.output,node.activationMode,node.cudnnlist)]
     def infer_shape(self, node, input_shapes):
+        node.cudnnlist[0] = gpu_op.activation_get_cudnnlist(input_shapes[0],  node.dataformat, node.activationMode)
         return input_shapes[0]
 
 class ActivationBackwardOp(Op):
@@ -1093,16 +1094,18 @@ class DropoutForwardOp(Op):
         new_node.seed = [0]
         new_node.reserveSpace_p = [0]
         new_node.cudnnlist = [0]
+        new_node.inputd = [0]
         return new_node
 
     def compute(self, node, input_vals, output_val, use_numpy=False):
         assert use_numpy==False
         assert isinstance(input_vals[0], ndarray.NDArray)
         node.seed[0] = random.randint(0,100)
-        node.reserveSpace_p[0],node.cudnnlist[0] = gpu_op.dropout_forward(input_vals[0], output_val, node.dataformat, node.dropout, node.seed[0])
+        node.reserveSpace_p[0],node.cudnnlist[0] = gpu_op.dropout_forward(input_vals[0], output_val, node.dataformat, node.dropout, node.seed[0], node.inputd[0])
     def gradient(self, node, output_grad):
         return [dropout_backward_op(output_grad,node.reserveSpace_p,node.cudnnlist)]
     def infer_shape(self, node, input_shapes):
+        node.inputd[0] = gpu_op.get_input_descriptor(input_shapes[0],node.dataformat)
         return input_shapes[0]
 
 class DropoutBackwardOp(Op):
@@ -1133,6 +1136,7 @@ class FullyDropoutForwardOp(Op):
         new_node.seed = [0]
         new_node.reserveSpace_p = [0]
         new_node.cudnnlist = [0]
+        new_node.inputd = [0]
         return new_node
 
     def compute(self, node, input_vals, output_val, use_numpy=False):
@@ -1142,10 +1146,12 @@ class FullyDropoutForwardOp(Op):
         input = input_vals[0]
         inputs = input.reshape((input.shape[0], 1, input.shape[1]))
 
-        node.reserveSpace_p[0],node.cudnnlist[0] = gpu_op.dropout_forward(inputs, output_val, node.dataformat, node.dropout, node.seed[0])
+        node.reserveSpace_p[0],node.cudnnlist[0] = gpu_op.dropout_forward(inputs, output_val, node.dataformat, node.dropout, node.seed[0],node.inputd[0])
     def gradient(self, node, output_grad):
         return [fullydropout_backward_op(output_grad,node.reserveSpace_p,node.cudnnlist)]
     def infer_shape(self, node, input_shapes):
+        newinputshapes = (input_shapes[0][0], 1, input_shapes[0][1])
+        node.inputd[0] = gpu_op.get_input_descriptor(newinputshapes, node.dataformat)
         return input_shapes[0]
 
 class FullyDropoutBackwardOp(Op):
@@ -1186,11 +1192,14 @@ class FullyActivationForwardOp(Op):
         input = input_vals[0]
         inputs=input.reshape((input.shape[0],1,input.shape[1]))
 
-        node.cudnnlist[0] = gpu_op.activation_forward(inputs,output_val,node.dataformat,node.activationMode)
+        gpu_op.activation_forward(inputs,output_val,node.activationMode,node.cudnnlist[0])
+
         node.output[0] = output_val
     def gradient(self, node, output_grad):
         return [fullyactivation_backward_op(node.inputs[0],output_grad,node.output,node.activationMode,node.cudnnlist)]
     def infer_shape(self, node, input_shapes):
+        newinputshapes = (input_shapes[0][0],1,input_shapes[0][1])
+        node.cudnnlist[0] = gpu_op.activation_get_cudnnlist(newinputshapes, node.dataformat, node.activationMode)
         return input_shapes[0]
 
 class FullyActivationBackwardOp(Op):
@@ -1556,16 +1565,20 @@ class BNForwardOp(Op):
         new_node.Save_p = [0,0]
         new_node.n = 0
         new_node.cudnnlist = [0]
+        new_node.inputd = [0]
         return new_node
 
     def compute(self, node, input_vals, output_val, use_numpy=False):
         assert use_numpy==False
         assert isinstance(input_vals[0], ndarray.NDArray)
-        node.Save_p[0],node.Save_p[1], node.cudnnlist[0] = gpu_op.bn_forward(input_vals[0], output_val, node.dataformat,node.batchNormMode,node.n)
+        node.Save_p[0],node.Save_p[1], node.cudnnlist[0] = gpu_op.bn_forward(input_vals[0], output_val, node.dataformat,node.batchNormMode,node.n, node.inputd[0])
         node.n = node.n + 1
     def gradient(self, node, output_grad):
         return [bn_backward_op(node.inputs[0],output_grad,node.batchNormMode, node.Save_p,node.cudnnlist)]
     def infer_shape(self, node, input_shapes):
+
+        node.inputd[0] = gpu_op.get_input_descriptor(input_shapes[0], node.dataformat)
+
         return input_shapes[0]
 
 class BNBackwardOp(Op):
@@ -1596,6 +1609,7 @@ class FullyBNForwardOp(Op):
         new_node.Save_p = [0,0]
         new_node.n = 0
         new_node.cudnnlist = [0]
+        new_node.inputd = [0]
         return new_node
 
     def compute(self, node, input_vals, output_val, use_numpy=False):
@@ -1603,11 +1617,15 @@ class FullyBNForwardOp(Op):
         assert isinstance(input_vals[0], ndarray.NDArray)
         input = input_vals[0]
         inputs = input.reshape((input.shape[0], 1, input.shape[1]))
-        node.Save_p[0],node.Save_p[1], node.cudnnlist[0] = gpu_op.bn_forward(inputs, output_val, node.dataformat,node.batchNormMode,node.n)
+
+        node.Save_p[0],node.Save_p[1], node.cudnnlist[0] = gpu_op.bn_forward(inputs, output_val, node.dataformat,node.batchNormMode,node.n, node.inputd[0])
+
         node.n = node.n + 1
     def gradient(self, node, output_grad):
         return [fullybn_backward_op(node.inputs[0],output_grad,node.batchNormMode, node.Save_p,node.cudnnlist)]
     def infer_shape(self, node, input_shapes):
+        newinputshapes = (input_shapes[0][0], 1, input_shapes[0][1])
+        node.inputd[0] = gpu_op.get_input_descriptor(newinputshapes, node.dataformat)
         return input_shapes[0]
 
 class FullyBNBackwardOp(Op):

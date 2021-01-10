@@ -309,7 +309,6 @@ TINYFLOW_EXTERN_C {
 
   int DLGpuActivationForward(const DLArrayHandle input,
     DLArrayHandle output,
-    cudnnTensorFormat_t dataformat,
     cudnnActivationMode_t activationMode,
     void ***cudnnlist);
 
@@ -317,6 +316,18 @@ TINYFLOW_EXTERN_C {
     DLArrayHandle dinput,
     const DLArrayHandle output,
     const DLArrayHandle doutput,
+    cudnnActivationMode_t activationMode,
+    void ***cudnnlist);
+
+
+  int DLGpuGetInputDescriptor(const int *input_shapes,
+    const int sizeofshape,
+    cudnnTensorFormat_t dataformat,
+    void ***inputd);
+
+  int DLGpuActivationGetCudnnlist(const int *input_shapes,
+    const int sizeofshape,
+    cudnnTensorFormat_t dataformat,
     cudnnActivationMode_t activationMode,
     void ***cudnnlist);
 
@@ -385,6 +396,7 @@ TINYFLOW_EXTERN_C {
     const float dropout,
     const int seed,
     void **reserveSpace_p,
+    void ***inputd,
     void ***cudnnlist);
 
   int DLGpuDropoutBackward(const DLArrayHandle doutput,
@@ -432,6 +444,7 @@ TINYFLOW_EXTERN_C {
     int n,//第n+1次使用
     void **mean_p,
     void **Variance_p,
+    void ***inputd,
     void ***cudnnlist);
 
 
