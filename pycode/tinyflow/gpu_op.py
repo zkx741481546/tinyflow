@@ -27,6 +27,66 @@ def broadcast_to_backward(in_arr, out_arr, type):
     elif type == "NCHW":
         _LIB.DLGpuBroadcastToBackward1(in_arr.handle, out_arr.handle)
 
+def reduce_sum_get_cudnnlist(input_shapes, output_shapes, dataformat):
+
+    if dataformat=="NCHW":
+        dataformat=0
+    elif dataformat=="NHWC":
+        dataformat=1
+    else:
+        assert 0
+    c_input_shapes = c_array(ctypes.c_int, input_shapes)
+    c_output_shapes = c_array(ctypes.c_int, output_shapes)
+    cudnnlist = ctypes.c_int(0)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    cudnnlist = ctypes.pointer(cudnnlist)
+    _LIB.DLGReduceSumGetCudnnlist(c_input_shapes, c_output_shapes, len(input_shapes), dataformat, cudnnlist)
+    return cudnnlist
+
+def reduce_sum_get_real_shape(input_shapes, output_shapes, dataformat):
+
+
+    assert len(output_shapes) == 1
+    if dataformat=="NCHW":
+        assert input_shapes[1] == output_shapes[0]
+        if len(input_shapes) == 3:
+            return input_shapes,(1,output_shapes[0],1)
+        if len(input_shapes) == 4:
+            return input_shapes,(1,output_shapes[0],1,1)
+        if len(input_shapes) == 5:
+            return input_shapes,(1,output_shapes[0],1,1,1)
+        assert 0
+
+    elif dataformat=="NHWC":
+
+        if len(input_shapes) == 1:
+            assert 1 == output_shapes[0]
+            return (1,1,input_shapes), (1, 1, 1)
+        if len(input_shapes) == 2:
+            assert input_shapes[1] == output_shapes[0]
+            return (1, input_shapes[0], input_shapes[1]), (1, 1, output_shapes[0])
+        if len(input_shapes) == 3:
+            assert input_shapes[2] == output_shapes[0]
+            return input_shapes, (1, 1, output_shapes[0])
+        if len(input_shapes) == 4:
+            assert input_shapes[3] == output_shapes[0]
+            return input_shapes, (1, 1, 1, output_shapes[0])
+        if len(input_shapes) == 5:
+            assert input_shapes[4] == output_shapes[0]
+            return input_shapes, (1, 1, 1, 1, output_shapes[0])
+
+        assert 0
+    else:
+        assert 0
+
+
+
+
+def reduce_sum_new(in_arr, out_arr, cudnnlist):
+    _LIB.DLGpuReduceSum(in_arr.handle,out_arr.handle,cudnnlist)
+
+
 
 def reduce_sum_axis_zero(in_arr, out_arr):
     assert isinstance(in_arr, _nd.NDArray)
@@ -601,9 +661,10 @@ def concat_backward(in_arr_a, in_arr_b, out_arr,din_arr_a, din_arr_b):
     _LIB.DLGpuConcatBackward(
         in_arr_a.handle, in_arr_b.handle, out_arr.handle,din_arr_a.handle, din_arr_b.handle, )
 
-def bn_forward(input,output,dataformat,batchNormMode,n,inputd):
-    assert isinstance(input, _nd.NDArray)
-    assert isinstance(output, _nd.NDArray)
+
+
+
+def bn_get_cudnnlist(input_shapes,dataformat,batchNormMode):
     if dataformat=="NCHW":
         dataformat=0
     elif dataformat=="NHWC":
@@ -616,19 +677,40 @@ def bn_forward(input,output,dataformat,batchNormMode,n,inputd):
         batchNormMode=1
     else:
         assert 0
+    c_input_shapes = c_array(ctypes.c_int, input_shapes)
     mean_p = ctypes.c_int(0)
     mean_p = ctypes.pointer(mean_p)
     mean_p = ctypes.pointer(mean_p)
     var_p = ctypes.c_int(0)
     var_p = ctypes.pointer(var_p)
     var_p = ctypes.pointer(var_p)
-    n = ctypes.c_int(n)
     cudnnlist = ctypes.c_int(0)
     cudnnlist = ctypes.pointer(cudnnlist)
     cudnnlist = ctypes.pointer(cudnnlist)
     cudnnlist = ctypes.pointer(cudnnlist)
-    _LIB.DLGpuBatchNormalizationForward(input.handle,output.handle,dataformat,batchNormMode,n,mean_p,var_p,inputd,cudnnlist)
+    _LIB.DLGpuBatchNormalizationGetCudnnlist(c_input_shapes,len(input_shapes),dataformat,batchNormMode,mean_p,var_p,cudnnlist)
     return mean_p,var_p,cudnnlist
+
+
+
+def bn_forward(input,output,batchNormMode,n,mean_p,var_p,cudnnlist):
+    assert isinstance(input, _nd.NDArray)
+    assert isinstance(output, _nd.NDArray)
+
+    if batchNormMode=="pre_activation":
+        batchNormMode=0
+    elif batchNormMode=="spatial":
+        batchNormMode=1
+    else:
+        assert 0
+
+    _LIB.DLGpuBatchNormalizationForward(input.handle,output.handle,batchNormMode,n,mean_p,var_p,cudnnlist)
+
+
+
+
+
+
 
 
 def bn_backward(input,doutput,dinput,batchNormMode,mean_p,var_p,cudnnlist):

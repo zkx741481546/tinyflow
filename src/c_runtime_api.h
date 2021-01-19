@@ -214,6 +214,14 @@ TINYFLOW_EXTERN_C {
   int DLGpuReduceSumAllBackward(const DLArrayHandle input, DLArrayHandle output);
 
   int DLGpuReduceSumAxisNBackward(const DLArrayHandle input, DLArrayHandle output, const int axis);
+
+  int DLGReduceSumGetCudnnlist(const int *input_shapes,
+      const int *output_shapes,
+      const int sizeofshape,
+      cudnnTensorFormat_t dataformat,
+      void *** cudnnlist);
+  int DLGpuReduceSum(const DLArrayHandle input, DLArrayHandle output, void ***cudnnlist);
+
   int DLGpuConcatForward(const DLArrayHandle input1,const DLArrayHandle input2,  DLArrayHandle output);
   int DLGpuConcatBackward(const DLArrayHandle input1,const DLArrayHandle input2,const DLArrayHandle doutput,DLArrayHandle dinput1,DLArrayHandle dinput2);
 
@@ -437,14 +445,21 @@ TINYFLOW_EXTERN_C {
                                DLArrayHandle output);
 
 
+
+  int DLGpuBatchNormalizationGetCudnnlist(const int *input_shapes,
+    int sizeofshape,
+    cudnnTensorFormat_t dataformat,
+    cudnnBatchNormMode_t batchNormMode,
+    void **mean_p,
+    void **Variance_p,
+    void ***cudnnlist);
+
   int DLGpuBatchNormalizationForward(const DLArrayHandle input,
     DLArrayHandle output,
-    cudnnTensorFormat_t dataformat,
     cudnnBatchNormMode_t batchNormMode,
     int n,//第n+1次使用
     void **mean_p,
     void **Variance_p,
-    void ***inputd,
     void ***cudnnlist);
 
 

@@ -12,7 +12,7 @@
 
 //��-
 using namespace std;
-#define MAX_THREADS_NUM 512
+#define MAX_THREADS_NUM 1024
 #define MAX_BLOCKS_NUM 4096
 #define BLOCK_NUM(count) min(((count + MAX_THREADS_NUM - 1) / MAX_THREADS_NUM), MAX_BLOCKS_NUM)
 #define BLOCK_NUM_2(count,threads) min(((count + threads - 1) / threads), MAX_BLOCKS_NUM)
@@ -391,8 +391,14 @@ int DLGpuBroadcastToBackward0(const DLArrayHandle input, DLArrayHandle output) {
     int tmpoutputCount = inputCount/input->shape[0];
 
 
+    
 
-    if((input->ndim) == 1){
+
+
+
+
+
+    if((input->ndim) == 1 ||(input->ndim) == 2){
         // matrix_broadcast_to_backward_kernel0<<<BLOCK_NUM(tmpoutputCount), MAX_THREADS_NUM>>>(
         //     inputArr, tmpoutputCount, outputArr,input->shape[0]);
         matrix_broadcast_to_backward_kernel0_o<<<tmpoutputCount, MAX_THREADS_NUM>>>(
@@ -405,11 +411,12 @@ int DLGpuBroadcastToBackward0(const DLArrayHandle input, DLArrayHandle output) {
         // matrix_broadcast_to_backward_kernel0<<<BLOCK_NUM(tmpoutputCount), MAX_THREADS_NUM>>>(
         //     inputArr, tmpoutputCount, tmpArr,input->shape[0]);
 
+        // printf("%d\n",tmpoutputCount);
         matrix_broadcast_to_backward_kernel0_o<<<tmpoutputCount, MAX_THREADS_NUM>>>(
             inputArr, tmpoutputCount, tmpArr,input->shape[0]);
     
         int i;
-        for(i=1;i < input->ndim;i++){
+        for(i=2;i < input->ndim;i++){
     
             tmpoutputCount /= input->shape[i];
             if(tmpoutputCount <= outputCount){
@@ -425,7 +432,7 @@ int DLGpuBroadcastToBackward0(const DLArrayHandle input, DLArrayHandle output) {
         }    
         // matrix_broadcast_to_backward_kernel0<<<BLOCK_NUM(tmpoutputCount), MAX_THREADS_NUM>>>(
         //     tmpArr, tmpoutputCount, outputArr,input->shape[i]);
-
+        // printf("%d\n",tmpoutputCount);
         matrix_broadcast_to_backward_kernel0_o<<<tmpoutputCount, MAX_THREADS_NUM>>>(
             tmpArr, tmpoutputCount, outputArr,input->shape[i]);
 
@@ -606,6 +613,245 @@ int DLGpuReduceSumAxisNBackward(const DLArrayHandle input, DLArrayHandle output,
         inputArr, outputCount, outputArr, reduceDim, lowstride);
 
     return 0;
+}
+
+
+
+//new
+int DLGReduceSumGetCudnnlist(const int *input_shapes,
+    const int *output_shapes,
+    const int sizeofshape,
+    cudnnTensorFormat_t dataformat,
+    void *** cudnnlist){
+
+
+    cudnnHandle_t handle;
+    CUDNN_CALL(cudnnCreate(&handle));
+
+
+
+    cudnnTensorDescriptor_t input_descriptor;
+    cudnnTensorDescriptor_t output_descriptor;
+    int input_n;
+    int input_c;
+    int input_h;
+    int input_w;
+    int output_n;
+    int output_c;
+    int output_h;
+    int output_w;
+
+    if(sizeofshape == 3){
+        if (dataformat == 0) {
+            input_n = input_shapes[0];
+            input_c = input_shapes[1];
+            input_h = 1;
+            input_w = input_shapes[2];
+
+            output_n = output_shapes[0];
+            output_c = output_shapes[1];
+            output_h = 1;
+            output_w = output_shapes[2];
+        }else{
+            input_n = input_shapes[0];
+            input_c = input_shapes[2];
+            input_h = 1;
+            input_w = input_shapes[1];
+
+            output_n = output_shapes[0];
+            output_c = output_shapes[2];
+            output_h = 1;
+            output_w = output_shapes[1];
+        }
+        //input
+        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
+        CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
+            dataformat,
+            CUDNN_DATA_FLOAT,
+            input_n,
+            input_c,
+            input_h,
+            input_w));
+        CUDNN_CALL(cudnnCreateTensorDescriptor(&output_descriptor));
+        CUDNN_CALL(cudnnSetTensor4dDescriptor(output_descriptor,
+            dataformat,
+            CUDNN_DATA_FLOAT,
+            output_n,
+            output_c,
+            output_h,
+            output_w));
+    }
+    if(sizeofshape == 4){
+        if (dataformat == 0) {
+            input_n = input_shapes[0];
+            input_c = input_shapes[1];
+            input_h = input_shapes[2];
+            input_w = input_shapes[3];
+
+            output_n = output_shapes[0];
+            output_c = output_shapes[1];
+            output_h = output_shapes[2];
+            output_w = output_shapes[3];
+        }else{
+            input_n = input_shapes[0];
+            input_c = input_shapes[3];
+            input_h = input_shapes[1];
+            input_w = input_shapes[2];
+
+            output_n = output_shapes[0];
+            output_c = output_shapes[3];
+            output_h = output_shapes[1];
+            output_w = output_shapes[2];
+        }
+        //input
+        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
+        CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
+            dataformat,
+            CUDNN_DATA_FLOAT,
+            input_n,
+            input_c,
+            input_h,
+            input_w));
+        CUDNN_CALL(cudnnCreateTensorDescriptor(&output_descriptor));
+        CUDNN_CALL(cudnnSetTensor4dDescriptor(output_descriptor,
+            dataformat,
+            CUDNN_DATA_FLOAT,
+            output_n,
+            output_c,
+            output_h,
+            output_w));
+    }
+    if(sizeofshape == 5){
+
+        int* input_shape;
+        input_shape = (int*)malloc(sizeof(int) * 5);
+        for(int i=0;i<5;i++){
+            input_shape[i]= input_shapes[i];
+        }
+        int* output_shape;
+        output_shape = (int*)malloc(sizeof(int) * 5);
+        for(int i=0;i<5;i++){
+            output_shape[i]= output_shapes[i];
+        }
+
+        //input
+        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
+        CUDNN_CALL(cudnnSetTensorNdDescriptorEx(input_descriptor,
+            dataformat,
+            CUDNN_DATA_FLOAT,
+            5,
+            input_shape));
+        //output
+        CUDNN_CALL(cudnnCreateTensorDescriptor(&output_descriptor));
+        CUDNN_CALL(cudnnSetTensorNdDescriptorEx(output_descriptor,
+            dataformat,
+            CUDNN_DATA_FLOAT,
+            5,
+            output_shape));
+    }
+
+    //reduce
+    cudnnReduceTensorDescriptor_t reduceTensorDesc;
+    CUDNN_CALL(cudnnCreateReduceTensorDescriptor(&reduceTensorDesc));
+
+    CUDNN_CALL(cudnnSetReduceTensorDescriptor(
+        reduceTensorDesc,
+        CUDNN_REDUCE_TENSOR_ADD,
+        CUDNN_DATA_FLOAT,
+        CUDNN_NOT_PROPAGATE_NAN,
+        CUDNN_REDUCE_TENSOR_NO_INDICES,
+        CUDNN_32BIT_INDICES));
+
+
+    size_t *IndicesSize = (size_t *)malloc(sizeof(size_t));
+    size_t *WorkspaceSize = (size_t *)malloc(sizeof(size_t));
+
+    CUDNN_CALL(cudnnGetReductionIndicesSize(
+        handle,
+        reduceTensorDesc,
+        input_descriptor,
+        output_descriptor,
+        IndicesSize));
+
+    CUDNN_CALL(cudnnGetReductionWorkspaceSize(
+        handle,
+        reduceTensorDesc,
+        input_descriptor,
+        output_descriptor,
+        WorkspaceSize));
+
+    
+    void* indices= nullptr;
+    cudaMalloc((void**)&indices, *IndicesSize);
+    void* workspace= nullptr;
+    cudaMalloc((void**)&workspace, *WorkspaceSize);
+
+
+
+    * cudnnlist = (void **)malloc(sizeof(void *)*7);
+    (*cudnnlist)[0] = input_descriptor;
+    (*cudnnlist)[1] = output_descriptor;
+    (*cudnnlist)[2] = reduceTensorDesc;
+    (*cudnnlist)[3] = indices;
+    (*cudnnlist)[4] = IndicesSize;
+    (*cudnnlist)[5] = workspace;
+    (*cudnnlist)[6] = WorkspaceSize;
+
+    CUDNN_CALL(cudnnDestroy(handle));
+    return 0;
+
+
+
+
+}
+
+
+
+//new
+int DLGpuReduceSum(const DLArrayHandle input, DLArrayHandle output, void ***cudnnlist){
+
+   
+    cudnnHandle_t handle;
+    CUDNN_CALL(cudnnCreate(&handle));
+    
+    cudnnTensorDescriptor_t input_descriptor = (cudnnTensorDescriptor_t)((*cudnnlist)[0]);
+    
+    cudnnTensorDescriptor_t output_descriptor = (cudnnTensorDescriptor_t)((*cudnnlist)[1]);
+
+    cudnnReduceTensorDescriptor_t reduceTensorDesc = (cudnnReduceTensorDescriptor_t)((*cudnnlist)[2]);
+  
+    void* indices = (void *)((*cudnnlist)[3]);
+    size_t *IndicesSize = (size_t *)((*cudnnlist)[4]);
+
+    void* workspace = (void *)((*cudnnlist)[5]);
+  
+    size_t *WorkspaceSize = (size_t *)((*cudnnlist)[6]);
+
+
+    auto alpha = 1.0f, beta = 0.0f;
+
+
+    CUDNN_CALL(cudnnReduceTensor(
+        handle,
+        reduceTensorDesc,
+        indices,
+        *IndicesSize,
+        workspace,
+        *WorkspaceSize,
+        &alpha,
+        input_descriptor,
+        input->data,
+        &beta,
+        output_descriptor,
+        output->data));
+
+
+
+    CUDNN_CALL(cudnnDestroy(handle));
+    return 0;
+
+
+
 }
 
 
@@ -2566,7 +2812,7 @@ int DLGpuActivationForward(const DLArrayHandle input,
     cudnnActivationMode_t activationMode,
     void ***cudnnlist) {
 
-    assert(input->ndim==4||input->ndim==3||input->ndim==5);
+
 
     //handle
     cudnnHandle_t handle;
@@ -3420,34 +3666,90 @@ int DLGpuL2regularGradient(const DLArrayHandle input, const DLArrayHandle in_gra
 
 
 
-
-//BatchNormalization
-int DLGpuBatchNormalizationForward(const DLArrayHandle input,
-    DLArrayHandle output,
+int DLGpuBatchNormalizationGetCudnnlist(const int *input_shapes,
+    int sizeofshape,
     cudnnTensorFormat_t dataformat,
     cudnnBatchNormMode_t batchNormMode,
-    int n,//第n+1次使用
     void **mean_p,
     void **Variance_p,
-    void ***inputd,
-    void ***cudnnlist) {
-
-    assert(input->ndim==4||input->ndim==3||input->ndim==5);
-
-    
-    
+    void ***cudnnlist){
 
 
+    cudnnTensorDescriptor_t input_descriptor;
 
-    //handle
-    cudnnHandle_t handle;
-    CUDNN_CALL(cudnnCreate(&handle));
-    //input
-    cudnnTensorDescriptor_t input_descriptor = (cudnnTensorDescriptor_t)((*inputd)[0]);
+    int input_n;
+    int input_c;
+    int input_h;
+    int input_w;
+
+    if(sizeofshape == 3){
+        if (dataformat == 0) {
+            input_n = input_shapes[0];
+            input_c = input_shapes[1];
+            input_h = 1;
+            input_w = input_shapes[2];
+        }else{
+            input_n = input_shapes[0];
+            input_c = input_shapes[2];
+            input_h = 1;
+            input_w = input_shapes[1];
+        }
+        //input
+        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
+        CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
+            dataformat,
+            CUDNN_DATA_FLOAT,
+            input_n,
+            input_c,
+            input_h,
+            input_w));
+
+    }
+
+
+    if(sizeofshape == 4){
+        if (dataformat == 0) {
+            input_n = input_shapes[0];
+            input_c = input_shapes[1];
+            input_h = input_shapes[2];
+            input_w = input_shapes[3];
+        }else{
+            input_n = input_shapes[0];
+            input_c = input_shapes[3];
+            input_h = input_shapes[1];
+            input_w = input_shapes[2];
+        }
+        //input
+        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
+        CUDNN_CALL(cudnnSetTensor4dDescriptor(input_descriptor,
+            dataformat,
+            CUDNN_DATA_FLOAT,
+            input_n,
+            input_c,
+            input_h,
+            input_w));
+
+    }
+
+    if(sizeofshape == 5){
+
+        int* input_shape;
+        input_shape = (int*)malloc(sizeof(int) * 5);
+        for(int i=0;i<5;i++){
+            input_shape[i]= input_shapes[i];
+        }
+
+        //input
+        CUDNN_CALL(cudnnCreateTensorDescriptor(&input_descriptor));
+        CUDNN_CALL(cudnnSetTensorNdDescriptorEx(input_descriptor,
+            dataformat,
+            CUDNN_DATA_FLOAT,
+            5,
+            input_shape));
 
 
 
-    auto alpha = 1.0f, beta = 0.0f;
+    }
 
 
     cudnnTensorDescriptor_t derivedBnDesc;
@@ -3476,7 +3778,7 @@ int DLGpuBatchNormalizationForward(const DLArrayHandle input,
     cudaMemcpy(bnScale, bnScalec, *s, cudaMemcpyHostToDevice);
     cudaMemcpy(bnBias, bnBiasc, *s, cudaMemcpyHostToDevice);
 
-    double exponentialAverageFactor = 1.0 /(n+1);
+  
 
     float *resultRunningMean = nullptr;
     float *resultRunningVariance = nullptr;
@@ -3490,6 +3792,67 @@ int DLGpuBatchNormalizationForward(const DLArrayHandle input,
     float *resultSaveInvVariance;
     cudaMalloc((void**)&resultSaveMean, *s);
     cudaMalloc((void**)&resultSaveInvVariance, *s);
+
+    float *resultBnScaleDiff;
+    float *resultBnBiasDiff;
+    cudaMalloc((void**)&resultBnScaleDiff, *s);
+    cudaMalloc((void**)&resultBnBiasDiff, *s);
+
+
+    *mean_p = resultSaveMean;
+    *Variance_p = resultSaveInvVariance;
+
+
+    *cudnnlist = (void **)malloc(sizeof(void *)*8);
+    (*cudnnlist)[0] = input_descriptor;
+    (*cudnnlist)[1] = derivedBnDesc;
+    (*cudnnlist)[2] = bnScale;
+    (*cudnnlist)[3] = bnBias;
+    (*cudnnlist)[4] = resultRunningMean;
+    (*cudnnlist)[5] = resultRunningVariance;
+    (*cudnnlist)[6] = resultBnScaleDiff;
+    (*cudnnlist)[7] = resultBnBiasDiff;
+
+
+
+}
+
+
+
+//BatchNormalization
+int DLGpuBatchNormalizationForward(const DLArrayHandle input,
+    DLArrayHandle output,
+    cudnnBatchNormMode_t batchNormMode,
+    int n,//第n+1次使用
+    void **mean_p,
+    void **Variance_p,
+    void ***cudnnlist) {
+
+    
+    
+
+
+    //handle
+    cudnnHandle_t handle;
+    CUDNN_CALL(cudnnCreate(&handle));
+    //input
+    cudnnTensorDescriptor_t input_descriptor = (cudnnTensorDescriptor_t)((*cudnnlist)[0]);
+
+    cudnnTensorDescriptor_t derivedBnDesc = (cudnnTensorDescriptor_t)((*cudnnlist)[1]);
+
+    float *bnScale = (float *)((*cudnnlist)[2]);
+
+
+    float *bnBias = (float *)((*cudnnlist)[3]);
+    float *resultRunningMean = (float *)((*cudnnlist)[4]);
+    float *resultRunningVariance = (float *)((*cudnnlist)[5]);
+
+    auto alpha = 1.0f, beta = 0.0f;
+
+
+
+    double exponentialAverageFactor = 1.0 /(n+1);
+
 
 
 
@@ -3508,25 +3871,13 @@ int DLGpuBatchNormalizationForward(const DLArrayHandle input,
         resultRunningMean,
         resultRunningVariance,
         0.00001,
-        resultSaveMean,
-        resultSaveInvVariance));
+        *mean_p,
+        *Variance_p));
     
     
 
-    *mean_p = resultSaveMean;
-    *Variance_p = resultSaveInvVariance;
-
-    *cudnnlist = (void **)malloc(sizeof(void *)*3);
-    (*cudnnlist)[0] = input_descriptor;
-    (*cudnnlist)[1] = derivedBnDesc;
-    (*cudnnlist)[2] = bnScale;
 
 
-
-
-    cudaFree(bnBias);
-    cudaFree(resultRunningMean);
-    cudaFree(resultRunningVariance);
     CUDNN_CALL(cudnnDestroy(handle));
     return 0;
 
@@ -3557,17 +3908,14 @@ int DLGpuBatchNormalizationBackward(const DLArrayHandle input,
 
     //��ķ�ʽ��������padding
     float *bnScale = (float *)((*cudnnlist)[2]);
-    size_t *s = (size_t *)malloc(sizeof(size_t));
-    CUDNN_CALL(cudnnGetTensorSizeInBytes(bnScaleBiasDiffDesc,
-        s));
+
 
     auto alpha = 1.0f, beta = 0.0f;
 
 
-    float *resultBnScaleDiff;
-    float *resultBnBiasDiff;
-    cudaMalloc((void**)&resultBnScaleDiff, *s);
-    cudaMalloc((void**)&resultBnBiasDiff, *s);
+    float *resultBnScaleDiff = (float *)((*cudnnlist)[6]);
+    float *resultBnBiasDiff = (float *)((*cudnnlist)[7]);
+
     CUDNN_CALL(cudnnBatchNormalizationBackward(handle,
         batchNormMode,
         &alpha,
@@ -3588,12 +3936,12 @@ int DLGpuBatchNormalizationBackward(const DLArrayHandle input,
         *mean_p,
         *Variance_p));
 
-    cudaFree(bnScale);
-    cudaFree(resultBnBiasDiff);
-    cudaFree(resultBnScaleDiff);
-    cudaFree(*mean_p);
-    cudaFree(*Variance_p);
-    CUDNN_CALL(cudnnDestroyTensorDescriptor(bnScaleBiasDiffDesc));
+    // cudaFree(bnScale);
+    // cudaFree(resultBnBiasDiff);
+    // cudaFree(resultBnScaleDiff);
+    // cudaFree(*mean_p);
+    // cudaFree(*Variance_p);
+    // CUDNN_CALL(cudnnDestroyTensorDescriptor(bnScaleBiasDiffDesc));
     CUDNN_CALL(cudnnDestroy(handle));
     return 0;
 
