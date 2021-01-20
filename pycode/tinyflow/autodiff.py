@@ -2,8 +2,10 @@
 from __future__ import absolute_import
 import time
 import numpy as np
-from . import ndarray, gpu_op
+from . import ndarray, gpu_op, memoryManager
 import random
+import queue
+
 class Node(object):
     """Node in a computation graph."""
     def __init__(self):
@@ -22,6 +24,9 @@ class Node(object):
         self.op = None
         self.const_attr = None
         self.name = ""
+        self.index = 0
+        self.array_status = 0
+        # todo array_status 0 - cpu ,  1 - gpu , 2 - trans from cpu to gpu, 3 - trans from gpu to cpu
         #是不是参数
         self.isw = 0
 
@@ -1895,12 +1900,22 @@ class Executor(object):
         feed_shapes: shapes of feed_dict from last run(...)
         """
         self.eval_node_list = eval_node_list
-        self.ctx = ctx
         self.topo_order = find_topo_sort(self.eval_node_list)
-        #print(nodelist_to_name(self.topo_order))
         self.node_to_shape_map = None
         self.node_to_arr_map = None
         self.feed_shapes = None
+        self.will_do_queue = queue.Queue()
+        self.have_done_queue = queue.Queue()
+        self.memoryManager = memoryManager.MemoryManager(self.will_do_queue, self.have_done_queue)
+        self.memoryManager.start()
+
+        # 按照拓扑排序设定index
+        for i in range(len(self.topo_order)):
+            self.topo_order[i].index = i
+
+        # todo 此处hard code，后续需要修改
+        self.ctx_cpu = ndarray.cpu(0)
+        self.ctx_gpu = ndarray.gpu(0)
 
     def infer_shape(self, feed_shapes):
         """Given shapes of feed_dict nodes, infer shape for all nodes in graph.
@@ -1941,7 +1956,7 @@ class Executor(object):
         """
         self.node_to_arr_map = {}
         for node in self.topo_order:
-            self.node_to_arr_map[node] = ndarray.empty(self.node_to_shape_map[node], ctx=self.ctx)
+            self.node_to_arr_map[node] = ndarray.empty(self.node_to_shape_map[node], ctx=self.ctx_cpu)
 
     def run(self, feed_dict, convert_to_numpy_ret_vals=False):
         """
@@ -1960,25 +1975,18 @@ class Executor(object):
             unmatched_item = set(sa.items()) ^ set(sb.items())
             return len(unmatched_item) == 0
 
-
-        #转化
         # Assume self.ctx is None implies numpy array and numpy ops.
-        use_numpy = self.ctx is None
         node_to_val_map = {}
         for node, value in feed_dict.items():
-            if use_numpy:
-                # all values passed in feed_dict must be np.ndarray
+                # convert values to ndarray.NDArray if necessary
+                # 源代码会在此处将所有CPU的内容引入GPU，为了自定义，禁用自动引入的功能，改为手动引入
 
-                assert isinstance(value, np.ndarray)
+            if isinstance(value, np.ndarray):
+                node_to_val_map[node] = ndarray.array(value, ctx=self.ctx_cpu)
+            elif isinstance(value, ndarray.NDArray):
                 node_to_val_map[node] = value
             else:
-                # convert values to ndarray.NDArray if necessary
-                if isinstance(value, np.ndarray):
-                    node_to_val_map[node] = ndarray.array(value, ctx=self.ctx)
-                elif isinstance(value, ndarray.NDArray):
-                    node_to_val_map[node] = value
-                else:
-                    assert False, "feed_dict value type not supported"
+                assert False, "feed_dict value type not supported"
 
 
         # collect shapes for all placeholders
@@ -1986,36 +1994,60 @@ class Executor(object):
         for node in node_to_val_map:
             feed_shapes[node] = node_to_val_map[node].shape
 
-
-
         # infer shape if feed_shapes changed since last run
         # e.g. call run() on test data after trainng
         if (not are_feed_shapes_equal(feed_shapes, self.feed_shapes)):
             self.infer_shape(feed_shapes)
             self.feed_shapes = feed_shapes
             # plan memory if using GPU
-            if (not use_numpy):
-                self.memory_plan(feed_shapes)
+            self.memory_plan(feed_shapes)
+
+
+
+        # calculate started
+
+        for node in self.topo_order:
+            node.array_status = 0
 
         # Traverse graph in topo order and compute values for all nodes.
         for node in self.topo_order:
             if node in node_to_val_map:
                 # Skip placeholder nodes. Values already provided by feed_dict.
                 continue
-            input_vals = [node_to_val_map[n] for n in node.inputs]
-            if use_numpy:
-                node_val = np.empty(shape=self.node_to_shape_map[node])
-            else:
-                node_val = self.node_to_arr_map[node]
+
+
+            # todo 可以在此处引入内存池，暂时考虑
+            # 新建一堆gpu变量，传到gpu变量中，开始运算，传回cpu变量中，完成。几个步骤
+
+            input_vals = []
+            for n in node.inputs:
+                if n.array_status == 0:
+                    self.will_do_queue.put((n.index, node_to_val_map[n]))
+                elif n.array_status == 3:
+                    self.will_do_queue.put((n.index, node_to_val_map[n]))
+
+            for n in node.inputs:
+                while n.array_status != 1:
+                    (node_index, node_val) = self.have_done_queue.get(block=True)
+                    node_to_val_map[self.topo_order[node_index]] = node_val
+                    if ndarray.is_gpu_ctx(node_val.ctx):
+                        self.topo_order[node_index].array_status = 1
+                    else:
+                        self.topo_order[node_index].array_status = 0
+
+                input_vals.append(node_to_val_map[n])
+
+            # input_vals = [node_to_val_map[n] for n in node.inputs]
+            node_val = ndarray.empty(self.node_to_shape_map[node], self.ctx_gpu)
+            node.array_status = 1
+
             # node_val is modified in-place whether np.ndarray or NDArray
-            node.op.compute(node, input_vals, node_val, use_numpy)
-            #print(node.name,":  ",node_val.asnumpy())
-            #打印计算流程
+            # node_val是开辟出来用来保存每一个的节点的计算的结果的，计算成功后会放入node_to_val中
+            node.op.compute(node, input_vals, node_val, False)
+            # print(node.index)
             node_to_val_map[node] = node_val
 
         # Collect node values.
-        if not use_numpy and convert_to_numpy_ret_vals:
-            return [node_to_val_map[n].asnumpy() for n in self.eval_node_list]
         return [node_to_val_map[n] for n in self.eval_node_list]
 
 
