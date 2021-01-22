@@ -148,6 +148,7 @@ class AddOp(Op):
 
     def compute(self, node, input_vals, output_val, use_numpy=True):
         assert len(input_vals) == 2
+
         if use_numpy:
             # output_val[:] allows modify in-place
             output_val[:] = input_vals[0] + input_vals[1]
@@ -164,6 +165,7 @@ class AddOp(Op):
                     const_val = input_vals[0].asnumpy()[0]
                     gpu_op.matrix_elementwise_add_by_const(
                         input_vals[1], const_val, output_val)
+
 
     def gradient(self, node, output_grad):
         return [output_grad, output_grad]
@@ -459,6 +461,8 @@ class BroadcastToOp(Op):
 
         gpu_op.broadcast_to(input_vals[0], output_val, node.type)
 
+
+
     def gradient(self, node, output_grad):
         grad_A = broadcastto_gradient_op(output_grad,node.inputs[0],node.type)
         grad_B = zeroslike_op(node.inputs[1])
@@ -478,17 +482,13 @@ class BroadcastToGradientOp(Op):
         return new_node
 
     def compute(self, node, input_vals, output_val, use_numpy=False):
-        # print(input_vals[0].shape)
-        # tic = time.time()
-        gpu_op.broadcast_to_backward(input_vals[0], output_val, node.type)
 
-        # toc = time.time()
-        #
-        # print("use time0: " + str(toc - tic))
-        #
+        #gpu_op.broadcast_to_backward(input_vals[0], output_val, node.type)
+
+
         # tic = time.time()
-        # gpu_op.reduce_sum_new(input_vals[0],output_val,node.cudnnlist[0])
-        #
+        gpu_op.reduce_sum_new(input_vals[0],output_val,node.cudnnlist[0])
+
         # toc = time.time()
         # print("use time1: " + str(toc - tic))
 
@@ -499,10 +499,10 @@ class BroadcastToGradientOp(Op):
     def infer_shape(self, node, input_shapes):
 
 
-        # inputshape,outputshape = gpu_op.reduce_sum_get_real_shape(input_shapes[0],input_shapes[1],node.type)
-        #
-        #
-        # node.cudnnlist[0]  = gpu_op.reduce_sum_get_cudnnlist(inputshape, outputshape, node.type)
+        inputshape,outputshape = gpu_op.reduce_sum_get_real_shape(input_shapes[0],input_shapes[1],node.type)
+
+
+        node.cudnnlist[0]  = gpu_op.reduce_sum_get_cudnnlist(inputshape, outputshape, node.type)
 
         return input_shapes[1]
 
@@ -709,10 +709,8 @@ class Convolution1DForwardOp(Op):
         return new_node
     def compute(self, node, input_vals, output_val, use_numpy=False):
         assert len(input_vals) == 2
-        tic = time.time()
+
         gpu_op.convolution_1d_forward(input_vals[0], input_vals[1], output_val, node.cudnnlist[0])
-        toc = time.time()
-        print("compute ", toc - tic)
     def gradient(self, node, output_grad):
         a = [0,0,0]
         return [convolution_1d_backward_op(node.inputs[0],node.inputs[1],output_grad, 0, a, node.cudnnlist),
@@ -738,24 +736,25 @@ class Convolution1DBackwardOp(Op):
         assert isinstance(input_vals[0], ndarray.NDArray)
         assert isinstance(input_vals[1], ndarray.NDArray)
         assert isinstance(input_vals[2], ndarray.NDArray)
-        ctx = ndarray.gpu(0)
-        dinput = ndarray.empty(input_vals[0].shape,ctx)
-        dfilter = ndarray.empty(input_vals[1].shape,ctx)
-        if node.cache[0] == 0:
-            gpu_op.convolution_1d_backward(input_vals[0],input_vals[2],input_vals[1],dfilter, dinput,node.cudnnlist[0])
-            node.cache[0] = 1
-            node.cache[1] = dinput
-            node.cache[2] = dfilter
 
+        if node.cache[0] == 0:
+            gpu_op.convolution_1d_backward(input_vals[0],input_vals[2],input_vals[1],node.cache[2], node.cache[1],node.cudnnlist[0])
+            node.cache[0] = 1
         if node.type == 0:
             node.cache[1].copyto(output_val)
         if node.type == 1:
             node.cache[2].copyto(output_val)
+            node.cache[0] = 0
 
 
     def gradient(self, node, output_grad):
         raise NotImplementedError
     def infer_shape(self, node, input_shapes):
+        ctx = ndarray.gpu(0)
+        dinput = ndarray.empty(input_shapes[0], ctx)
+        dfilter = ndarray.empty(input_shapes[1], ctx)
+        node.cache[1] = dinput
+        node.cache[2] = dfilter
         if node.type == 0:
             return input_shapes[0]
         else:
@@ -775,11 +774,11 @@ class Convolution2DForwardOp(Op):
     def compute(self, node, input_vals, output_val, use_numpy=False):
         assert len(input_vals) == 2
 
-        tic = time.time()
         gpu_op.convolution_2d_forward(input_vals[0], input_vals[1], output_val, node.cudnnlist[0])
-        toc = time.time()
-        print(toc - tic)
+
     def gradient(self, node, output_grad):
+
+
         a = [0,0,0]
         return [convolution_2d_backward_op(node.inputs[0],node.inputs[1],output_grad,0,a,node.cudnnlist),
                 convolution_2d_backward_op(node.inputs[0],node.inputs[1],output_grad,1,a,node.cudnnlist)]
@@ -802,30 +801,30 @@ class Convolution2DBackwardOp(Op):
 
         return new_node
     def compute(self, node, input_vals, output_val, use_numpy=False):
-        # tic = time.time()
         assert len(input_vals) == 3
         assert isinstance(input_vals[0], ndarray.NDArray)
         assert isinstance(input_vals[1], ndarray.NDArray)
         assert isinstance(input_vals[2], ndarray.NDArray)
-        ctx = ndarray.gpu(0)
-        dinput = ndarray.empty(input_vals[0].shape,ctx)
-        dfilter = ndarray.empty(input_vals[1].shape,ctx)
-        if node.cache[0] == 0:
-            gpu_op.convolution_2d_backward(input_vals[0],input_vals[2],input_vals[1],dfilter, dinput, node.cudnnlist[0])
-            node.cache[0] = 1
-            node.cache[1] = dinput
-            node.cache[2] = dfilter
 
+        if node.cache[0] == 0:
+            gpu_op.convolution_2d_backward(input_vals[0],input_vals[2],input_vals[1],node.cache[2], node.cache[1], node.cudnnlist[0])
+            node.cache[0] = 1
         if node.type == 0:
             node.cache[1].copyto(output_val)
         if node.type == 1:
+
             node.cache[2].copyto(output_val)
-        # toc = time.time()
-        # print("computeBack" , toc - tic)
+            node.cache[0] = 0
+
 
     def gradient(self, node, output_grad):
         raise NotImplementedError
     def infer_shape(self, node, input_shapes):
+        ctx = ndarray.gpu(0)
+        dinput = ndarray.empty(input_shapes[0], ctx)
+        dfilter = ndarray.empty(input_shapes[1], ctx)
+        node.cache[1] = dinput
+        node.cache[2] = dfilter
         if node.type == 0:
             return input_shapes[0]
         else:
@@ -846,10 +845,7 @@ class Convolution3DForwardOp(Op):
     def compute(self, node, input_vals, output_val, use_numpy=False):
         assert len(input_vals) == 2
 
-        tic = time.time()
         gpu_op.convolution_3d_forward(input_vals[0], input_vals[1], output_val, node.cudnnlist[0])
-        toc = time.time()
-        print("compute ", toc - tic)
     def gradient(self, node, output_grad):
         a = [0,0,0]
         return [convolution_3d_backward_op(node.inputs[0],node.inputs[1],output_grad,0,a,node.cudnnlist),
@@ -876,24 +872,26 @@ class Convolution3DBackwardOp(Op):
         assert isinstance(input_vals[0], ndarray.NDArray)
         assert isinstance(input_vals[1], ndarray.NDArray)
         assert isinstance(input_vals[2], ndarray.NDArray)
-        ctx = ndarray.gpu(0)
-        dinput = ndarray.empty(input_vals[0].shape,ctx)
-        dfilter = ndarray.empty(input_vals[1].shape,ctx)
+
         if node.cache[0] == 0:
-            gpu_op.convolution_3d_backward(input_vals[0],input_vals[2],input_vals[1],dfilter, dinput,node.cudnnlist[0])
+            gpu_op.convolution_3d_backward(input_vals[0],input_vals[2],input_vals[1],node.cache[2], node.cache[1],node.cudnnlist[0])
             node.cache[0] = 1
-            node.cache[1] = dinput
-            node.cache[2] = dfilter
+
 
         if node.type == 0:
             node.cache[1].copyto(output_val)
         if node.type == 1:
             node.cache[2].copyto(output_val)
-
+            node.cache[0] = 0
 
     def gradient(self, node, output_grad):
         raise NotImplementedError
     def infer_shape(self, node, input_shapes):
+        ctx = ndarray.gpu(0)
+        dinput = ndarray.empty(input_shapes[0], ctx)
+        dfilter = ndarray.empty(input_shapes[1], ctx)
+        node.cache[1] = dinput
+        node.cache[2] = dfilter
         if node.type == 0:
             return input_shapes[0]
         else:
@@ -992,11 +990,8 @@ class Pooling1DForwardOp(Op):
     def compute(self, node, input_vals, output_val, use_numpy=False):
         assert use_numpy==False
         assert isinstance(input_vals[0], ndarray.NDArray)
-        tic = time.time()
         gpu_op.pooling_1d_forward(input_vals[0], output_val, node.cudnnlist[0])
         node.output[0] = output_val
-        toc = time.time()
-        print("compute ", toc - tic)
     def gradient(self, node, output_grad):
         return [pooling_1d_backward_op(node.inputs[0],output_grad,node.output,node.cudnnlist)]
     def infer_shape(self, node, input_shapes):
@@ -1042,11 +1037,8 @@ class Pooling2DForwardOp(Op):
         assert use_numpy==False
         assert isinstance(input_vals[0], ndarray.NDArray)
 
-        tic = time.time()
         gpu_op.pooling_2d_forward(input_vals[0], output_val, node.cudnnlist[0])
         node.output[0] = output_val
-        toc = time.time()
-        print("compute ", toc - tic)
 
     def gradient(self, node, output_grad):
         return [pooling_2d_backward_op(node.inputs[0],output_grad,node.output,node.cudnnlist)]
@@ -1098,11 +1090,8 @@ class Pooling3DForwardOp(Op):
         assert use_numpy==False
         assert isinstance(input_vals[0], ndarray.NDArray)
 
-        tic = time.time()
         gpu_op.pooling_3d_forward(input_vals[0], output_val, node.cudnnlist[0])
         node.output[0] = output_val
-        toc = time.time()
-        print("compute ", toc - tic)
     def gradient(self, node, output_grad):
         return [pooling_3d_backward_op(node.inputs[0],output_grad,node.output,node.cudnnlist)]
     def infer_shape(self, node, input_shapes):
@@ -1612,8 +1601,10 @@ class BNForwardOp(Op):
     def compute(self, node, input_vals, output_val, use_numpy=False):
         assert use_numpy==False
         assert isinstance(input_vals[0], ndarray.NDArray)
+
         gpu_op.bn_forward(input_vals[0], output_val,node.batchNormMode,node.n, node.Save_p[0],node.Save_p[1],node.cudnnlist[0])
         node.n = node.n + 1
+
     def gradient(self, node, output_grad):
         return [bn_backward_op(node.inputs[0],output_grad,node.batchNormMode, node.Save_p,node.cudnnlist)]
     def infer_shape(self, node, input_shapes):
@@ -1634,7 +1625,9 @@ class BNBackwardOp(Op):
 
     def compute(self, node, input_vals, output_val, use_numpy=False):
         assert use_numpy==False
+
         gpu_op.bn_backward(input_vals[0],input_vals[1], output_val,node.batchNormMode, node.Save_p[0],node.Save_p[1],node.cudnnlist[0])
+
     def gradient(self, node, output_grad):
         raise NotImplementedError
     def infer_shape(self, node, input_shapes):
