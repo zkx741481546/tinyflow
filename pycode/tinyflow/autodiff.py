@@ -2,7 +2,7 @@
 from __future__ import absolute_import
 import time
 import numpy as np
-from . import ndarray, gpu_op, memoryManager
+from . import ndarray, gpu_op, memoryManager, memoryManagerController
 import random
 import queue
 
@@ -1879,6 +1879,7 @@ def nodelist_to_name(nodelist):
     for node in nodelist:
         nodename.append(node.name)
     return nodename
+
 class Executor(object):
     """Executor computes values for given set of nodes in computation graph."""
     def __init__(self, eval_node_list, ctx=None):
@@ -1897,10 +1898,10 @@ class Executor(object):
         self.node_to_shape_map = None
         self.node_to_arr_map = None
         self.feed_shapes = None
-        self.will_do_queue = queue.Queue()
+        self.control_queue = queue.Queue()
         self.have_done_queue = queue.Queue()
-        self.memoryManager = memoryManager.MemoryManager(self.will_do_queue, self.have_done_queue)
-        self.memoryManager.start()
+        self.memoryManagerController = memoryManagerController.MemoryManagerController(self.control_queue, self.have_done_queue)
+
 
         # 按照拓扑排序设定index
         for i in range(len(self.topo_order)):
@@ -2004,6 +2005,9 @@ class Executor(object):
 
         # Traverse graph in topo order and compute values for all nodes.
         for node in self.topo_order:
+
+            print(node.name)
+
             if node in node_to_val_map:
                 # Skip placeholder nodes. Values already provided by feed_dict.
                 continue
@@ -2018,6 +2022,9 @@ class Executor(object):
                     self.will_do_queue.put((n.index, node_to_val_map[n]))
                 elif n.array_status == 3:
                     self.will_do_queue.put((n.index, node_to_val_map[n]))
+
+            # 加入重计算的过程
+
 
             for n in node.inputs:
                 while n.array_status != 1:

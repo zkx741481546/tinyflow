@@ -267,6 +267,8 @@ def mnist_mlp(executor_ctx=None, num_epochs=10, print_loss_val_each_epoch=False)
                         b2: b2_val,
                         b3: b3_val})
 
+            exit(0)
+
             # todo 更新sgd_update_gpu_on_cpu
             def sgd_update_cpu(w1, w2, w3):
                 w1_gpu = ndarray.empty(w1.shape, executor_ctx)
@@ -295,6 +297,7 @@ def mnist_mlp(executor_ctx=None, num_epochs=10, print_loss_val_each_epoch=False)
                 print(loss_val.asnumpy())
             else:
                 print(loss_val)
+
 
     correct_predictions = []
     for minibatch_index in range(n_valid_batches):
