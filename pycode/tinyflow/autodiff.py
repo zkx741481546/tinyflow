@@ -27,6 +27,8 @@ class Node(object):
         self.index = 0
         self.array_status = 0
         # todo array_status 0 - cpu ,  1 - gpu , 2 - trans from cpu to gpu, 3 - trans from gpu to cpu
+        self.control_message_in = []
+        self.control_message_out = []
         #是不是参数
         self.isw = 0
 
@@ -2006,22 +2008,16 @@ class Executor(object):
         # Traverse graph in topo order and compute values for all nodes.
         for node in self.topo_order:
 
-            print(node.name)
 
             if node in node_to_val_map:
                 # Skip placeholder nodes. Values already provided by feed_dict.
+                # todo 找出feed_dict中已经包含的ndarray
+                node.array_status = 1
                 continue
 
 
-            # todo 可以在此处引入内存池，暂时考虑
-            # 新建一堆gpu变量，传到gpu变量中，开始运算，传回cpu变量中，完成。几个步骤
 
             input_vals = []
-            for n in node.inputs:
-                if n.array_status == 0:
-                    self.will_do_queue.put((n.index, node_to_val_map[n]))
-                elif n.array_status == 3:
-                    self.will_do_queue.put((n.index, node_to_val_map[n]))
 
             # 加入重计算的过程
 
@@ -2043,9 +2039,17 @@ class Executor(object):
 
             # node_val is modified in-place whether np.ndarray or NDArray
             # node_val是开辟出来用来保存每一个的节点的计算的结果的，计算成功后会放入node_to_val中
+            for control_message in node.control_message_in:
+                self.control_queue.put(control_message)
             node.op.compute(node, input_vals, node_val, False)
             # print(node.index)
             node_to_val_map[node] = node_val
+            for control_message in node.control_message_out:
+                self.control_queue.put(control_message)
+            while not self.have_done_queue.empty():
+                (node_index, node_ndarray_new) = self.have_done_queue.get()
+                node_to_val_map[self.topo_order[node_index]] = node_ndarray_new
+                self.topo_order[node_index].array_status = ndarray.is_gpu_ctx(node_ndarray_new.ctx)
 
         # Collect node values.
         return [node_to_val_map[n] for n in self.eval_node_list]
