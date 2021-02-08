@@ -18,10 +18,17 @@ class MemoryManagerController(threading.Thread):
 
     def run(self):
         while True:
+            # todo 接口内容：wait_time: 距离上一次swap的间隔时间，node_index和node_ndarray同Manager中的定义
+            # todo 在此处检查当前移动是否需要，即检查是否已经在对应的ctx中，加入变量move_to_gpu
             control_message = self.control_queue.get(block=True)
             wait_time = control_message[0]
             node_index = control_message[1]
             node_ndarray = control_message[2]
+            move_to_gpu = control_message[3]
+            if move_to_gpu and ndarray.is_gpu_ctx(node_ndarray.ctx):
+                continue
+            if not move_to_gpu and not ndarray.is_gpu_ctx(node_ndarray.ctx):
+                continue
             time.sleep(wait_time)
             self.will_do_queue.put((node_index, node_ndarray))
 

@@ -2024,6 +2024,7 @@ class Executor(object):
 
             for n in node.inputs:
                 while n.array_status != 1:
+                    # todo 考虑如何被动进行swap in
                     (node_index, node_val) = self.have_done_queue.get(block=True)
                     node_to_val_map[self.topo_order[node_index]] = node_val
                     if ndarray.is_gpu_ctx(node_val.ctx):
@@ -2039,17 +2040,25 @@ class Executor(object):
 
             # node_val is modified in-place whether np.ndarray or NDArray
             # node_val是开辟出来用来保存每一个的节点的计算的结果的，计算成功后会放入node_to_val中
+
             for control_message in node.control_message_in:
                 self.control_queue.put(control_message)
+
             node.op.compute(node, input_vals, node_val, False)
+
             # print(node.index)
             node_to_val_map[node] = node_val
+
             for control_message in node.control_message_out:
                 self.control_queue.put(control_message)
+
             while not self.have_done_queue.empty():
                 (node_index, node_ndarray_new) = self.have_done_queue.get()
                 node_to_val_map[self.topo_order[node_index]] = node_ndarray_new
-                self.topo_order[node_index].array_status = ndarray.is_gpu_ctx(node_ndarray_new.ctx)
+                if ndarray.is_gpu_ctx(node_ndarray_new.ctx):
+                    self.topo_order[node_index].array_status = 1
+                else:
+                    self.topo_order[node_index].array_status = 0
 
         # Collect node values.
         return [node_to_val_map[n] for n in self.eval_node_list]
