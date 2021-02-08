@@ -1884,7 +1884,7 @@ def nodelist_to_name(nodelist):
 
 class Executor(object):
     """Executor computes values for given set of nodes in computation graph."""
-    def __init__(self, eval_node_list, ctx=None):
+    def __init__(self, eval_node_list, ctx, top_control_queue):
         """
         Parameters
         ----------
@@ -1900,6 +1900,7 @@ class Executor(object):
         self.node_to_shape_map = None
         self.node_to_arr_map = None
         self.feed_shapes = None
+        self.top_control_queue = top_control_queue
         self.control_queue = queue.Queue()
         self.have_done_queue = queue.Queue()
         self.memoryManagerController = memoryManagerController.MemoryManagerController(self.control_queue, self.have_done_queue)
