@@ -2012,13 +2012,19 @@ class Executor(object):
 
             if node in node_to_val_map:
                 # Skip placeholder nodes. Values already provided by feed_dict.
-                # todo 找出feed_dict中已经包含的ndarray
+                # 找出feed_dict中已经包含的ndarray
                 node.array_status = 1
                 continue
 
-
+            if not self.top_control_queue.empty():
+                # 解析从上游传入的控制信息。
+                top_control_message = self.top_control_queue.get()
+                for control_node in self.topo_order:
+                    control_node.control_message_in.append()
+                    # todo 完善信息解码过程
 
             input_vals = []
+
 
             # 加入重计算的过程
 
