@@ -20,6 +20,7 @@ class MemoryManagerController(threading.Thread):
         while True:
             # todo 接口内容：wait_time: 距离上一次swap的间隔时间，node_index和node_ndarray同Manager中的定义
             # todo 在此处检查当前移动是否需要，即检查是否已经在对应的ctx中，加入变量move_to_gpu
+            # (wait_time, node_index, node_ndarray, move_to_gpu)
             control_message = self.control_queue.get(block=True)
             wait_time = control_message[0]
             node_index = control_message[1]

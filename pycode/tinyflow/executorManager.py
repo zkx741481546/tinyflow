@@ -246,8 +246,11 @@ if __name__ == '__main__':
     p.start()
     p.join()
     # todo 算法传入系统的信息规则
-    # 上层写入下层的每次的control message：task_id, node_id, start_time, start_node, destination
+    # 上层写入下层的每次的control message：task_id, node_id, start_time, start_node, move_to_gpu, start_node_type
     # 根据task_id选择对应的control_queue，将其余所有信息作为一个整体list放入queue中。
-    # 顺序为(start_node, start_time, node_id, destination)
+    # 顺序为(start_node, start_node_type, start_time, node_id, move_to_gpu)
     # 此处保证start_time按照顺序排布
+    # move_to_gpu: false means cpu, true means gpu
+    # start_node_type: 0 means input_time, 1 means output_time
+    # 此处全部为index
 
