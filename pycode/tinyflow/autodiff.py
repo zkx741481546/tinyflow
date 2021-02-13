@@ -31,6 +31,7 @@ class Node(object):
         self.control_message_in_time = 0
         self.control_message_out = []
         self.control_message_out_time = 0
+        self.recompute_list = []
         #是不是参数
         self.isw = 0
 
@@ -2018,7 +2019,7 @@ class Executor(object):
                 continue
 
             if not self.top_control_queue.empty():
-                # 解析从上游传入的控制信息。
+                # todo 解析从上游传入的控制信息。
 
                 top_control_message_list = self.top_control_queue.get()
 
@@ -2030,6 +2031,7 @@ class Executor(object):
                     control_node.control_message_in_time = 0
                     control_node.control_message_out = []
                     control_node.control_message_out_time = 0
+                    control_node.recompute_list = []
 
                 for top_control_message in top_control_message_list:
                     start_node_index = top_control_message[0]
@@ -2038,7 +2040,11 @@ class Executor(object):
                     start_time = top_control_message[2]
                     node_id = top_control_message[3]
                     move_to_gpu = top_control_message[4]
+                    is_recompute = top_control_message[5]
 
+                    if is_recompute:
+                        start_node.recompute_list.append(node_id)
+                        continue
                     if start_node_type == 0:
                         # (wait_time, node_index, node_ndarray, move_to_gpu)
                         start_node.control_message_in.append(
@@ -2054,9 +2060,6 @@ class Executor(object):
 
             input_vals = []
 
-
-
-
             while not self.have_done_queue.empty():
                 (node_index, node_val) = self.have_done_queue.get(block=False)
                 node_to_gpu_map[self.topo_order[node_index]] = node_val
@@ -2065,7 +2068,17 @@ class Executor(object):
                 else:
                     self.topo_order[node_index].array_status = 0
 
-            #todo  加入重计算的过程,重计算在被动swap in之前
+            for recompute_index in node.recompute_list:
+                # todo  加入重计算的过程,重计算在被动swap in之前
+                recompute_node = self.topo_order[recompute_index]
+                recompute_inputs = []
+                for input_node in recompute_node.inputs:
+                    recompute_inputs.append(node_to_gpu_map[input_node])
+                recompute_ndarray = ndarray.empty(self.node_to_shape_map[recompute_node], self.ctx_gpu)
+                recompute_node.array_status = 1
+                recompute_node.op.compute(recompute_node, recompute_inputs, recompute_ndarray, False)
+                node_to_gpu_map[recompute_node] = recompute_ndarray
+
 
             for n in node.inputs:
                 if n.array_status == 0:
