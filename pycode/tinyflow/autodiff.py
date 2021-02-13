@@ -1900,7 +1900,6 @@ class Executor(object):
         self.eval_node_list = eval_node_list
         self.topo_order = find_topo_sort(self.eval_node_list)
         self.node_to_shape_map = None
-        self.node_to_arr_map = None
         self.feed_shapes = None
         self.top_control_queue = top_control_queue
         self.control_queue = queue.Queue()
@@ -1953,9 +1952,11 @@ class Executor(object):
         ----------
         feed_shapes: node->shapes mapping for feed_dict nodes.
         """
-        self.node_to_arr_map = {}
-        for node in self.topo_order:
-            self.node_to_arr_map[node] = ndarray.empty(self.node_to_shape_map[node], ctx=self.ctx_cpu)
+        # self.node_to_arr_map = {}
+        # for node in self.topo_order:
+        #     self.node_to_arr_map[node] = ndarray.empty(self.node_to_shape_map[node], ctx=self.ctx_cpu)
+
+        assert False
 
     def run(self, feed_dict, convert_to_numpy_ret_vals=False):
         """
@@ -1975,31 +1976,29 @@ class Executor(object):
             return len(unmatched_item) == 0
 
         # Assume self.ctx is None implies numpy array and numpy ops.
-        node_to_val_map = {}
+        node_to_gpu_map = {}
+        node_to_cpu_map = {}
         for node, value in feed_dict.items():
-                # convert values to ndarray.NDArray if necessary
-                # 源代码会在此处将所有CPU的内容引入GPU，为了自定义，禁用自动引入的功能，改为手动引入
+            # convert values to ndarray.NDArray if necessary
+            # 源代码会在此处将所有CPU的内容引入GPU，为了自定义，禁用自动引入的功能，改为手动引入
 
             if isinstance(value, np.ndarray):
-                node_to_val_map[node] = ndarray.array(value, ctx=self.ctx_cpu)
+                node_to_gpu_map[node] = ndarray.array(value, ctx=self.ctx_cpu)
             elif isinstance(value, ndarray.NDArray):
-                node_to_val_map[node] = value
+                node_to_gpu_map[node] = value
             else:
                 assert False, "feed_dict value type not supported"
 
-
         # collect shapes for all placeholders
         feed_shapes = {}
-        for node in node_to_val_map:
-            feed_shapes[node] = node_to_val_map[node].shape
+        for node in node_to_gpu_map:
+            feed_shapes[node] = node_to_gpu_map[node].shape
 
         # infer shape if feed_shapes changed since last run
         # e.g. call run() on test data after trainng
         if (not are_feed_shapes_equal(feed_shapes, self.feed_shapes)):
             self.infer_shape(feed_shapes)
             self.feed_shapes = feed_shapes
-            # plan memory if using GPU
-            self.memory_plan(feed_shapes)
 
 
 
@@ -2012,7 +2011,7 @@ class Executor(object):
         for node in self.topo_order:
 
 
-            if node in node_to_val_map:
+            if node in node_to_gpu_map:
                 # Skip placeholder nodes. Values already provided by feed_dict.
                 # 找出feed_dict中已经包含的ndarray
                 node.array_status = 1
@@ -2056,22 +2055,28 @@ class Executor(object):
             input_vals = []
 
 
-            # 加入重计算的过程
 
+
+            while not self.have_done_queue.empty():
+                (node_index, node_val) = self.have_done_queue.get(block=False)
+                node_to_gpu_map[self.topo_order[node_index]] = node_val
+                if ndarray.is_gpu_ctx(node_val.ctx):
+                    self.topo_order[node_index].array_status = 1
+                else:
+                    self.topo_order[node_index].array_status = 0
+
+            #todo  加入重计算的过程,重计算在被动swap in之前
 
             for n in node.inputs:
-                while n.array_status != 1:
+                if n.array_status == 0:
                     # todo 考虑如何被动进行swap in
-                    (node_index, node_val) = self.have_done_queue.get(block=True)
-                    node_to_val_map[self.topo_order[node_index]] = node_val
-                    if ndarray.is_gpu_ctx(node_val.ctx):
-                        self.topo_order[node_index].array_status = 1
-                    else:
-                        self.topo_order[node_index].array_status = 0
+                    node_ndarray_new = ndarray.empty(node_to_cpu_map[n].shape, self.ctx_gpu)
+                    node_to_cpu_map[n].copyto(node_ndarray_new)
+                    node_to_gpu_map[n] = node_ndarray_new
+                    n.array_status = 1
+                input_vals.append(node_to_gpu_map[n])
 
-                input_vals.append(node_to_val_map[n])
-
-            # input_vals = [node_to_val_map[n] for n in node.inputs]
+            # input_vals = [node_to_gpu_map[n] for n in node.inputs]
             node_val = ndarray.empty(self.node_to_shape_map[node], self.ctx_gpu)
             node.array_status = 1
 
@@ -2082,29 +2087,31 @@ class Executor(object):
                 wait_time = control_message[0]
                 node_id = control_message[1]
                 move_to_gpu = control_message[2]
-                self.control_queue.put((wait_time, node_id, node_to_val_map[self.topo_order[node_id]], move_to_gpu))
+                self.control_queue.put((wait_time, node_id, node_to_gpu_map[self.topo_order[node_id]], move_to_gpu))
 
             node.op.compute(node, input_vals, node_val, False)
 
             # print(node.index)
-            node_to_val_map[node] = node_val
+            node_to_gpu_map[node] = node_val
 
             for control_message in node.control_message_out:
                 wait_time = control_message[0]
                 node_id = control_message[1]
                 move_to_gpu = control_message[2]
-                self.control_queue.put((wait_time, node_id, node_to_val_map[self.topo_order[node_id]], move_to_gpu))
+                self.control_queue.put((wait_time, node_id, node_to_gpu_map[self.topo_order[node_id]], move_to_gpu))
 
             while not self.have_done_queue.empty():
                 (node_index, node_ndarray_new) = self.have_done_queue.get()
-                node_to_val_map[self.topo_order[node_index]] = node_ndarray_new
                 if ndarray.is_gpu_ctx(node_ndarray_new.ctx):
                     self.topo_order[node_index].array_status = 1
+                    node_to_gpu_map[self.topo_order[node_index]] = node_ndarray_new
                 else:
                     self.topo_order[node_index].array_status = 0
+                    node_to_cpu_map[self.topo_order[node_index]] = node_ndarray_new
+                    node_to_gpu_map[self.topo_order[node_index]] = None
 
         # Collect node values.
-        return [node_to_val_map[n] for n in self.eval_node_list]
+        return [node_to_gpu_map[n] for n in self.eval_node_list]
 
 
 def gradients(output_node, node_list):
