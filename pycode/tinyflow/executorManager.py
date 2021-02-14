@@ -66,7 +66,7 @@ def sgd_update_gpu(param, grad_param, learning_rate):
     gpu_op.matrix_elementwise_add(param, grad_param, param)
 
 
-def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_queue):
+def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_queue, top_message_queue):
 
     # 训练一个三层感知机模型
     print("Build 3-layer MLP model...")
@@ -108,7 +108,7 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
     # 只声明，不操作
     executor = ad.Executor(
         [loss, grad_W1, grad_W2, grad_W3, grad_b1, grad_b2, grad_b3, y],
-        ctx=executor_ctx, top_control_queue=top_control_queue)
+        ctx=executor_ctx, top_control_queue=top_control_queue, top_message_queue=top_message_queue)
 
     # Read input data
     datasets = load_mnist_data("mnist.pkl.gz")
@@ -237,12 +237,15 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
 
 if __name__ == '__main__':
     top_control_queue_list = []
+    top_message_queue_list = []
     executor_ctx = ndarray.gpu(0)
     num_epochs = 20
     print_loss_val_each_epoch = True
     top_control_queue = queue.Queue()
     top_control_queue_list.append(top_control_queue)
-    p = Process(target=mnist_mlp, args=(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_queue))
+    top_message_queue = queue.Queue()
+    top_message_queue_list.append(top_message_queue)
+    p = Process(target=mnist_mlp, args=(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_queue, top_message_queue))
     p.start()
     p.join()
     # todo 算法传入系统的信息规则
