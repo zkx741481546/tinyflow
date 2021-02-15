@@ -336,7 +336,8 @@ int DLGpuArraySet(DLArrayHandle arr, float value) {
   float *arr_data = (float *)arr->data;
   matrix_array_set_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM>>>(
     count, arr_data, value);
-  return 0;
+  cudaDeviceSynchronize();
+    return 0;
 }
 
 int DLGpuBroadcastTo0(const DLArrayHandle input, DLArrayHandle output) {
@@ -361,6 +362,7 @@ int DLGpuBroadcastTo0(const DLArrayHandle input, DLArrayHandle output) {
     float* outputArr = (float*) output->data;
     matrix_broadcast_to_kernel0<<<BLOCK_NUM(outputCount), MAX_THREADS_NUM>>>(
     inputCount, inputArr, outputCount, outputArr);
+    cudaDeviceSynchronize();
     return 0;
 }
 
@@ -440,6 +442,7 @@ int DLGpuBroadcastToBackward0(const DLArrayHandle input, DLArrayHandle output) {
 
     }
     
+    cudaDeviceSynchronize();
     return 0;
 }
 
@@ -463,6 +466,7 @@ int DLGpuBroadcastTo1(const DLArrayHandle input, DLArrayHandle output) {
     matrix_broadcast_to_kernel12<<<BLOCK_NUM(count2), MAX_THREADS_NUM>>>(
     count1, outputArr, count2, outputArr);
 
+    cudaDeviceSynchronize();
     return 0;
 }
 
@@ -515,6 +519,7 @@ int DLGpuBroadcastToBackward1(const DLArrayHandle input, DLArrayHandle output) {
     cudaFree(tmpArr);
     cudaFree(tmpArr2);
 
+    cudaDeviceSynchronize();
     return 0;
 }
 
@@ -582,6 +587,7 @@ int DLGpuReduceSumAxisN(const DLArrayHandle input, DLArrayHandle output, const i
     matrix_reduce_sum_axis_n_kernel<<<BLOCK_NUM(outputCount), MAX_THREADS_NUM>>>(
             inputArr, outputCount, outputArr, reduceDim, stride, lowstride);
 
+    cudaDeviceSynchronize();
     return 0;
 }
 
@@ -612,6 +618,7 @@ int DLGpuReduceSumAxisNBackward(const DLArrayHandle input, DLArrayHandle output,
     matrix_reduce_sum_axis_n_kernel_backward<<<BLOCK_NUM(outputCount), MAX_THREADS_NUM>>>(
         inputArr, outputCount, outputArr, reduceDim, lowstride);
 
+    cudaDeviceSynchronize();
     return 0;
 }
 
@@ -791,6 +798,7 @@ int DLGReduceSumGetCudnnlist(const int *input_shapes,
     (*cudnnlist)[4] = WorkspaceSize;
 
     //CUDNN_CALL(cudnnDestroy(handle));
+
     return 0;
 
 
@@ -828,7 +836,8 @@ int DLGpuReduceSum(const DLArrayHandle input, DLArrayHandle output, void ***cudn
       //内存超了：
       *memorytoSaving = (int) *IndicesSize;
 
-      return 0;
+ 
+    return 0;
     }
 
 
@@ -838,7 +847,8 @@ int DLGpuReduceSum(const DLArrayHandle input, DLArrayHandle output, void ***cudn
       //内存超了：
       *memorytoSaving = (int) *WorkspaceSize;
       cudaFree(indices);
-      return 0;
+   
+    return 0;
     }
 
     auto alpha = 1.0f, beta = 0.0f;
@@ -862,6 +872,8 @@ int DLGpuReduceSum(const DLArrayHandle input, DLArrayHandle output, void ***cudn
     cudaFree(indices);
     cudaFree(workspace);
     //CUDNN_CALL(cudnnDestroy(handle));
+   
+    cudaDeviceSynchronize();
     return 0;
 
 
@@ -914,6 +926,7 @@ int DLGpuReduceSumAll(const DLArrayHandle input, DLArrayHandle output) {
     free(tmp);
     free(tmp1);
 
+    cudaDeviceSynchronize();
     return 0;
 }
 
@@ -927,6 +940,7 @@ int DLGpuReduceSumAllBackward(const DLArrayHandle input, DLArrayHandle output) {
 
 
     DLGpuArraySet(output, *val);
+    cudaDeviceSynchronize();
     return 0;
 }
 
@@ -944,6 +958,7 @@ int DLGpuReduceSumAxisZero(const DLArrayHandle input, DLArrayHandle output) {
     float* outputArr = (float*) output->data;
     matrix_reduce_sum_axis_zero_kernel<<<BLOCK_NUM(outputCount), MAX_THREADS_NUM>>>(
             inputArr, outputCount, outputArr, zeroDim);
+    cudaDeviceSynchronize();
     return 0;
 }
 
@@ -983,6 +998,7 @@ int DLGpuConcatForward(const DLArrayHandle input1, const DLArrayHandle input2,DL
     float* output_data = (float*)output->data;
     matrix_concat_to_kernel<<<BLOCK_NUM(OutputCount), MAX_THREADS_NUM>>>(
      Count1,input_data_a,Count2, input_data_b,OutputCount,output_data,count);
+    cudaDeviceSynchronize();
     return 0;
 }
 
@@ -1023,6 +1039,7 @@ int DLGpuConcataBackward(const DLArrayHandle input1,const DLArrayHandle input2,c
     float* dinput_data_a = (float*)dinput1->data;
     matrix_concat_a_backward_to_kernel<<<BLOCK_NUM(OutputCount), MAX_THREADS_NUM>>>(
      Count1,input_data_a,Count2, input_data_b,OutputCount,doutput_data,count,dinput_data_a);
+    cudaDeviceSynchronize();
     return 0;
 }
 
@@ -1062,6 +1079,7 @@ int DLGpuConcatbBackward(const DLArrayHandle input1,const DLArrayHandle input2,c
     float* dinput_data_b = (float*)dinput2->data;
     matrix_concat_b_backward_to_kernel<<<BLOCK_NUM(OutputCount), MAX_THREADS_NUM>>>(
      Count1,input_data_a,Count2, input_data_b,OutputCount,doutput_data,count,dinput_data_b);
+    cudaDeviceSynchronize();
     return 0;
 }
 
@@ -1084,7 +1102,8 @@ int DLGpuMatrixElementwiseAdd(const DLArrayHandle matA,
   float* outputData = (float*) output->data;
   matrix_elementwise_add_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM>>>(
           matAData, matBData, outputData, count);
-  return 0;
+  cudaDeviceSynchronize();
+    return 0;
 }
 
 int DLGpuMatrixElementwiseAddByConst(const DLArrayHandle input, float val,
@@ -1101,7 +1120,8 @@ int DLGpuMatrixElementwiseAddByConst(const DLArrayHandle input, float val,
   float* outputArr = (float*) output->data;
   matrix_elementwise_add_by_const_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM>>>(
           inputArr, val, outputArr, count);
-  return 0;
+  cudaDeviceSynchronize();
+    return 0;
 }
 
 int DLGpuMatrixElementwiseMultiply(const DLArrayHandle matA,
@@ -1120,7 +1140,8 @@ int DLGpuMatrixElementwiseMultiply(const DLArrayHandle matA,
   float* outputData = (float*) output->data;
   matrix_elementwise_multiply_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM>>>(
           matAData, matBData, outputData, count);
-  return 0;
+  cudaDeviceSynchronize();
+    return 0;
 }
 
 int DLGpuMatrixMultiplyByConst(const DLArrayHandle input, float val,
@@ -1138,7 +1159,8 @@ int DLGpuMatrixMultiplyByConst(const DLArrayHandle input, float val,
   float* outputArr = (float*) output->data;
   matrix_elementwise_multipy_by_const_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM>>>(
           inputArr, val, outputArr, count);
-  return 0;
+  cudaDeviceSynchronize();
+    return 0;
 }
 
 int DLGpuMatrixMultiply(const DLArrayHandle matA, bool transposeA,
@@ -1172,7 +1194,8 @@ matAData, matA->shape[1],
 & beta,
 matCData, (transposeB ? matB->shape[0] : matB->shape[1]));
 
-return 0;
+cudaDeviceSynchronize();
+    return 0;
 }
 
 int DLGpuRelu(const DLArrayHandle input, DLArrayHandle output) {
@@ -1186,6 +1209,7 @@ int DLGpuRelu(const DLArrayHandle input, DLArrayHandle output) {
     float* outputArr = (float*)output->data;
     matrix_relu_kernel << <BLOCK_NUM(count), MAX_THREADS_NUM >> > (
         inputArr, outputArr, count);
+    cudaDeviceSynchronize();
     return 0;
 }
 
@@ -1204,6 +1228,7 @@ int DLGpuReluGradient(const DLArrayHandle input, const DLArrayHandle in_grad,
     float* outputArr = (float*)output->data;
     matrix_relu_gradient_kernel << <BLOCK_NUM(count), MAX_THREADS_NUM >> > (
         inputArr, gradArr, outputArr, count);
+    cudaDeviceSynchronize();
     return 0;
 }
 
@@ -1224,6 +1249,7 @@ int DLGpuSoftmax(const DLArrayHandle input, DLArrayHandle output) {
 
     matrix_softmax_kernel << <grid, block >> > (nRow, nCol, inputArr, outputArr);
 
+    cudaDeviceSynchronize();
     return 0;
 }
 
@@ -1256,6 +1282,7 @@ int DLGpuSoftmaxCrossEntropy(const DLArrayHandle input_a,
     // memory size
     matrix_softmax_cross_entropy_kernel << <1, threads, nrow * sizeof(float) >> > (
         nrow, ncol, input_data_a, input_data_b, output_data);
+    cudaDeviceSynchronize();
     return 0;
 }
 
@@ -1270,6 +1297,7 @@ int DLGpuMatrixExp(const DLArrayHandle input, DLArrayHandle output) {
     float* outputArr = (float*) output->data;
     matrix_exp_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM>>>(
     inputArr, outputArr, count);
+    cudaDeviceSynchronize();
     return 0;
 }
 
@@ -1285,6 +1313,7 @@ int DLGpuMatrixLog(const DLArrayHandle input, DLArrayHandle output) {
     float* outputArr = (float*) output->data;
     matrix_log_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM>>>(
     inputArr, outputArr, count);
+    cudaDeviceSynchronize();
     return 0;
 }
 
@@ -1300,6 +1329,7 @@ int DLGpuMatrixReverse(const DLArrayHandle input, DLArrayHandle output) {
     float* outputArr = (float*) output->data;
     matrix_reverse_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM>>>(
     inputArr, outputArr, count);
+    cudaDeviceSynchronize();
     return 0;
 }
 
@@ -1314,6 +1344,7 @@ int DLGpuMatrixPow(const DLArrayHandle input,const float val, DLArrayHandle outp
     float* outputArr = (float*) output->data;
     matrix_pow_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM>>>(
     inputArr, val, outputArr, count);
+    cudaDeviceSynchronize();
     return 0;
 }
 
@@ -1326,6 +1357,7 @@ int DLGpuCreatecudnnHandle(void **cudnnHandle){
     CUDNN_CALL(cudnnCreate(&handle));
 
     *cudnnHandle = handle;
+    cudaDeviceSynchronize();
     return 0;
 
 }
@@ -1336,6 +1368,7 @@ int DLGpuDestroycudnnHandle(void **cudnnHandle){
     cudnnHandle_t handle = (cudnnHandle_t)(*cudnnHandle);
     CUDNN_CALL(cudnnDestroy(handle));
 
+    cudaDeviceSynchronize();
     return 0;
 
 }
@@ -1350,6 +1383,7 @@ int DLGpuCreatecublasHandle(void **cublasHandle){
     cublasCreate(&handle);
 
     *cublasHandle = handle;
+    cudaDeviceSynchronize();
     return 0;
 
 }
@@ -1360,6 +1394,7 @@ int DLGpuDestroycublasHandle(void **cublasHandle){
     cublasHandle_t handle = (cublasHandle_t)(*cublasHandle);
     cublasDestroy(handle);
 
+    cudaDeviceSynchronize();
     return 0;
 
 }
@@ -1426,7 +1461,8 @@ int DLGpuConvolution1DForward(const DLArrayHandle input,
       //内存超了：
       *memorytoSaving = (int) workspace_size;
 
-      return 0;
+  
+    return 0;
     }
 
 
@@ -1449,6 +1485,7 @@ int DLGpuConvolution1DForward(const DLArrayHandle input,
     cudaFree(workspace);
     //CUDNN_CALL(cudnnDestroy(handle));
 
+    cudaDeviceSynchronize();
     return 0;
 
 }
@@ -1579,6 +1616,7 @@ int DLGpuConvolution1DForwardGetOutShape(const int* input_shapes,
     (* cudnnlist)[2] = conv_descriptor;
     (* cudnnlist)[3] = output_descriptor;
 
+    
     return 0;
 
 }
@@ -1640,7 +1678,8 @@ int DLGpuConvolutionBackwardFilter(const DLArrayHandle input,
       //内存超了：
       *memorytoSaving = (int) workspace_size1;
 
-      return 0;
+    
+    return 0;
     }
 
     // convolution
@@ -1664,6 +1703,7 @@ int DLGpuConvolutionBackwardFilter(const DLArrayHandle input,
     //�ڴ�
     cudaFree(workspace1);
     //CUDNN_CALL(cudnnDestroy(handle));
+    cudaDeviceSynchronize();
     return 0;
 }
 
@@ -1725,7 +1765,8 @@ int DLGpuConvolutionBackwardData(const DLArrayHandle input,
       //内存超了：
       *memorytoSaving = (int) workspace_size2;
 
-      return 0;
+
+    return 0;
     }
 
 
@@ -1748,6 +1789,7 @@ int DLGpuConvolutionBackwardData(const DLArrayHandle input,
 
     cudaFree(workspace2);
     //CUDNN_CALL(cudnnDestroy(handle));
+    cudaDeviceSynchronize();
     return 0;
 
 }
@@ -1869,7 +1911,8 @@ int DLGpuConvolutionBackwardData(const DLArrayHandle input,
 //     cudaFree(workspace1);
 //     cudaFree(workspace2);
 //     //CUDNN_CALL(cudnnDestroy(handle));
-//     return 0;
+//     cudaDeviceSynchronize();
+   // return 0;
 
 // }
 
@@ -1938,7 +1981,8 @@ int DLGpuConvolution2DForward(const DLArrayHandle input,
       //内存超了：
       *memorytoSaving = (int) workspace_size;
 
-      return 0;
+ 
+    return 0;
     }
 
     // convolution
@@ -1960,6 +2004,7 @@ int DLGpuConvolution2DForward(const DLArrayHandle input,
     //�ڴ�
     cudaFree(workspace);
     //CUDNN_CALL(cudnnDestroy(handle));
+    cudaDeviceSynchronize();
     return 0;
 }
 
@@ -2095,6 +2140,7 @@ int DLGpuConvolution2DForwardGetOutShape(const int* input_shapes,
 
 
 
+ 
     return 0;
 
 }
@@ -2134,7 +2180,8 @@ int DLGpuConvolution2DForwardGetOutShape(const int* input_shapes,
 
 
 
-//     return 0;
+//     cudaDeviceSynchronize();
+  //  return 0;
 
 
 // }
@@ -2256,7 +2303,8 @@ int DLGpuConvolution2DForwardGetOutShape(const int* input_shapes,
 //     cudaFree(workspace1);
 //     cudaFree(workspace2);
 //     //CUDNN_CALL(cudnnDestroy(handle));
-//     return 0;
+//     cudaDeviceSynchronize();
+  //  return 0;
 // }
 
 //5ά
@@ -2316,7 +2364,8 @@ int DLGpuConvolution3DForward(const DLArrayHandle input,
       //内存超了：
       *memorytoSaving = (int) workspace_size;
 
-      return 0;
+     
+    return 0;
     }
 
 
@@ -2341,7 +2390,8 @@ int DLGpuConvolution3DForward(const DLArrayHandle input,
     //CUDNN_CALL(cudnnDestroy(handle));
 
 
-   return 0;
+   cudaDeviceSynchronize();
+    return 0;
 
 
 
@@ -2439,6 +2489,7 @@ int DLGpuConvolution3DForwardGetOutShape(const int* input_shapes,
     (* cudnnlist)[1] = filter_descriptor;
     (* cudnnlist)[2] = conv_descriptor;
     (* cudnnlist)[3] = output_descriptor;
+
 
     return 0;
 
@@ -2558,7 +2609,8 @@ int DLGpuConvolution3DForwardGetOutShape(const int* input_shapes,
 //     cudaFree(workspace1);
 //     cudaFree(workspace2);
 //     //CUDNN_CALL(cudnnDestroy(handle));
-//     return 0;
+//     cudaDeviceSynchronize();
+ //   return 0;
 // }
 
 
@@ -2599,6 +2651,7 @@ int DLGpuPooling1DForward(const DLArrayHandle input,
         output->data));
 
     //CUDNN_CALL(cudnnDestroy(handle));
+    cudaDeviceSynchronize();
     return 0;
 }
 
@@ -2748,6 +2801,7 @@ int DLGpuPooling1DBackward(const DLArrayHandle input,
 
 
     //CUDNN_CALL(cudnnDestroy(handle));
+    cudaDeviceSynchronize();
     return 0;
 }
 
@@ -2790,6 +2844,7 @@ int DLGpuPooling2DForward(const DLArrayHandle input,
 
 
     //CUDNN_CALL(cudnnDestroy(handle));
+    cudaDeviceSynchronize();
     return 0;
 }
 
@@ -2891,6 +2946,7 @@ int DLGpuPooling2DForwardGetOutShape(const int* input_shapes,
     (*cudnnlist)[1] = pool_descriptor;
     (*cudnnlist)[2] = output_descriptor;
 
+  
     return 0;
 
 
@@ -2934,6 +2990,7 @@ int DLGpuPooling2DBackward(const DLArrayHandle input,
 
 
     //CUDNN_CALL(cudnnDestroy(handle));
+    cudaDeviceSynchronize();
     return 0;
 }
 
@@ -2977,6 +3034,7 @@ int DLGpuPooling3DForward(const DLArrayHandle input,
 
 
     //CUDNN_CALL(cudnnDestroy(handle));
+    cudaDeviceSynchronize();
     return 0;
 
 }
@@ -3058,6 +3116,7 @@ int DLGpuPooling3DForwardGetOutShape(const int* input_shapes,
     (*cudnnlist)[1] = pool_descriptor;
     (*cudnnlist)[2] = output_descriptor;
 
+   
     return 0;
 
 
@@ -3108,6 +3167,7 @@ int DLGpuPooling3DBackward(const DLArrayHandle input,
 
 
     //CUDNN_CALL(cudnnDestroy(handle));
+    cudaDeviceSynchronize();
     return 0;
 
 }
@@ -3177,6 +3237,7 @@ int DLGpuActivationForward(const DLArrayHandle input,
 
     //CUDNN_CALL(cudnnDestroy(handle));
 
+    cudaDeviceSynchronize();
     return 0;
 
 
@@ -3266,6 +3327,7 @@ int DLGpuGetInputDescriptor(const int *input_shapes,
 
     * inputd = (void **)malloc(sizeof(void *)*1);
     (*inputd)[0] = input_descriptor;
+
     return 0;
 }
 
@@ -3373,6 +3435,7 @@ int DLGpuActivationGetCudnnlist(const int *input_shapes,
 
     }
 
+   
     return 0;
 
 
@@ -3444,6 +3507,7 @@ int DLGpuActivationBackward(const DLArrayHandle input,
 
     //CUDNN_CALL(cudnnDestroy(handle));
 
+    cudaDeviceSynchronize();
     return 0;
 
 
@@ -3490,7 +3554,8 @@ int DLGpuDropoutForward(const DLArrayHandle input,
       //内存超了：
       *memorytoSaving = (int) stateSizeInBytes;
 
-      return 0;
+      
+    return 0;
     }
 
     e = cudaMalloc((void**)reserveSpace_p, reserveSpaceSizeInBytes);
@@ -3499,7 +3564,8 @@ int DLGpuDropoutForward(const DLArrayHandle input,
       //内存超了：
       *memorytoSaving = (int) reserveSpaceSizeInBytes;
       cudaFree(states);
-      return 0;
+     
+    return 0;
     }
 
 
@@ -3534,6 +3600,7 @@ int DLGpuDropoutForward(const DLArrayHandle input,
     (*cudnnlist)[0] = input_descriptor;
     (*cudnnlist)[1] = dropout_descriptor;
 
+    cudaDeviceSynchronize();
     return 0;
 
 }
@@ -3591,6 +3658,7 @@ int DLGpuDropoutBackward(const DLArrayHandle doutput,
     //CUDNN_CALL(cudnnDestroy(handle));
     cudaFree(*reserveSpace_p);
     free(*cudnnlist);
+    cudaDeviceSynchronize();
     return 0;
 
 }
@@ -3806,6 +3874,7 @@ int DLGpuCrossEntropy(const DLArrayHandle input_a,
     // memory size
     matrix_cross_entropy_kernel << <1, threads, nrow * sizeof(float) >> > (
         nrow, ncol, input_data_a, input_data_b, output_data);
+    cudaDeviceSynchronize();
     return 0;
 }
 int DLGpuL1loss(const DLArrayHandle input_a,
@@ -3834,6 +3903,7 @@ int DLGpuL1loss(const DLArrayHandle input_a,
     // memory size
     matrix_l1loss_kernel << <1, threads, nrow * sizeof(float) >> > (
         nrow, ncol, input_data_a, input_data_b, output_data);
+    cudaDeviceSynchronize();
     return 0;
 }
 int DLGpuL2loss(const DLArrayHandle input_a,
@@ -3862,6 +3932,7 @@ int DLGpuL2loss(const DLArrayHandle input_a,
     // memory size
     matrix_l2loss_kernel << <1, threads, nrow * sizeof(float) >> > (
         nrow, ncol, input_data_a, input_data_b, output_data);
+    cudaDeviceSynchronize();
     return 0;
 }
 
@@ -3886,6 +3957,7 @@ int DLGpuL1LossGradient(const DLArrayHandle input, const DLArrayHandle input1,co
 
     matrix_l1lossgradient_kernel << <1, threads >> > (
         inputArr, inputArr1,gradArr, outputArr, count,n);
+    cudaDeviceSynchronize();
     return 0;
 }
 int DLGpuL2LossGradient(const DLArrayHandle input, const DLArrayHandle input1,const DLArrayHandle in_grad,
@@ -3909,6 +3981,7 @@ int DLGpuL2LossGradient(const DLArrayHandle input, const DLArrayHandle input1,co
 
     matrix_l2lossgradient_kernel << <1, threads >> > (
         inputArr, inputArr1,gradArr, outputArr, count,n);
+    cudaDeviceSynchronize();
     return 0;
 }
 int DLGpuL1regular(const DLArrayHandle input_a,
@@ -3932,6 +4005,7 @@ int DLGpuL1regular(const DLArrayHandle input_a,
     // memory size
     matrix_l1regular_kernel << <1, threads, nrow * sizeof(float) >> > (
         nrow, ncol, input_data_a, output_data);
+    cudaDeviceSynchronize();
     return 0;
 }
 int DLGpuL2regular(const DLArrayHandle input_a,
@@ -3955,6 +4029,7 @@ int DLGpuL2regular(const DLArrayHandle input_a,
     // memory size
     matrix_l2regular_kernel << <1, threads, nrow * sizeof(float) >> > (
         nrow, ncol, input_data_a, output_data);
+    cudaDeviceSynchronize();
     return 0;
 }
 
@@ -3976,6 +4051,7 @@ int DLGpuL1regularGradient(const DLArrayHandle input,const DLArrayHandle in_grad
 
     matrix_l1regulargradient_kernel << <1, threads >> > (
         inputArr, gradArr, outputArr, count,n);
+    cudaDeviceSynchronize();
     return 0;
 }
 int DLGpuL2regularGradient(const DLArrayHandle input, const DLArrayHandle in_grad,
@@ -3996,6 +4072,7 @@ int DLGpuL2regularGradient(const DLArrayHandle input, const DLArrayHandle in_gra
 
     matrix_l2regulargradient_kernel << <1, threads >> > (
         inputArr, gradArr, outputArr, count,n);
+    cudaDeviceSynchronize();
     return 0;
 }
 
@@ -4154,7 +4231,8 @@ int DLGpuBatchNormalizationForward(const DLArrayHandle input,
       //内存超了：
       *memorytoSaving = (int) *s;
 
-      return 0;
+      
+    return 0;
     }
     e = cudaMalloc((void**)&bnBias, *s);
 
@@ -4162,7 +4240,8 @@ int DLGpuBatchNormalizationForward(const DLArrayHandle input,
       //内存超了：
       *memorytoSaving = (int) *s;
       cudaFree(bnScale);
-      return 0;
+    
+    return 0;
     }
     e = cudaMalloc((void**)&resultSaveMean, *s);
 
@@ -4171,7 +4250,8 @@ int DLGpuBatchNormalizationForward(const DLArrayHandle input,
       *memorytoSaving = (int) *s;
       cudaFree(bnScale);
       cudaFree(bnBias);
-      return 0;
+    
+    return 0;
     }
     e = cudaMalloc((void**)&resultSaveInvVariance, *s);
 
@@ -4181,7 +4261,8 @@ int DLGpuBatchNormalizationForward(const DLArrayHandle input,
       cudaFree(bnScale);
       cudaFree(bnBias);
       cudaFree(resultSaveMean);
-      return 0;
+     
+    return 0;
     }
 
 
@@ -4235,6 +4316,7 @@ int DLGpuBatchNormalizationForward(const DLArrayHandle input,
     cudaFree(resultRunningVariance);
 
     //CUDNN_CALL(cudnnDestroy(handle));
+    cudaDeviceSynchronize();
     return 0;
 
 
@@ -4278,7 +4360,8 @@ int DLGpuBatchNormalizationBackward(const DLArrayHandle input,
       //内存超了：
       *memorytoSaving = (int) *s;
 
-      return 0;
+     
+    return 0;
     }
     e = cudaMalloc((void**)&resultBnScaleDiff, *s);
 
@@ -4286,7 +4369,8 @@ int DLGpuBatchNormalizationBackward(const DLArrayHandle input,
       //内存超了：
       *memorytoSaving = (int) *s;
       cudaFree(bnScale);
-      return 0;
+   
+    return 0;
     }
     e = cudaMalloc((void**)&resultBnBiasDiff, *s);
 
@@ -4295,7 +4379,8 @@ int DLGpuBatchNormalizationBackward(const DLArrayHandle input,
       *memorytoSaving = (int) *s;
       cudaFree(bnScale);
       cudaFree(resultBnScaleDiff);
-      return 0;
+    
+    return 0;
     }
 
 
@@ -4335,6 +4420,7 @@ int DLGpuBatchNormalizationBackward(const DLArrayHandle input,
     cudaFree(*Variance_p);
     // CUDNN_CALL(cudnnDestroyTensorDescriptor(bnScaleBiasDiffDesc));
     //CUDNN_CALL(cudnnDestroy(handle));
+    cudaDeviceSynchronize();
     return 0;
 
 
@@ -4368,6 +4454,7 @@ int DLGpuAdam(DLArrayHandle output,
         outputData, mData, vData,  
         b1t, b2t, e, learning_rate,
         count);
+    cudaDeviceSynchronize();
     return 0;
 }
 
@@ -4411,6 +4498,7 @@ int DLGpuAdam_mv(DLArrayHandle m,
     b1,b2,
     count*2,
     count);
+    cudaDeviceSynchronize();
     return 0;
 }
 
@@ -4441,6 +4529,7 @@ int DLGpuSgdUpdate(DLArrayHandle output,
     outputData, mData, 
     b,
     count);
+    cudaDeviceSynchronize();
     return 0;
 }
 
@@ -4464,6 +4553,7 @@ int DLGpuGetIndextoVaribaleNumberCudaPointer(int *index_to_number,
     (*result)[1] = cuda_prefix;
 
 
+    cudaDeviceSynchronize();
     return 0;
 
 }
@@ -4485,6 +4575,7 @@ int DLGpuGetN2CudaPointer(void** output, void** g, int number,void **** result){
     (*result)[1] = (void **)gData;
 
 
+    cudaDeviceSynchronize();
     return 0;
 
 }
@@ -4512,6 +4603,7 @@ int DLGpuGetN4CudaPointer(void** output, void** m, void** v, void** g, int numbe
 
 
 
+    cudaDeviceSynchronize();
     return 0;
 
 }
@@ -4632,7 +4724,8 @@ __global__ void adam_mv_o_1_kernel(float** outputArr, float** mArr, float** vArr
 //     // finish = clock();
 //     // double duration = (double)(finish - start) / CLOCKS_PER_SEC;
 //     // printf( "Total elapsed %lf seconds\n", duration);
-//     return 0;
+//     cudaDeviceSynchronize();
+  //  return 0;
 
 // }
 
@@ -4673,6 +4766,7 @@ int DLGpuSgd_o(void **** n2list,
     // finish = clock();
     // double duration = (double)(finish - start) / CLOCKS_PER_SEC;
     // printf( "Total elapsed %lf seconds\n", duration);
+    cudaDeviceSynchronize();
     return 0;
 
 }
@@ -4702,6 +4796,7 @@ int DLGpuAdam_o(void **** n4list,
     // finish = clock();
     // double duration = (double)(finish - start) / CLOCKS_PER_SEC;
     // printf( "Total elapsed %lf seconds\n", duration);
+    cudaDeviceSynchronize();
     return 0;
 
 }
