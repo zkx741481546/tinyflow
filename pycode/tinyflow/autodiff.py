@@ -2207,8 +2207,18 @@ class Executor(object):
                 node_id = control_message[1]
                 move_to_gpu = control_message[2]
                 self.control_queue.put((wait_time, node_id, node_to_gpu_map[self.topo_order[node_id]], move_to_gpu))
+            print("compute start")
+            timea = time.time()
 
-            node.op.compute(node, input_vals, node_val, False)
+            for i in range(10):
+                timeb = time.time()
+                print(timeb - timea)
+                node.op.compute(node, input_vals, node_val, False)
+
+            print("compute end")
+            timeb = time.time()
+            print("cost time:")
+            print(timeb - timea)
 
             # print(node.index)
             node_to_gpu_map[node] = node_val

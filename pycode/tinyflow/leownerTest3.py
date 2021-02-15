@@ -87,66 +87,42 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
 
     # relu(X W1+b1)
     z1 = ad.matmul_op(X, W1)
-    z2 = z1 + ad.broadcastto_op(b1, z1)
-    z3 = ad.relu_op(z2)
 
-    # relu(z3 W2+b2)
-    z4 = ad.matmul_op(z3, W2)
-    z5 = z4 + ad.broadcastto_op(b2, z4)
-    z6 = ad.relu_op(z5)
 
-    # softmax(z5 W2+b2)
-    z7 = ad.matmul_op(z6, W3)
-    y = z7 + ad.broadcastto_op(b3, z7)
 
-    loss = ad.softmaxcrossentropy_op(y, y_)
-
-    grad_W1, grad_W2, grad_W3, grad_b1, grad_b2, grad_b3 = ad.gradients(
-        loss, [W1, W2, W3, b1, b2, b3])
 
     # 此处向前为符号定义
 
     # 只声明，不操作
     executor = ad.Executor(
-        [loss, grad_W1, grad_W2, grad_W3, grad_b1, grad_b2, grad_b3, y],
+        [z1],
         ctx=executor_ctx, top_control_queue=top_control_queue, top_message_queue=top_message_queue)
 
-    # Read input data
-    datasets = load_mnist_data("mnist.pkl.gz")
-    train_set_x, train_set_y = datasets[0]
-    valid_set_x, valid_set_y = datasets[1]
-    test_set_x, test_set_y = datasets[2]
 
-    # Set up minibatch
-    batch_size = 1000
-    n_train_batches = train_set_x.shape[0] // batch_size
-    n_valid_batches = valid_set_x.shape[0] // batch_size
 
     print("Start training loop...")
 
     # Initialize parameters
     # 随机初始化网络中的w和b
     rand = np.random.RandomState(seed=123)
-    W1_val = rand.normal(scale=0.1, size=(784, 256))
-    W2_val = rand.normal(scale=0.1, size=(256, 100))
-    W3_val = rand.normal(scale=0.1, size=(100, 10))
-    b1_val = rand.normal(scale=0.1, size=(256))
-    b2_val = rand.normal(scale=0.1, size=(100))
-    b3_val = rand.normal(scale=0.1, size=(10))
-    X_val = np.empty(shape=(batch_size, 784), dtype=np.float32)
-    y_val = np.empty(shape=(batch_size, 10), dtype=np.float32)
-    valid_X_val = np.empty(shape=(batch_size, 784), dtype=np.float32)
-    valid_y_val = np.empty(shape=(batch_size, 10), dtype=np.float32)
+    W1_val = np.ones((7840, 25600))
 
-    # todo 此处修改回gpu
+    X_val = np.ones((20000, 7840))
+
+
     W1_val = ndarray.array(W1_val, ctx=executor_ctx)
-    W2_val = ndarray.array(W2_val, ctx=executor_ctx)
-    W3_val = ndarray.array(W3_val, ctx=executor_ctx)
-    b1_val = ndarray.array(b1_val, ctx=executor_ctx)
-    b2_val = ndarray.array(b2_val, ctx=executor_ctx)
-    b3_val = ndarray.array(b3_val, ctx=executor_ctx)
+
     X_val = ndarray.array(X_val, ctx=executor_ctx)
-    y_val = ndarray.array(y_val, ctx=executor_ctx)
+
+    z1_val = executor.run(
+        feed_dict={
+            X: X_val,
+            W1: W1_val,
+        }
+    )
+
+    print("success")
+    return 0
 
     # 此处以上将数据分别转化为cpu和gpu两种格式
 

@@ -7,7 +7,7 @@ import numpy as np
 import os
 import queue
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '3'
+# os.environ['CUDA_VISIBLE_DEVICES'] = '3'
 
 
 def load_mnist_data(dataset):
@@ -133,8 +133,8 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
     b1_val = rand.normal(scale=0.1, size=(2560))
     b2_val = rand.normal(scale=0.1, size=(1000))
     b3_val = rand.normal(scale=0.1, size=(100))
-    X_val = rand.normal(scale=0.1, size=(200, 7840))
-    y_val = rand.normal(scale=0.1, size=(200, 100))
+    X_val = rand.normal(scale=0.1, size=(2000, 7840))
+    y_val = rand.normal(scale=0.1, size=(2000, 100))
 
 
     # todo 此处修改回gpu
@@ -161,8 +161,8 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
             b2: b2_val,
             b3: b3_val})
     print(loss_val.asnumpy())
-    exit(0)
 
+    return 0
 
     lr = 1.0e-3
     for i in range(num_epochs):
