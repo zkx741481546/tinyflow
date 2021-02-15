@@ -7,6 +7,7 @@ import six.moves.cPickle as pickle
 import gzip
 import os
 
+os.environ['CUDA_VISIBLE_DEVICES']='3'
 
 def load_mnist_data(dataset):
     # 加载mnist数据集

@@ -1,13 +1,11 @@
-from multiprocessing import Process
-from pycode.tinyflow import ndarray, gpu_op
 from pycode.tinyflow import autodiff as ad
+from pycode.tinyflow import ndarray, gpu_op
+import numpy as np
+
+import argparse
 import six.moves.cPickle as pickle
 import gzip
-import numpy as np
 import os
-import queue
-
-os.environ['CUDA_VISIBLE_DEVICES'] = '3'
 
 
 def load_mnist_data(dataset):
@@ -56,7 +54,7 @@ def load_mnist_data(dataset):
 
 def convert_to_one_hot(vals):
     """Helper method to convert label array to one-hot array."""
-    one_hot_vals = np.zeros((vals.size, vals.max() + 1))
+    one_hot_vals = np.zeros((vals.size, vals.max()+1))
     one_hot_vals[np.arange(vals.size), vals] = 1
     return one_hot_vals
 
@@ -70,7 +68,97 @@ def sgd_update_gpu(param, grad_param, learning_rate):
     gpu_op.matrix_elementwise_add(param, grad_param, param)
 
 
-def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_queue, top_message_queue):
+def mnist_logreg(executor_ctx=None, num_epochs=10, print_loss_val_each_epoch=False):
+    # 训练逻辑回归模型
+    print("Build logistic regression model...")
+
+    W1 = ad.Variable(name="W1")
+    b1 = ad.Variable(name="b1")
+    X = ad.Variable(name="X")
+    y_ = ad.Variable(name="y_")
+
+    z1 = ad.matmul_op(X, W1)
+    y = z1 + ad.broadcastto_op(b1, z1)
+
+    loss = ad.softmaxcrossentropy_op(y, y_)
+
+    grad_W1, grad_b1 = ad.gradients(loss, [W1, b1])
+    executor = ad.Executor([loss, grad_W1, grad_b1, y], ctx=executor_ctx)
+
+    # Read input data
+    datasets = load_mnist_data("mnist.pkl.gz")
+    train_set_x, train_set_y = datasets[0]
+    valid_set_x, valid_set_y = datasets[1]
+    test_set_x, test_set_y = datasets[2]
+
+    # Set up minibatch
+    batch_size = 1000
+    n_train_batches = train_set_x.shape[0] // batch_size
+    n_valid_batches = valid_set_x.shape[0] // batch_size
+
+    print("Start training loop...")
+
+    # Initialize parameters
+    W1_val = np.zeros((784, 10))
+    b1_val = np.zeros((10))
+    X_val = np.empty(shape=(batch_size, 784), dtype=np.float32)
+    y_val = np.empty(shape=(batch_size, 10), dtype=np.float32)
+    valid_X_val = np.empty(shape=(batch_size, 784), dtype=np.float32)
+    valid_y_val = np.empty(shape=(batch_size, 10), dtype=np.float32)
+    if ndarray.is_gpu_ctx(executor_ctx):
+        W1_val = ndarray.array(W1_val, ctx=executor_ctx)
+        b1_val = ndarray.array(b1_val, ctx=executor_ctx)
+        X_val = ndarray.array(X_val, ctx=executor_ctx)
+        y_val = ndarray.array(y_val, ctx=executor_ctx)
+
+    lr = 1e-3
+    for i in range(num_epochs):
+        print("epoch %d" % i)
+        for minibatch_index in range(n_train_batches):
+            minibatch_start = minibatch_index * batch_size
+            minibatch_end = (minibatch_index + 1) * batch_size
+            X_val[:] = train_set_x[minibatch_start:minibatch_end]
+            y_val[:] = convert_to_one_hot(
+                train_set_y[minibatch_start:minibatch_end])
+            loss_val, grad_W1_val, grad_b1_val, _ = executor.run(
+                feed_dict = {X: X_val, y_: y_val, W1: W1_val, b1: b1_val})
+            # SGD update
+            if (executor_ctx is None):
+                W1_val = W1_val - lr * grad_W1_val
+                b1_val = b1_val - lr * grad_b1_val
+            else:
+                sgd_update_gpu(W1_val, grad_W1_val, lr)
+                sgd_update_gpu(b1_val, grad_b1_val, lr)
+        if print_loss_val_each_epoch:
+            if isinstance(loss_val, ndarray.NDArray):
+                print(loss_val.asnumpy())
+            else:
+                print(loss_val)
+
+    correct_predictions = []
+    for minibatch_index in range(n_valid_batches):
+        minibatch_start = minibatch_index * batch_size
+        minibatch_end = (minibatch_index + 1) * batch_size
+        valid_X_val[:] = valid_set_x[minibatch_start:minibatch_end]
+        valid_y_val[:] = convert_to_one_hot(
+            valid_set_y[minibatch_start:minibatch_end])
+        _, _, _, valid_y_predicted = executor.run(
+            feed_dict={
+                        X: valid_X_val,
+                        y_: valid_y_val,
+                        W1: W1_val,
+                        b1: b1_val},
+            convert_to_numpy_ret_vals=True)
+        correct_prediction = np.equal(
+            np.argmax(valid_y_val, 1),
+            np.argmax(valid_y_predicted, 1)).astype(np.float)
+        correct_predictions.extend(correct_prediction)
+    accuracy = np.mean(correct_predictions)
+    # validation set accuracy=0.928200
+    print("validation set accuracy=%f" % accuracy)
+
+
+def mnist_mlp(executor_ctx=None, num_epochs=10, print_loss_val_each_epoch=False):
     # 训练一个三层感知机模型
     print("Build 3-layer MLP model...")
 
@@ -104,18 +192,21 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
     grad_W1, grad_W2, grad_W3, grad_b1, grad_b2, grad_b3 = ad.gradients(
         loss, [W1, W2, W3, b1, b2, b3])
 
+
     # 此处向前为符号定义
+
 
     # 只声明，不操作
     executor = ad.Executor(
         [loss, grad_W1, grad_W2, grad_W3, grad_b1, grad_b2, grad_b3, y],
-        ctx=executor_ctx, top_control_queue=top_control_queue, top_message_queue=top_message_queue)
+        ctx=executor_ctx)
 
     # Read input data
     datasets = load_mnist_data("mnist.pkl.gz")
     train_set_x, train_set_y = datasets[0]
     valid_set_x, valid_set_y = datasets[1]
     test_set_x, test_set_y = datasets[2]
+
 
     # Set up minibatch
     batch_size = 1000
@@ -150,6 +241,8 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
 
     # 此处以上将数据分别转化为cpu和gpu两种格式
 
+
+
     lr = 1.0e-3
     for i in range(num_epochs):
         print("epoch %d" % i)
@@ -160,18 +253,20 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
             y_val[:] = convert_to_one_hot(
                 train_set_y[minibatch_start:minibatch_end])
 
+
             # 计算单步的梯度
             loss_val, grad_W1_val, grad_W2_val, grad_W3_val, \
-            grad_b1_val, grad_b2_val, grad_b3_val, _ = executor.run(
-                feed_dict={
-                    X: X_val,
-                    y_: y_val,
-                    W1: W1_val,
-                    W2: W2_val,
-                    W3: W3_val,
-                    b1: b1_val,
-                    b2: b2_val,
-                    b3: b3_val})
+                grad_b1_val, grad_b2_val, grad_b3_val, _ = executor.run(
+                    feed_dict={
+                        X: X_val,
+                        y_: y_val,
+                        W1: W1_val,
+                        W2: W2_val,
+                        W3: W3_val,
+                        b1: b1_val,
+                        b2: b2_val,
+                        b3: b3_val})
+
 
             # todo 更新sgd_update_gpu_on_cpu
             # def sgd_update_cpu(w1, w2, w3):
@@ -231,26 +326,35 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
     print("validation set accuracy=%f" % accuracy)
 
 
-if __name__ == '__main__':
-    top_control_queue_list = []
-    top_message_queue_list = []
-    executor_ctx = ndarray.gpu(0)
+if __name__ == "__main__":
+
+
+    # if args.model == "logreg":
+    #     models = [mnist_logreg]
+    # elif args.model == "mlp":
+    #     models = [mnist_mlp]
+    # elif args.model == "all":
+    #     models = [mnist_logreg, mnist_mlp]
+    #
+    # if args.executor_context == "numpy":
+    #     executor_ctx = None
+    # elif args.executor_context == "gpu":
+    #     # Assume only use gpu 0.
+    #     executor_ctx = ndarray.gpu(0)
+    #
+    # if args.print_loss_val_each_epoch:
+    #     print_loss_val_each_epoch = True
+
     num_epochs = 20
+    models = [mnist_mlp]
+    executor_ctx = ndarray.gpu(0)
+    executor_ctx_cpu = ndarray.cpu(0)
+
     print_loss_val_each_epoch = True
-    top_control_queue = queue.Queue()
-    top_control_queue_list.append(top_control_queue)
-    top_message_queue = queue.Queue()
-    top_message_queue_list.append(top_message_queue)
-    p = Process(target=mnist_mlp,
-                args=(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_queue, top_message_queue))
-    p.start()
-    p.join()
-    # todo 算法传入系统的信息规则
-    # 上层写入下层的每次的control message：task_id, node_id, start_time, start_node, move_to_gpu, start_node_type, recompute
-    # 根据task_id选择对应的control_queue，将其余所有信息作为一个整体list放入queue中。
-    # 顺序为(start_node, start_node_type, start_time, node_id, move_to_gpu, recompute)
-    # 此处保证start_time按照顺序排布
-    # move_to_gpu: false means cpu, true means gpu
-    # start_node_type: 0 means input_time, 1 means output_time
-    # recompute: false means swap, true means recompute
-    # 此处全部为index
+
+    for m in models:
+        import time
+        tic = time.time()
+        m(executor_ctx, num_epochs, print_loss_val_each_epoch)
+        toc = time.time()
+        print("mode use time: " + str(toc - tic))

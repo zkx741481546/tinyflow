@@ -127,16 +127,15 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
     # Initialize parameters
     # 随机初始化网络中的w和b
     rand = np.random.RandomState(seed=123)
-    W1_val = rand.normal(scale=0.1, size=(784, 256))
-    W2_val = rand.normal(scale=0.1, size=(256, 100))
-    W3_val = rand.normal(scale=0.1, size=(100, 10))
-    b1_val = rand.normal(scale=0.1, size=(256))
-    b2_val = rand.normal(scale=0.1, size=(100))
-    b3_val = rand.normal(scale=0.1, size=(10))
-    X_val = np.empty(shape=(batch_size, 784), dtype=np.float32)
-    y_val = np.empty(shape=(batch_size, 10), dtype=np.float32)
-    valid_X_val = np.empty(shape=(batch_size, 784), dtype=np.float32)
-    valid_y_val = np.empty(shape=(batch_size, 10), dtype=np.float32)
+    W1_val = rand.normal(scale=0.1, size=(7840, 2560))
+    W2_val = rand.normal(scale=0.1, size=(2560, 1000))
+    W3_val = rand.normal(scale=0.1, size=(1000, 100))
+    b1_val = rand.normal(scale=0.1, size=(2560))
+    b2_val = rand.normal(scale=0.1, size=(1000))
+    b3_val = rand.normal(scale=0.1, size=(100))
+    X_val = rand.normal(scale=0.1, size=(200, 7840))
+    y_val = rand.normal(scale=0.1, size=(200, 100))
+
 
     # todo 此处修改回gpu
     W1_val = ndarray.array(W1_val, ctx=executor_ctx)
@@ -149,6 +148,21 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
     y_val = ndarray.array(y_val, ctx=executor_ctx)
 
     # 此处以上将数据分别转化为cpu和gpu两种格式
+
+    loss_val, grad_W1_val, grad_W2_val, grad_W3_val, \
+    grad_b1_val, grad_b2_val, grad_b3_val, _ = executor.run(
+        feed_dict={
+            X: X_val,
+            y_: y_val,
+            W1: W1_val,
+            W2: W2_val,
+            W3: W3_val,
+            b1: b1_val,
+            b2: b2_val,
+            b3: b3_val})
+    print(loss_val.asnumpy())
+    exit(0)
+
 
     lr = 1.0e-3
     for i in range(num_epochs):
