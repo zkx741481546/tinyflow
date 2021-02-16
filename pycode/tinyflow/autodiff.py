@@ -80,7 +80,6 @@ def Variable(name):
 
     # 数据用
 
-
 def Placeholder(name):
     """User defined variables in an expression.
         e.g. x = Variable(name = "x")
@@ -2107,7 +2106,7 @@ class Executor(object):
             # convert values to ndarray.NDArray if necessary
             # 源代码会在此处将所有CPU的内容引入GPU，为了自定义，禁用自动引入的功能，改为手动引入
 
-            if isinstance(value, np.ndarray):
+            # 源代码会在此处将所有CPU的内容引入GPU，为了自定义，禁用自动引入的功能，改为手动引入if isinstance(value, np.ndarray):
                 node_to_gpu_map[node] = ndarray.array(value, ctx=self.ctx_cpu)
             elif isinstance(value, ndarray.NDArray):
                 node_to_gpu_map[node] = value
@@ -2123,7 +2122,7 @@ class Executor(object):
             # todo 向上层返回需要的信息
             self.infer_shape(feed_shapes)
             self.feed_shapes = feed_shapes
-            
+
 
         # infer shape if feed_shapes changed since last run
         # e.g. call run() on test data after trainng
@@ -2132,6 +2131,11 @@ class Executor(object):
             assert False
             self.infer_shape(feed_shapes)
             self.feed_shapes = feed_shapes
+
+        # calculate started
+
+        for node in self.topo_order:
+            node.array_status = 0
 
         # calculate started
 

@@ -103,11 +103,17 @@ def mnist_logreg(executor_ctx=None, num_epochs=10, print_loss_val_each_epoch=Fal
     y_val = np.empty(shape=(batch_size, 10), dtype=np.float32)
     valid_X_val = np.empty(shape=(batch_size, 784), dtype=np.float32)
     valid_y_val = np.empty(shape=(batch_size, 10), dtype=np.float32)
-    if ndarray.is_gpu_ctx(executor_ctx):
-        W1_val = ndarray.array(W1_val, ctx=executor_ctx)
-        b1_val = ndarray.array(b1_val, ctx=executor_ctx)
-        X_val = ndarray.array(X_val, ctx=executor_ctx)
-        y_val = ndarray.array(y_val, ctx=executor_ctx)
+
+    W1_val = ndarray.array(W1_val, ctx=executor_ctx_cpu)
+    b1_val = ndarray.array(b1_val, ctx=executor_ctx_cpu)
+    X_val = ndarray.array(X_val, ctx=executor_ctx_cpu)
+    y_val = ndarray.array(y_val, ctx=executor_ctx_cpu)
+
+    # if ndarray.is_gpu_ctx(executor_ctx):
+    #     W1_val = ndarray.array(W1_val, ctx=executor_ctx)
+    #     b1_val = ndarray.array(b1_val, ctx=executor_ctx)
+    #     X_val = ndarray.array(X_val, ctx=executor_ctx)
+    #     y_val = ndarray.array(y_val, ctx=executor_ctx)
 
     lr = 1e-3
     for i in range(num_epochs):
@@ -121,12 +127,12 @@ def mnist_logreg(executor_ctx=None, num_epochs=10, print_loss_val_each_epoch=Fal
             loss_val, grad_W1_val, grad_b1_val, _ = executor.run(
                 feed_dict = {X: X_val, y_: y_val, W1: W1_val, b1: b1_val})
             # SGD update
-            if (executor_ctx is None):
-                W1_val = W1_val - lr * grad_W1_val
-                b1_val = b1_val - lr * grad_b1_val
-            else:
-                sgd_update_gpu(W1_val, grad_W1_val, lr)
-                sgd_update_gpu(b1_val, grad_b1_val, lr)
+            # if (executor_ctx is None):
+            #     W1_val = W1_val - lr * grad_W1_val
+            #     b1_val = b1_val - lr * grad_b1_val
+            # else:
+            sgd_update_gpu(W1_val, grad_W1_val, lr)
+            sgd_update_gpu(b1_val, grad_b1_val, lr)
         if print_loss_val_each_epoch:
             if isinstance(loss_val, ndarray.NDArray):
                 print(loss_val.asnumpy())
@@ -214,15 +220,23 @@ def mnist_mlp(executor_ctx=None, num_epochs=10, print_loss_val_each_epoch=False)
     y_val = np.empty(shape=(batch_size, 10), dtype=np.float32)
     valid_X_val = np.empty(shape=(batch_size, 784), dtype=np.float32)
     valid_y_val = np.empty(shape=(batch_size, 10), dtype=np.float32)
-    if ndarray.is_gpu_ctx(executor_ctx):
-        W1_val = ndarray.array(W1_val, ctx=executor_ctx)
-        W2_val = ndarray.array(W2_val, ctx=executor_ctx)
-        W3_val = ndarray.array(W3_val, ctx=executor_ctx)
-        b1_val = ndarray.array(b1_val, ctx=executor_ctx)
-        b2_val = ndarray.array(b2_val, ctx=executor_ctx)
-        b3_val = ndarray.array(b3_val, ctx=executor_ctx)
-        X_val = ndarray.array(X_val, ctx=executor_ctx)
-        y_val = ndarray.array(y_val, ctx=executor_ctx)
+    # if ndarray.is_gpu_ctx(executor_ctx):
+    #     W1_val = ndarray.array(W1_val, ctx=executor_ctx)
+    #     W2_val = ndarray.array(W2_val, ctx=executor_ctx)
+    #     W3_val = ndarray.array(W3_val, ctx=executor_ctx)
+    #     b1_val = ndarray.array(b1_val, ctx=executor_ctx)
+    #     b2_val = ndarray.array(b2_val, ctx=executor_ctx)
+    #     b3_val = ndarray.array(b3_val, ctx=executor_ctx)
+    #     X_val = ndarray.array(X_val, ctx=executor_ctx)
+    #     y_val = ndarray.array(y_val, ctx=executor_ctx)
+    W1_val = ndarray.array(W1_val, ctx=executor_ctx_cpu)
+    W2_val = ndarray.array(W2_val, ctx=executor_ctx_cpu)
+    W3_val = ndarray.array(W3_val, ctx=executor_ctx_cpu)
+    b1_val = ndarray.array(b1_val, ctx=executor_ctx_cpu)
+    b2_val = ndarray.array(b2_val, ctx=executor_ctx_cpu)
+    b3_val = ndarray.array(b3_val, ctx=executor_ctx_cpu)
+    X_val = ndarray.array(X_val, ctx=executor_ctx_cpu)
+    y_val = ndarray.array(y_val, ctx=executor_ctx_cpu)
 
     lr = 1.0e-3
     for i in range(num_epochs):
@@ -310,7 +324,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     models = []
-    executor_ctx = None
+    # executor_ctx = None
+    executor_ctx = ndarray.gpu(0)
+    executor_ctx_cpu = ndarray.cpu(0)
     print_loss_val_each_epoch = False
     if args.model == "logreg":
         models = [mnist_logreg]

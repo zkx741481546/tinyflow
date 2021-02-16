@@ -107,6 +107,25 @@ def map_to_numpy(map):
         list.append(value.asnumpy())
     # del (list[0])
     return list
+def test_concat():
+    inputs1 = ad.Variable("inputs1")
+    inputs2 = ad.Variable("inputs1")
+
+    # ini
+    ctx = ndarray.gpu(0)
+    x_val1 = np.linspace(2, 20, 10).reshape((5,2))*0.5
+    x_val1 = ndarray.array(x_val1, ctx=ctx)
+    print(x_val1)
+    x_val2 = np.ones((5,3))*0.1
+    x_val2= ndarray.array(x_val2, ctx=ctx)
+    loss = ad.concat_forward_op(inputs1,inputs2)
+    # loss = ad.l1regular_op(inputs)
+    grad_f = ad.gradients(loss, [inputs1,inputs2])  # gra返回一个list
+    executor = ad.Executor([loss,grad_f[0],grad_f[1]], ctx=ctx)
+    g_val = executor.run(feed_dict={inputs1: x_val1,inputs2:x_val2})  # 返回一个list
+    print("g_val:", g_val[0].asnumpy())
+    print("g_val:", g_val[1].asnumpy())
+    print("g_val:", g_val[2].asnumpy())
 def inception_v3():
     X = ad.Placeholder("inputs")
     y_ = ad.Placeholder("y_")

@@ -121,7 +121,7 @@ def mnist_logreg(executor_ctx=None, num_epochs=10, print_loss_val_each_epoch=Fal
             y_val[:] = convert_to_one_hot(
                 train_set_y[minibatch_start:minibatch_end])
             loss_val, grad_W1_val, grad_b1_val, _ = executor.run(
-                feed_dict = {X: X_val, y_: y_val, W1: W1_val, b1: b1_val})
+                feed_dict={X: X_val, y_: y_val, W1: W1_val, b1: b1_val})
             # SGD update
             if (executor_ctx is None):
                 W1_val = W1_val - lr * grad_W1_val
