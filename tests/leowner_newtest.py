@@ -54,7 +54,7 @@ def load_mnist_data(dataset):
 
 def convert_to_one_hot(vals):
     """Helper method to convert label array to one-hot array."""
-    one_hot_vals = np.zeros((vals.size, vals.max()+1))
+    one_hot_vals = np.zeros((vals.size, vals.max() + 1))
     one_hot_vals[np.arange(vals.size), vals] = 1
     return one_hot_vals
 
@@ -121,7 +121,7 @@ def mnist_logreg(executor_ctx=None, num_epochs=10, print_loss_val_each_epoch=Fal
             y_val[:] = convert_to_one_hot(
                 train_set_y[minibatch_start:minibatch_end])
             loss_val, grad_W1_val, grad_b1_val, _ = executor.run(
-                feed_dict = {X: X_val, y_: y_val, W1: W1_val, b1: b1_val})
+                feed_dict={X: X_val, y_: y_val, W1: W1_val, b1: b1_val})
             # SGD update
             if (executor_ctx is None):
                 W1_val = W1_val - lr * grad_W1_val
@@ -144,10 +144,10 @@ def mnist_logreg(executor_ctx=None, num_epochs=10, print_loss_val_each_epoch=Fal
             valid_set_y[minibatch_start:minibatch_end])
         _, _, _, valid_y_predicted = executor.run(
             feed_dict={
-                        X: valid_X_val,
-                        y_: valid_y_val,
-                        W1: W1_val,
-                        b1: b1_val},
+                X: valid_X_val,
+                y_: valid_y_val,
+                W1: W1_val,
+                b1: b1_val},
             convert_to_numpy_ret_vals=True)
         correct_prediction = np.equal(
             np.argmax(valid_y_val, 1),
@@ -192,9 +192,7 @@ def mnist_mlp(executor_ctx=None, num_epochs=10, print_loss_val_each_epoch=False)
     grad_W1, grad_W2, grad_W3, grad_b1, grad_b2, grad_b3 = ad.gradients(
         loss, [W1, W2, W3, b1, b2, b3])
 
-
     # 此处向前为符号定义
-
 
     # 只声明，不操作
     executor = ad.Executor(
@@ -206,7 +204,6 @@ def mnist_mlp(executor_ctx=None, num_epochs=10, print_loss_val_each_epoch=False)
     train_set_x, train_set_y = datasets[0]
     valid_set_x, valid_set_y = datasets[1]
     test_set_x, test_set_y = datasets[2]
-
 
     # Set up minibatch
     batch_size = 1000
@@ -241,8 +238,6 @@ def mnist_mlp(executor_ctx=None, num_epochs=10, print_loss_val_each_epoch=False)
 
     # 此处以上将数据分别转化为cpu和gpu两种格式
 
-
-
     lr = 1.0e-3
     for i in range(num_epochs):
         print("epoch %d" % i)
@@ -253,19 +248,18 @@ def mnist_mlp(executor_ctx=None, num_epochs=10, print_loss_val_each_epoch=False)
             y_val[:] = convert_to_one_hot(
                 train_set_y[minibatch_start:minibatch_end])
 
-
             # 计算单步的梯度
             loss_val, grad_W1_val, grad_W2_val, grad_W3_val, \
-                grad_b1_val, grad_b2_val, grad_b3_val, _ = executor.run(
-                    feed_dict={
-                        X: X_val,
-                        y_: y_val,
-                        W1: W1_val,
-                        W2: W2_val,
-                        W3: W3_val,
-                        b1: b1_val,
-                        b2: b2_val,
-                        b3: b3_val})
+            grad_b1_val, grad_b2_val, grad_b3_val, _ = executor.run(
+                feed_dict={
+                    X: X_val,
+                    y_: y_val,
+                    W1: W1_val,
+                    W2: W2_val,
+                    W3: W3_val,
+                    b1: b1_val,
+                    b2: b2_val,
+                    b3: b3_val})
 
             # todo 更新sgd_update_gpu_on_cpu
             def sgd_update_cpu(w1, w2, w3):
@@ -324,7 +318,6 @@ def mnist_mlp(executor_ctx=None, num_epochs=10, print_loss_val_each_epoch=False)
 
 if __name__ == "__main__":
 
-
     # if args.model == "logreg":
     #     models = [mnist_logreg]
     # elif args.model == "mlp":
@@ -350,6 +343,7 @@ if __name__ == "__main__":
 
     for m in models:
         import time
+
         tic = time.time()
         m(executor_ctx, num_epochs, print_loss_val_each_epoch)
         toc = time.time()
