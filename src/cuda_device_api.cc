@@ -26,13 +26,19 @@ static void GPUCopy(const void *from, void *to, size_t size,
   }
 }
 
-void *CUDADeviceAPI::AllocDataSpace(DLContext ctx, size_t size,
-                                    size_t alignment) {
+void *CUDADeviceAPI::AllocDataSpace(DLContext ctx, size_t size, size_t alignment) {
   // std::cout << "allocating cuda data" << std::endl;
   CUDA_CALL(cudaSetDevice(ctx.device_id));
   assert((256 % alignment) == 0U); // << "CUDA space is aligned at 256 bytes";
   void *ret;
-  CUDA_CALL(cudaMalloc(&ret, size));
+  cudaError_t e = cudaMalloc(&ret, size);
+
+  if ((e != cudaSuccess) && (e != cudaErrorCudartUnloading)){
+    //内存超了：
+    return nullptr;
+  }
+  //printf("申请\n");
+
   return ret;
 }
 

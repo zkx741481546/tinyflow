@@ -8,7 +8,7 @@ import six.moves.cPickle as pickle
 from pycode.tinyflow import autodiff as ad
 from pycode.tinyflow import gpu_op
 from pycode.tinyflow import ndarray
-from pycode.tinyflow import train
+from pycode.tinyflow import TrainExecute
 
 
 # np.set_printoptions(threshold=np.inf)
@@ -84,26 +84,26 @@ def LeNet5(num_step = 10, print_loss_val_each_epoch = False):
 
     # conv1
     conv1 = ad.conv2withbias(X, W1, b1, "NCHW", "SAME", 1, 1)
-    # bn1 = ad.bn_forward_op(conv1, "NCHW", "pre_activation")
-    pool1 = ad.pooling_2d_forward_op(conv1, "NCHW", "max", 0, 0, 2, 2, 2, 2)
+    bn1 = ad.bn_forward_op(conv1, "NCHW", "pre_activation")
+    pool1 = ad.pooling_2d_forward_op(bn1, "NCHW", "max", 0, 0, 2, 2, 2, 2)
 
     # conv2
     conv2 = ad.conv2withbias(pool1, W2, b2, "NCHW", "SAME", 1, 1)
-    # bn2 = ad.bn_forward_op(conv2, "NCHW", "pre_activation")
-    pool2 = ad.pooling_2d_forward_op(conv2, "NCHW", "max", 0, 0, 2, 2, 2, 2)
+    bn2 = ad.bn_forward_op(conv2, "NCHW", "pre_activation")
+    pool2 = ad.pooling_2d_forward_op(bn2, "NCHW", "max", 0, 0, 2, 2, 2, 2)
 
     # fc3
     pool2_flat = ad.flatten_op(pool2)
     fc3 = ad.dense(pool2_flat, W3, b3)
-    # bn3 = ad.fullybn_forward_op(fc3, "NCHW")
-    act3 = ad.fullyactivation_forward_op(fc3, "NCHW", "relu")
+    bn3 = ad.fullybn_forward_op(fc3, "NCHW")
+    act3 = ad.fullyactivation_forward_op(bn3, "NCHW", "relu")
 
     #fc4
     fc4 = ad.dense(act3, W4, b4)
-    # bn4 = ad.fullybn_forward_op(fc4, "NCHW")
-    loss = ad.softmaxcrossentropy_op(fc4, y_)
+    bn4 = ad.fullybn_forward_op(fc4, "NCHW")
+    loss = ad.softmaxcrossentropy_op(bn4, y_)
 
-    act4 = ad.fullyactivation_forward_op(fc4, "NCHW", "softmax")
+    act4 = ad.fullyactivation_forward_op(bn4, "NCHW", "softmax")
 
 
 
@@ -149,8 +149,10 @@ def LeNet5(num_step = 10, print_loss_val_each_epoch = False):
     train_set_x = train_set_x.reshape(train_set_x.shape[0], 1, 28, 28)
     valid_set_x = valid_set_x.reshape(valid_set_x.shape[0], 1, 28, 28)
 
+    isrun = 0
+
     aph = 0.001
-    t = train.Adam_minimize(loss, aph)
+    t = TrainExecute.TrainExecutor(loss, aph)
     t.init_Variable({W1: W1_val,
                      W2: W2_val,
                      W3: W3_val,
@@ -169,11 +171,16 @@ def LeNet5(num_step = 10, print_loss_val_each_epoch = False):
             minibatch_end = (minibatch_index + 1) * batch_size
             X_val[:] = train_set_x[minibatch_start:minibatch_end]
             y_val[:] = convert_to_one_hot(train_set_y[minibatch_start:minibatch_end])
+
             t.run({X: X_val, y_: y_val})
 
-            if i % 100 == 0:
-                # print(t.get_loss().asnumpy())
+            if isrun == 0:
+                tt = TrainExecute.getExecutetoComputeAccuracy(t,act4)
+                isrun = 1
 
+            if i % 100 == 0:
+            #     # print(t.get_loss().asnumpy())
+            #
                 print("step %d" % i)
                 toc = time.time()
                 print("use time: " + str(toc - tic))
@@ -190,10 +197,11 @@ def LeNet5(num_step = 10, print_loss_val_each_epoch = False):
                     valid_y_val[:] = convert_to_one_hot(valid_set_y[minibatch_start1:minibatch_end1])
 
                     feed_dict = {X: valid_X_val, y_: valid_y_val}
-                    dict_Variable = t.get_Variable_node_to_val_map()
-                    feed_dict.update(dict_Variable)
 
-                    valid_y_predicted = t.run_get_nodelist_once(feed_dict, [act4])[act4].asnumpy()
+
+                    valid_y_predicted = tt.run(feed_dict)[0].asnumpy()
+
+
 
                     correct_prediction = np.equal(
                         np.argmax(valid_y_val, 1),
@@ -203,34 +211,13 @@ def LeNet5(num_step = 10, print_loss_val_each_epoch = False):
                 print("validation set accuracy=%f" % accuracy)
 
                 tic = time.time()
+            #
+            #     if(i == 2000):
+            #         time.sleep(20)
 
             i = i + 1
             if i >= num_step:
                 break
-    #
-    # correct_predictions = []
-    # for minibatch_index1 in range(n_valid_batches):
-    #     minibatch_start1 = minibatch_index1 * batch_size
-    #     minibatch_end1 = (minibatch_index1 + 1) * batch_size
-    #
-    #     valid_X_val[:] = valid_set_x[minibatch_start1:minibatch_end1]
-    #
-    #     # print("start, end", minibatch_start1, minibatch_end1)
-    #     # print(convert_to_one_hot(valid_set_y[minibatch_start1:minibatch_end1]).shape)
-    #     valid_y_val[:] = convert_to_one_hot(valid_set_y[minibatch_start1:minibatch_end1])
-    #
-    #     feed_dict = {X: valid_X_val, y_: valid_y_val}
-    #     dict_Variable = t.get_Variable_node_to_val_map()
-    #     feed_dict.update(dict_Variable)
-    #
-    #     valid_y_predicted = t.run_get_nodelist_once(feed_dict, [act4])[act4].asnumpy()
-    #
-    #     correct_prediction = np.equal(
-    #         np.argmax(valid_y_val, 1),
-    #         np.argmax(valid_y_predicted, 1)).astype(np.float)
-    #     correct_predictions.extend(correct_prediction)
-    # accuracy = np.mean(correct_predictions)
-    # print("validation set accuracy=%f" % accuracy)
 
 
 

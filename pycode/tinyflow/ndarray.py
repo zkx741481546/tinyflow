@@ -162,7 +162,8 @@ class NDArray(object):
             self.handle, ctypes.byref(arr), None))
         _ = shape
         return np_arr
-
+    #如果target是DLContext，用isinstance==int判断
+    #如果target是NDArray,不用判断
     def copyto(self, target):
         """Copy array to target
         Parameters
@@ -172,6 +173,8 @@ class NDArray(object):
         """
         if isinstance(target, DLContext):
             target = empty(self.shape, target)
+            if isinstance(target, int):
+                return target
         if isinstance(target, NDArray):
 
             check_call(_LIB.DLArrayCopyFromTo(
@@ -181,16 +184,11 @@ class NDArray(object):
             raise ValueError("Unsupported target type %s" % str(type(target)))
         return target
 
-    def reshape(self,newshape):
-        target = empty(newshape, self.ctx)
-        check_call(_LIB.DLArrayCopyFromTo(
-            self.handle, target.handle, None))
-        return target
 
 
 
 
-
+#用isinstance==int判断是否超内存
 def array(arr, ctx=cpu(0)):
     """Create an array from source arr.
     Parameters
@@ -207,10 +205,14 @@ def array(arr, ctx=cpu(0)):
     if not isinstance(arr, np.ndarray):
         arr = np.array(arr)
     ret = empty(arr.shape, ctx)
+    #
+    if isinstance(ret,int):
+        return ret
+
     ret._sync_copyfrom(arr)
     return ret
 
-
+#用isinstance==int判断是否超内存
 def empty(shape, ctx=cpu(0)):
     """Create an empty array given shape and device
     Parameters
@@ -223,16 +225,25 @@ def empty(shape, ctx=cpu(0)):
     -------
     arr : ndarray
         The array dlsys supported.
+    申请失败，返回size
     """
     shape = c_array(ctypes.c_int64, shape)
     ndim = ctypes.c_int(len(shape))
     handle = DLArrayHandle()
 
-    check_call(_LIB.DLArrayAlloc(
-        shape, ndim, ctx, ctypes.byref(handle)))
-    return NDArray(handle)
+    memorytoSaving = ctypes.c_int(0)
+    memorytoSaving = ctypes.pointer(memorytoSaving)
+    _LIB.DLArrayAlloc(shape, ndim, ctx, ctypes.byref(handle),memorytoSaving)
+    memorytoSaving = _LIB.getInt(memorytoSaving)
+    if memorytoSaving == 0:
+        return NDArray(handle)
+    else:
+        print("内存错误",memorytoSaving)
+        return memorytoSaving
 
 
+
+#这下面的都要用isinstance==int
 def Normalex(loc=0,scale=1,size=None ,ctx=cpu(0)):
     arr=np.random.normal(loc,scale,size)
     b0= np.random.normal(loc, scale,size[0])
@@ -240,8 +251,12 @@ def Normalex(loc=0,scale=1,size=None ,ctx=cpu(0)):
         arr = np.array(arr)
     if not isinstance(b0,np.ndarray):
         b0 =np.array(b0)
-    w=empty(arr.shape,ctx)
+    w = empty(arr.shape,ctx)
+    if isinstance(w,int):
+        return w
     b = empty(arr.shape, ctx)
+    if isinstance(b,int):
+        return b
     w._sync_copyfrom(arr)
     b._sync_copyfrom(b0)
     return w,b
@@ -254,7 +269,11 @@ def Uniformex(low=0,high=1,size=None,ctx=cpu(0)):
     if not isinstance(b0, np.ndarray):
         b0 = np.array(b0)
     w = empty(arr.shape, ctx)
+    if isinstance(w, int):
+        return w
     b = empty(arr.shape, ctx)
+    if isinstance(b, int):
+        return b
     w._sync_copyfrom(arr)
     b._sync_copyfrom(b0)
     return w, b
@@ -268,7 +287,11 @@ def xavier_Normalex(loc=0,size=None ,ctx=cpu(0)):
     if not isinstance(b0, np.ndarray):
         b0 = np.array(b0)
     w = empty(arr.shape, ctx)
+    if isinstance(w, int):
+        return w
     b = empty(arr.shape, ctx)
+    if isinstance(b, int):
+        return b
     w._sync_copyfrom(arr)
     b._sync_copyfrom(b0)
     return w, b
@@ -282,7 +305,11 @@ def xavier_Uniformex(size=None,ctx=cpu(0)):
     if not isinstance(b0, np.ndarray):
         b0 = np.array(b0)
     w = empty(arr.shape, ctx)
+    if isinstance(w, int):
+        return w
     b = empty(arr.shape, ctx)
+    if isinstance(b, int):
+        return b
     w._sync_copyfrom(arr)
     b._sync_copyfrom(b0)
     return w, b
@@ -291,7 +318,9 @@ def Normal(loc=0,scale=1,size=None ,ctx=cpu(0)):
     arr=np.random.normal(loc,scale,size)
     if not isinstance(arr, np.ndarray):
         arr = np.array(arr)
-    w=empty(arr.shape,ctx)
+    w = empty(arr.shape, ctx)
+    if isinstance(w, int):
+        return w
     w._sync_copyfrom(arr)
     return w
 
@@ -300,6 +329,8 @@ def Uniform(low=0,high=1,size=None,ctx=cpu(0)):
     if not isinstance(arr, np.ndarray):
         arr = np.array(arr)
     w = empty(arr.shape, ctx)
+    if isinstance(w, int):
+        return w
     w._sync_copyfrom(arr)
     return w
 
@@ -309,6 +340,8 @@ def xavier_Normal(loc=0,size=None ,ctx=cpu(0)):
     if not isinstance(arr, np.ndarray):
         arr = np.array(arr)
     w = empty(arr.shape, ctx)
+    if isinstance(w, int):
+        return w
     w._sync_copyfrom(arr)
     return w
 
@@ -318,5 +351,7 @@ def xavier_Uniform(size=None,ctx=cpu(0)):
     if not isinstance(arr, np.ndarray):
         arr = np.array(arr)
     w = empty(arr.shape, ctx)
+    if isinstance(w, int):
+        return w
     w._sync_copyfrom(arr)
     return w

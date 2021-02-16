@@ -2,6 +2,9 @@ from pycode.tinyflow import autodiff as ad
 import numpy as np
 from pycode.tinyflow import ndarray
 
+from pycode.tinyflow import TrainExecute
+from pycode.tinyflow import train
+
 def test_identity():
     x2 = ad.Variable(name="x2")
     y = x2
@@ -542,21 +545,38 @@ def test_l1_l2_cross_loss():
     print("g_val:", g_val[1].asnumpy())
     print("g_val:", g_val[2].asnumpy())
 def test_l1_l2_regular():
-    inputs = ad.Variable("inputs")
-    filters = ad.Variable("filters")
-    y_ = ad.Variable(name="y_")
+    inputs2 = ad.Variable("X2")
+    y_ = ad.Placeholder("y_")
 
     # ini
+    x_val = np.ones((10,2))*4
+    y_val = np.ones((5, 2)) * 0.1
+    a = ad.l1regular_op(inputs2)
+    aph = 0.001
+    t = train.Adam_minimize(a, aph)
+    t.init_Variable({inputs2: x_val})
+    valid_y_predicted = t.run_get_nodelist_once({ y_: y_val},[a])[a].asnumpy()
+    print(valid_y_predicted)
+
+
+def test_concat():
+    inputs1 = ad.Placeholder("X1")
+    inputs2 = ad.Variable("X2")
+    y_ = ad.Placeholder("y_")
+    # ini
     ctx = ndarray.gpu(0)
-    x_val = np.ones((5,2))*0.5
-    x_val = ndarray.array(x_val, ctx)
-    loss = ad.l2regular_op(inputs)
-    # loss = ad.l1regular_op(inputs)
-    grad_f = ad.gradients(loss, [inputs])  # gra返回一个list
-    executor = ad.Executor([loss,grad_f[0]], ctx=ctx)
-    g_val = executor.run(feed_dict={inputs: x_val})  # 返回一个list
-    print("g_val:", g_val[0].asnumpy())
-    print("g_val:", g_val[1].asnumpy())
+    x_val1 = np.linspace(2, 20, 10).reshape((5, 2)) * 0.5
+    x_val2 = np.ones((5, 3)) * 0.1
+    y_val=np.ones((5,5))*0.1
+    a = ad.concat_forward_op(inputs1, inputs2)
+    loss = ad.softmaxcrossentropy_op(a, y_)
+    aph = 0.001
+    t = train.Adam_minimize(loss, aph)
+    t.init_Variable({inputs2: x_val2})
+    valid_y_predicted = t.run_get_nodelist_once({inputs1: x_val1,y_:y_val},[a])[a].asnumpy()
+    print(valid_y_predicted)
+test_concat()
+
 
 #test_lr()
 # test_identity()
@@ -585,4 +605,5 @@ def test_l1_l2_regular():
 # test_convolution_2d_forward_op()
 # test_convolution_3d_forward_op()
 # test_l1_l2_cross_loss()
-test_l1_l2_regular()
+# test_l1_l2_regular()
+# test_concat()

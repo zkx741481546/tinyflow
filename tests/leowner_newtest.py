@@ -9,6 +9,7 @@ import os
 
 
 def load_mnist_data(dataset):
+    # 加载mnist数据集
     """ Load the dataset
     Code adapted from http://deeplearning.net/tutorial/code/logistic_sgd.py
 
@@ -68,6 +69,7 @@ def sgd_update_gpu(param, grad_param, learning_rate):
 
 
 def mnist_logreg(executor_ctx=None, num_epochs=10, print_loss_val_each_epoch=False):
+    # 训练逻辑回归模型
     print("Build logistic regression model...")
 
     W1 = ad.Variable(name="W1")
@@ -103,17 +105,11 @@ def mnist_logreg(executor_ctx=None, num_epochs=10, print_loss_val_each_epoch=Fal
     y_val = np.empty(shape=(batch_size, 10), dtype=np.float32)
     valid_X_val = np.empty(shape=(batch_size, 784), dtype=np.float32)
     valid_y_val = np.empty(shape=(batch_size, 10), dtype=np.float32)
-
-    W1_val = ndarray.array(W1_val, ctx=executor_ctx_cpu)
-    b1_val = ndarray.array(b1_val, ctx=executor_ctx_cpu)
-    X_val = ndarray.array(X_val, ctx=executor_ctx_cpu)
-    y_val = ndarray.array(y_val, ctx=executor_ctx_cpu)
-
-    # if ndarray.is_gpu_ctx(executor_ctx):
-    #     W1_val = ndarray.array(W1_val, ctx=executor_ctx)
-    #     b1_val = ndarray.array(b1_val, ctx=executor_ctx)
-    #     X_val = ndarray.array(X_val, ctx=executor_ctx)
-    #     y_val = ndarray.array(y_val, ctx=executor_ctx)
+    if ndarray.is_gpu_ctx(executor_ctx):
+        W1_val = ndarray.array(W1_val, ctx=executor_ctx)
+        b1_val = ndarray.array(b1_val, ctx=executor_ctx)
+        X_val = ndarray.array(X_val, ctx=executor_ctx)
+        y_val = ndarray.array(y_val, ctx=executor_ctx)
 
     lr = 1e-3
     for i in range(num_epochs):
@@ -127,12 +123,12 @@ def mnist_logreg(executor_ctx=None, num_epochs=10, print_loss_val_each_epoch=Fal
             loss_val, grad_W1_val, grad_b1_val, _ = executor.run(
                 feed_dict = {X: X_val, y_: y_val, W1: W1_val, b1: b1_val})
             # SGD update
-            # if (executor_ctx is None):
-            #     W1_val = W1_val - lr * grad_W1_val
-            #     b1_val = b1_val - lr * grad_b1_val
-            # else:
-            sgd_update_gpu(W1_val, grad_W1_val, lr)
-            sgd_update_gpu(b1_val, grad_b1_val, lr)
+            if (executor_ctx is None):
+                W1_val = W1_val - lr * grad_W1_val
+                b1_val = b1_val - lr * grad_b1_val
+            else:
+                sgd_update_gpu(W1_val, grad_W1_val, lr)
+                sgd_update_gpu(b1_val, grad_b1_val, lr)
         if print_loss_val_each_epoch:
             if isinstance(loss_val, ndarray.NDArray):
                 print(loss_val.asnumpy())
@@ -163,6 +159,7 @@ def mnist_logreg(executor_ctx=None, num_epochs=10, print_loss_val_each_epoch=Fal
 
 
 def mnist_mlp(executor_ctx=None, num_epochs=10, print_loss_val_each_epoch=False):
+    # 训练一个三层感知机模型
     print("Build 3-layer MLP model...")
 
     W1 = ad.Variable(name="W1")
@@ -173,6 +170,8 @@ def mnist_mlp(executor_ctx=None, num_epochs=10, print_loss_val_each_epoch=False)
     b3 = ad.Variable(name="b3")
     X = ad.Variable(name="X")
     y_ = ad.Variable(name="y_")
+
+    # 下面是三层网络的激活函数，两个relu和一个softmax
 
     # relu(X W1+b1)
     z1 = ad.matmul_op(X, W1)
@@ -192,6 +191,12 @@ def mnist_mlp(executor_ctx=None, num_epochs=10, print_loss_val_each_epoch=False)
 
     grad_W1, grad_W2, grad_W3, grad_b1, grad_b2, grad_b3 = ad.gradients(
         loss, [W1, W2, W3, b1, b2, b3])
+
+
+    # 此处向前为符号定义
+
+
+    # 只声明，不操作
     executor = ad.Executor(
         [loss, grad_W1, grad_W2, grad_W3, grad_b1, grad_b2, grad_b3, y],
         ctx=executor_ctx)
@@ -201,6 +206,8 @@ def mnist_mlp(executor_ctx=None, num_epochs=10, print_loss_val_each_epoch=False)
     train_set_x, train_set_y = datasets[0]
     valid_set_x, valid_set_y = datasets[1]
     test_set_x, test_set_y = datasets[2]
+
+
     # Set up minibatch
     batch_size = 1000
     n_train_batches = train_set_x.shape[0] // batch_size
@@ -209,6 +216,7 @@ def mnist_mlp(executor_ctx=None, num_epochs=10, print_loss_val_each_epoch=False)
     print("Start training loop...")
 
     # Initialize parameters
+    # 随机初始化网络中的w和b
     rand = np.random.RandomState(seed=123)
     W1_val = rand.normal(scale=0.1, size=(784, 256))
     W2_val = rand.normal(scale=0.1, size=(256, 100))
@@ -220,15 +228,8 @@ def mnist_mlp(executor_ctx=None, num_epochs=10, print_loss_val_each_epoch=False)
     y_val = np.empty(shape=(batch_size, 10), dtype=np.float32)
     valid_X_val = np.empty(shape=(batch_size, 784), dtype=np.float32)
     valid_y_val = np.empty(shape=(batch_size, 10), dtype=np.float32)
-    # if ndarray.is_gpu_ctx(executor_ctx):
-    #     W1_val = ndarray.array(W1_val, ctx=executor_ctx)
-    #     W2_val = ndarray.array(W2_val, ctx=executor_ctx)
-    #     W3_val = ndarray.array(W3_val, ctx=executor_ctx)
-    #     b1_val = ndarray.array(b1_val, ctx=executor_ctx)
-    #     b2_val = ndarray.array(b2_val, ctx=executor_ctx)
-    #     b3_val = ndarray.array(b3_val, ctx=executor_ctx)
-    #     X_val = ndarray.array(X_val, ctx=executor_ctx)
-    #     y_val = ndarray.array(y_val, ctx=executor_ctx)
+
+    # todo 此处修改为cpu
     W1_val = ndarray.array(W1_val, ctx=executor_ctx_cpu)
     W2_val = ndarray.array(W2_val, ctx=executor_ctx_cpu)
     W3_val = ndarray.array(W3_val, ctx=executor_ctx_cpu)
@@ -237,6 +238,10 @@ def mnist_mlp(executor_ctx=None, num_epochs=10, print_loss_val_each_epoch=False)
     b3_val = ndarray.array(b3_val, ctx=executor_ctx_cpu)
     X_val = ndarray.array(X_val, ctx=executor_ctx_cpu)
     y_val = ndarray.array(y_val, ctx=executor_ctx_cpu)
+
+    # 此处以上将数据分别转化为cpu和gpu两种格式
+
+
 
     lr = 1.0e-3
     for i in range(num_epochs):
@@ -247,7 +252,9 @@ def mnist_mlp(executor_ctx=None, num_epochs=10, print_loss_val_each_epoch=False)
             X_val[:] = train_set_x[minibatch_start:minibatch_end]
             y_val[:] = convert_to_one_hot(
                 train_set_y[minibatch_start:minibatch_end])
-            print(np.shape(y_val))
+
+
+            # 计算单步的梯度
             loss_val, grad_W1_val, grad_W2_val, grad_W3_val, \
                 grad_b1_val, grad_b2_val, grad_b3_val, _ = executor.run(
                     feed_dict={
@@ -259,21 +266,30 @@ def mnist_mlp(executor_ctx=None, num_epochs=10, print_loss_val_each_epoch=False)
                         b1: b1_val,
                         b2: b2_val,
                         b3: b3_val})
-            # SGD update
-            if (executor_ctx is None):
-                W1_val = W1_val - lr * grad_W1_val
-                W2_val = W2_val - lr * grad_W2_val
-                W3_val = W3_val - lr * grad_W3_val
-                b1_val = b1_val - lr * grad_b1_val
-                b2_val = b2_val - lr * grad_b2_val
-                b3_val = b3_val - lr * grad_b3_val
-            else:
-                sgd_update_gpu(W1_val, grad_W1_val, lr)
-                sgd_update_gpu(W2_val, grad_W2_val, lr)
-                sgd_update_gpu(W3_val, grad_W3_val, lr)
-                sgd_update_gpu(b1_val, grad_b1_val, lr)
-                sgd_update_gpu(b2_val, grad_b2_val, lr)
-                sgd_update_gpu(b3_val, grad_b3_val, lr)
+
+            # todo 更新sgd_update_gpu_on_cpu
+            def sgd_update_cpu(w1, w2, w3):
+                w1_gpu = ndarray.empty(w1.shape, executor_ctx)
+                w1.copyto(w1_gpu)
+                w2_gpu = ndarray.empty(w2.shape, executor_ctx)
+                w2.copyto(w2_gpu)
+                sgd_update_gpu(w1_gpu, w2_gpu, w3)
+                w1_gpu.copyto(w1)
+                w2_gpu.copyto(w2)
+
+            sgd_update_cpu(W1_val, grad_W1_val, lr)
+            sgd_update_cpu(W2_val, grad_W2_val, lr)
+            sgd_update_cpu(W3_val, grad_W3_val, lr)
+            sgd_update_cpu(b1_val, grad_b1_val, lr)
+            sgd_update_cpu(b2_val, grad_b2_val, lr)
+            sgd_update_cpu(b3_val, grad_b3_val, lr)
+
+            # sgd_update_gpu(W1_val, grad_W1_val, lr)
+            # sgd_update_gpu(W2_val, grad_W2_val, lr)
+            # sgd_update_gpu(W3_val, grad_W3_val, lr)
+            # sgd_update_gpu(b1_val, grad_b1_val, lr)
+            # sgd_update_gpu(b2_val, grad_b2_val, lr)
+            # sgd_update_gpu(b3_val, grad_b3_val, lr)
         if print_loss_val_each_epoch:
             if isinstance(loss_val, ndarray.NDArray):
                 print(loss_val.asnumpy())
@@ -296,11 +312,10 @@ def mnist_mlp(executor_ctx=None, num_epochs=10, print_loss_val_each_epoch=False)
                 W3: W3_val,
                 b1: b1_val,
                 b2: b2_val,
-                b3: b3_val},
-            convert_to_numpy_ret_vals=True)
+                b3: b3_val})
         correct_prediction = np.equal(
             np.argmax(valid_y_val, 1),
-            np.argmax(valid_y_predicted, 1)).astype(np.float)
+            np.argmax(valid_y_predicted.asnumpy(), 1)).astype(np.float)
         correct_predictions.extend(correct_prediction)
     accuracy = np.mean(correct_predictions)
     # validation set accuracy=0.970800
@@ -308,47 +323,34 @@ def mnist_mlp(executor_ctx=None, num_epochs=10, print_loss_val_each_epoch=False)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-m", "--model",
-        help="Choose model: all, logreg, mlp", default="all")
-    parser.add_argument(
-        "-c", "--executor_context",
-        help="Choose executor context: numpy, gpu", default="numpy")
-    parser.add_argument(
-        "-e", "--num_epoch",
-        help="Provide number of epochs to train.", type=int, default=20)
-    parser.add_argument(
-        "-l", "--print_loss_val_each_epoch",
-        help="Print loss value at the end of each epoch", action="store_true")
-    args = parser.parse_args()
 
-    models = []
-    # executor_ctx = None
+
+    # if args.model == "logreg":
+    #     models = [mnist_logreg]
+    # elif args.model == "mlp":
+    #     models = [mnist_mlp]
+    # elif args.model == "all":
+    #     models = [mnist_logreg, mnist_mlp]
+    #
+    # if args.executor_context == "numpy":
+    #     executor_ctx = None
+    # elif args.executor_context == "gpu":
+    #     # Assume only use gpu 0.
+    #     executor_ctx = ndarray.gpu(0)
+    #
+    # if args.print_loss_val_each_epoch:
+    #     print_loss_val_each_epoch = True
+
+    num_epochs = 20
+    models = [mnist_mlp]
     executor_ctx = ndarray.gpu(0)
     executor_ctx_cpu = ndarray.cpu(0)
-    print_loss_val_each_epoch = False
-    if args.model == "logreg":
-        models = [mnist_logreg]
-    elif args.model == "mlp":
-        models = [mnist_mlp]
-    elif args.model == "all":
-        models = [mnist_logreg, mnist_mlp]
 
-    if args.executor_context == "numpy":
-        executor_ctx = None
-    elif args.executor_context == "gpu":
-        # Assume only use gpu 0.
-        executor_ctx = ndarray.gpu(0)
+    print_loss_val_each_epoch = True
 
-    if args.print_loss_val_each_epoch:
-        print_loss_val_each_epoch = True
-
-    num_epochs = args.num_epoch
     for m in models:
         import time
         tic = time.time()
         m(executor_ctx, num_epochs, print_loss_val_each_epoch)
         toc = time.time()
         print("mode use time: " + str(toc - tic))
-

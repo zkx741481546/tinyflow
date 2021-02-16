@@ -90,7 +90,7 @@ inline size_t GetDataAlignment(DLArray *arr) {
 using namespace tinyflow::runtime;
 
 int DLArrayAlloc(const index_t *shape, index_t ndim, DLContext ctx,
-                 DLArrayHandle *out) {
+                 DLArrayHandle *out,int *memorytoSaving) {
   DLArray *arr = nullptr;
   API_BEGIN();
   // shape
@@ -105,8 +105,16 @@ int DLArrayAlloc(const index_t *shape, index_t ndim, DLContext ctx,
   size_t size = GetDataSize(arr);
   size_t alignment = GetDataAlignment(arr);
   arr->data = DeviceAPIManager::Get(ctx)->AllocDataSpace(ctx, size, alignment);
+  if(arr->data == nullptr){
+      *memorytoSaving = (int) size;
+      printf("dwaddw\n");
+      return 0;
+
+  }
   *out = arr;
   API_END_HANDLE_ERROR(DLArrayFree_(arr));
+
+
 }
 
 int DLArrayFree(DLArrayHandle handle) {
