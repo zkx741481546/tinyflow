@@ -976,18 +976,17 @@ class ActivationForwardOp(Op):
         new_node.name = "ActivationForward(%s)" % (node_A.name)
         new_node.dataformat = dataformat
         new_node.activationMode = activationMode
-        new_node.output = [0]
         new_node.cudnnlist = [0]
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, use_numpy=False):
         assert use_numpy == False
         gpu_op.activation_forward(input_vals[0], output_val, node.activationMode, node.cudnnlist[0], cudnnHandle)
-        node.output[0] = output_val
+
         return 0
 
     def gradient(self, node, output_grad):
-        return [activation_backward_op(node.inputs[0], output_grad, node.output, node.activationMode, node.cudnnlist)]
+        return [activation_backward_op(node.inputs[0], output_grad, node, node.activationMode, node.cudnnlist)]
 
     def infer_shape(self, node, input_shapes, cudnnHandle):
         node.cudnnlist[0] = gpu_op.activation_get_cudnnlist(input_shapes[0], node.dataformat, node.activationMode)
@@ -995,19 +994,18 @@ class ActivationForwardOp(Op):
 
 
 class ActivationBackwardOp(Op):
-    def __call__(self, node_A, node_B, output, activationMode, cudnnlist):
+    def __call__(self, node_A, node_B, node_C, activationMode, cudnnlist):
         new_node = Op.__call__(self)
-        new_node.inputs = [node_A, node_B]
-        new_node.name = "ActivationBackwardwithinput(%s)withdoutput(%s)" % (node_A.name, node_B.name)
-        new_node.output = output
+        new_node.inputs = [node_A, node_B, node_C]
+        new_node.name = "ActivationBackwardwithinput(%s)withdoutput(%s)withoutput(%s)" % (node_A.name, node_B.name, node_C.name)
         new_node.activationMode = activationMode
         new_node.cudnnlist = cudnnlist
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, use_numpy=False):
         assert use_numpy == False
-        assert isinstance(node.output[0], ndarray.NDArray)
-        gpu_op.activation_backward(input_vals[0], output_val, node.output[0], input_vals[1], node.activationMode,
+
+        gpu_op.activation_backward(input_vals[0], output_val, input_vals[2], input_vals[1], node.activationMode,
                                    node.cudnnlist[0], cudnnHandle)
         return 0
 
@@ -1028,7 +1026,6 @@ class Pooling1DForwardOp(Op):
         new_node.pad_w = pad_w
         new_node.v = v
         new_node.filter_w = filter_w
-        new_node.output = [0]
         new_node.cudnnlist = [0]
         return new_node
 
@@ -1036,11 +1033,11 @@ class Pooling1DForwardOp(Op):
         assert use_numpy == False
         assert isinstance(input_vals[0], ndarray.NDArray)
         gpu_op.pooling_1d_forward(input_vals[0], output_val, node.cudnnlist[0], cudnnHandle)
-        node.output[0] = output_val
+
         return 0
 
     def gradient(self, node, output_grad):
-        return [pooling_1d_backward_op(node.inputs[0], output_grad, node.output, node.cudnnlist)]
+        return [pooling_1d_backward_op(node.inputs[0], output_grad, node, node.cudnnlist)]
 
     def infer_shape(self, node, input_shapes, cudnnHandle):
         outshapes, node.cudnnlist[0] = gpu_op.pooling_1d_forward_get_out_shape(input_shapes[0], node.dataformat,
@@ -1050,18 +1047,17 @@ class Pooling1DForwardOp(Op):
 
 
 class Pooling1DBackwardOp(Op):
-    def __call__(self, node_A, node_B, output, cudnnlist):
+    def __call__(self, node_A, node_B, node_C, cudnnlist):
         new_node = Op.__call__(self)
-        new_node.inputs = [node_A, node_B]
-        new_node.name = "Pooling1DBackwardwithinput(%s)withdoutput(%s)" % (node_A.name, node_B.name)
-        new_node.output = output
+        new_node.inputs = [node_A, node_B, node_C]
+        new_node.name = "Pooling1DBackwardwithinput(%s)withdoutput(%s)withoutput(%s)" % (node_A.name, node_B.name, node_C.name)
         new_node.cudnnlist = cudnnlist
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, use_numpy=False):
         assert use_numpy == False
-        assert isinstance(node.output[0], ndarray.NDArray)
-        gpu_op.pooling_1d_backward(input_vals[0], node.output[0], input_vals[1], output_val, node.cudnnlist[0],
+
+        gpu_op.pooling_1d_backward(input_vals[0], input_vals[2], input_vals[1], output_val, node.cudnnlist[0],
                                    cudnnHandle)
         return 0
 
@@ -1085,7 +1081,6 @@ class Pooling2DForwardOp(Op):
         new_node.v = v
         new_node.filter_h = filter_h
         new_node.filter_w = filter_w
-        new_node.output = [0]
         new_node.cudnnlist = [0]
         return new_node
 
@@ -1094,12 +1089,11 @@ class Pooling2DForwardOp(Op):
         assert isinstance(input_vals[0], ndarray.NDArray)
 
         gpu_op.pooling_2d_forward(input_vals[0], output_val, node.cudnnlist[0], cudnnHandle)
-        node.output[0] = output_val
 
         return 0
 
     def gradient(self, node, output_grad):
-        return [pooling_2d_backward_op(node.inputs[0], output_grad, node.output, node.cudnnlist)]
+        return [pooling_2d_backward_op(node.inputs[0], output_grad, node, node.cudnnlist)]
 
     def infer_shape(self, node, input_shapes, cudnnHandle):
         outshapes, node.cudnnlist[0] = gpu_op.pooling_2d_forward_get_out_shape(input_shapes[0], node.dataformat,
@@ -1110,18 +1104,16 @@ class Pooling2DForwardOp(Op):
 
 
 class Pooling2DBackwardOp(Op):
-    def __call__(self, node_A, node_B, output, cudnnlist):
+    def __call__(self, node_A, node_B, node_C, cudnnlist):
         new_node = Op.__call__(self)
-        new_node.inputs = [node_A, node_B]
-        new_node.name = "Pooling2DBackwardwithinput(%s)withdoutput(%s)" % (node_A.name, node_B.name)
-        new_node.output = output
+        new_node.inputs = [node_A, node_B, node_C]
+        new_node.name = "Pooling2DBackwardwithinput(%s)withdoutput(%s)withoutput(%s)" % (node_A.name, node_B.name, node_C.name)
         new_node.cudnnlist = cudnnlist
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, use_numpy=False):
         assert use_numpy == False
-        assert isinstance(node.output[0], ndarray.NDArray)
-        gpu_op.pooling_2d_backward(input_vals[0], node.output[0], input_vals[1], output_val, node.cudnnlist[0],
+        gpu_op.pooling_2d_backward(input_vals[0], input_vals[2], input_vals[1], output_val, node.cudnnlist[0],
                                    cudnnHandle)
         return 0
 
@@ -1148,7 +1140,6 @@ class Pooling3DForwardOp(Op):
         new_node.filter1 = filter1
         new_node.filter2 = filter2
         new_node.filter3 = filter3
-        new_node.output = [0]
         new_node.cudnnlist = [0]
         return new_node
 
@@ -1157,11 +1148,10 @@ class Pooling3DForwardOp(Op):
         assert isinstance(input_vals[0], ndarray.NDArray)
 
         gpu_op.pooling_3d_forward(input_vals[0], output_val, node.cudnnlist[0], cudnnHandle)
-        node.output[0] = output_val
         return 0
 
     def gradient(self, node, output_grad):
-        return [pooling_3d_backward_op(node.inputs[0], output_grad, node.output, node.cudnnlist)]
+        return [pooling_3d_backward_op(node.inputs[0], output_grad, node, node.cudnnlist)]
 
     def infer_shape(self, node, input_shapes, cudnnHandle):
         outshapes, node.cudnnlist[0] = gpu_op.pooling_3d_forward_get_out_shape(input_shapes[0], node.dataformat,
@@ -1172,18 +1162,16 @@ class Pooling3DForwardOp(Op):
 
 
 class Pooling3DBackwardOp(Op):
-    def __call__(self, node_A, node_B, output, cudnnlist):
+    def __call__(self, node_A, node_B, node_C, cudnnlist):
         new_node = Op.__call__(self)
-        new_node.inputs = [node_A, node_B]
-        new_node.name = "Pooling3DBackwardwithinput(%s)withdoutput(%s)" % (node_A.name, node_B.name)
-        new_node.output = output
+        new_node.inputs = [node_A, node_B, node_C]
+        new_node.name = "Pooling3DBackwardwithinput(%s)withdoutput(%s)withoutput(%s)" % (node_A.name, node_B.name, node_C.name)
         new_node.cudnnlist = cudnnlist
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, use_numpy=False):
         assert use_numpy == False
-        assert isinstance(node.output[0], ndarray.NDArray)
-        gpu_op.pooling_3d_backward(input_vals[0], node.output[0], input_vals[1], output_val, node.cudnnlist[0],
+        gpu_op.pooling_3d_backward(input_vals[0], input_vals[2], input_vals[1], output_val, node.cudnnlist[0],
                                    cudnnHandle)
         return 0
 
@@ -1310,7 +1298,6 @@ class FullyActivationForwardOp(Op):
         new_node.name = "FullyActivationForward(%s)" % (node_A.name)
         new_node.dataformat = dataformat
         new_node.activationMode = activationMode
-        new_node.output = [0]
         new_node.cudnnlist = [0]
         return new_node
 
@@ -1320,13 +1307,13 @@ class FullyActivationForwardOp(Op):
 
         gpu_op.activation_forward(input_vals[0], output_val, node.activationMode, node.cudnnlist[0], cudnnHandle)
 
-        node.output[0] = output_val
+
         # print("fullyactivation_end")
         return 0
 
     def gradient(self, node, output_grad):
         return [
-            fullyactivation_backward_op(node.inputs[0], output_grad, node.output, node.activationMode, node.cudnnlist)]
+            fullyactivation_backward_op(node.inputs[0], output_grad, node, node.activationMode, node.cudnnlist)]
 
     def infer_shape(self, node, input_shapes, cudnnHandle):
         newinputshapes = (input_shapes[0][0], 1, input_shapes[0][1])
@@ -1335,11 +1322,10 @@ class FullyActivationForwardOp(Op):
 
 
 class FullyActivationBackwardOp(Op):
-    def __call__(self, node_A, node_B, output, activationMode, cudnnlist):
+    def __call__(self, node_A, node_B, node_C, activationMode, cudnnlist):
         new_node = Op.__call__(self)
-        new_node.inputs = [node_A, node_B]
-        new_node.name = "FullyActivationBackwardwithinput(%s)withdoutput(%s)" % (node_A.name, node_B.name)
-        new_node.output = output
+        new_node.inputs = [node_A, node_B, node_C]
+        new_node.name = "FullyActivationBackwardwithinput(%s)withdoutput(%s)withoutput(%s)" % (node_A.name, node_B.name, node_C.name)
         new_node.activationMode = activationMode
         new_node.cudnnlist = cudnnlist
         return new_node
@@ -1347,10 +1333,9 @@ class FullyActivationBackwardOp(Op):
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, use_numpy=False):
         # print("FullyActivationBackwardOp_start")
         assert use_numpy == False
-        assert isinstance(node.output[0], ndarray.NDArray)
-        input = input_vals[0]
-        # inputs = input.reshape((input.shape[0], 1, input.shape[1]))
-        gpu_op.activation_backward(input, output_val, node.output[0], input_vals[1], node.activationMode,
+
+
+        gpu_op.activation_backward(input_vals[0], output_val, input_vals[2], input_vals[1], node.activationMode,
                                    node.cudnnlist[0], cudnnHandle)
         # print("FullyActivationBackwardOp_end")
         return 0
