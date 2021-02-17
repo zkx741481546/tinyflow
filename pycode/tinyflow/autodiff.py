@@ -2015,6 +2015,9 @@ class Executor(object):
         self.memoryManagerController = memoryManagerController.MemoryManagerController(self.control_queue,
                                                                                        self.have_done_queue)
 
+        self.cudnnHandle = gpu_op.create_cudnnHandle()
+        self.cublasHandle = gpu_op.create_cublasHandle()
+
         # 按照拓扑排序设定index
         for i in range(len(self.topo_order)):
             self.topo_order[i].index = i
@@ -2041,7 +2044,7 @@ class Executor(object):
                 continue
             input_shapes = [self.node_to_shape_map[i] for i in node.inputs]
             assert None not in input_shapes
-            self.node_to_shape_map[node] = node.op.infer_shape(node, input_shapes)
+            self.node_to_shape_map[node] = node.op.infer_shape(node, input_shapes, self.cudnnHandle)
 
     def memory_plan(self, feed_shapes):
         """Allocates ndarray.NDArray for every node except feed_dict nodes.
@@ -2217,7 +2220,8 @@ class Executor(object):
                 move_to_gpu = control_message[2]
                 self.control_queue.put((wait_time, node_id, node_to_gpu_map[self.topo_order[node_id]], move_to_gpu))
 
-            node.op.compute(node, input_vals, node_val, False)
+            node.op.compute(node, input_vals, node_val, False, self.cublasHandle)
+            print(node.index)
 
             # print(node.index)
             node_to_gpu_map[node] = node_val
