@@ -2105,8 +2105,7 @@ class Executor(object):
         for node, value in feed_dict.items():
             # convert values to ndarray.NDArray if necessary
             # 源代码会在此处将所有CPU的内容引入GPU，为了自定义，禁用自动引入的功能，改为手动引入
-
-            # 源代码会在此处将所有CPU的内容引入GPU，为了自定义，禁用自动引入的功能，改为手动引入if isinstance(value, np.ndarray):
+            if isinstance(value, np.ndarray):
                 node_to_gpu_map[node] = ndarray.array(value, ctx=self.ctx_cpu)
             elif isinstance(value, ndarray.NDArray):
                 node_to_gpu_map[node] = value
