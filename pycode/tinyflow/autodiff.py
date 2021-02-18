@@ -2220,8 +2220,8 @@ class Executor(object):
                 move_to_gpu = control_message[2]
                 self.control_queue.put((wait_time, node_id, node_to_gpu_map[self.topo_order[node_id]], move_to_gpu))
 
-            node.op.compute(node, input_vals, node_val, False, self.cublasHandle)
-            print(node.index)
+            node.op.compute(node, input_vals, node_val, self.cudnnHandle, self.cublasHandle, False)
+            # print(node.index)
 
             # print(node.index)
             node_to_gpu_map[node] = node_val
