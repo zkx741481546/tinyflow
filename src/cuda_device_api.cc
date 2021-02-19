@@ -17,6 +17,7 @@
 namespace tinyflow {
 namespace runtime {
 
+
 static void GPUCopy(const void *from, void *to, size_t size,
                     cudaMemcpyKind kind, cudaStream_t stream) {
   if (stream != 0) {
@@ -75,6 +76,8 @@ void CUDADeviceAPI::StreamSync(DLContext ctx, DLStreamHandle stream) {
   CUDA_CALL(cudaSetDevice(ctx.device_id));
   CUDA_CALL(cudaStreamSynchronize(static_cast<cudaStream_t>(stream)));
 }
+
+
 
 } // namespace runtime
 } // namespace tinyflow

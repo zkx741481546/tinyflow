@@ -74,7 +74,7 @@ inline size_t GetDataSize(DLArray *arr) {
   for (index_t i = 0; i < arr->ndim; ++i) {
     size *= arr->shape[i];
   }
-  // assume 32-bit float
+  // todo 32位 assume 32-bit float
   size *= 4;
   return size;
 }
@@ -88,6 +88,8 @@ inline size_t GetDataAlignment(DLArray *arr) {
 } // namespace tinyflow
 
 using namespace tinyflow::runtime;
+
+cudaStream_t cudaSwapStream;
 
 int DLArrayAlloc(const index_t *shape, index_t ndim, DLContext ctx,
                  DLArrayHandle *out,int *memorytoSaving) {
@@ -126,6 +128,7 @@ int DLArrayFree(DLArrayHandle handle) {
 
 int DLArrayCopyFromTo(DLArrayHandle from, DLArrayHandle to,
                       DLStreamHandle stream) {
+  // todo 在此处手动选择stream，不使用上层传入值
   API_BEGIN();
   size_t from_size = GetDataSize(from);
   size_t to_size = GetDataSize(to);
@@ -142,6 +145,16 @@ int DLArrayCopyFromTo(DLArrayHandle from, DLArrayHandle to,
   }
 
   DeviceAPIManager::Get(ctx)->CopyDataFromTo(from->data, to->data, from_size,
-                                             from->ctx, to->ctx, stream);
+                                             from->ctx, to->ctx, cudaSwapStream);
+  if (from->ctx.device_type == kGPU) {
+    DeviceAPIManager::Get(ctx)->StreamSync(from->ctx, cudaSwapStream);
+  } else {
+    DeviceAPIManager::Get(ctx)->StreamSync(to->ctx, cudaSwapStream);
+  }
+
   API_END();
+}
+
+void DLArrayStreamCreate() {
+    cudaStreamCreate(&cudaSwapStream);
 }
