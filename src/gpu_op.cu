@@ -334,7 +334,7 @@ int DLGpuArraySet(DLArrayHandle arr, float value, void **cudaStream) {
     count *= arr->shape[i];
   }
   float *arr_data = (float *)arr->data;
-  matrix_array_set_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM, 0, *cudaStream>>>(
+  matrix_array_set_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM, 0, (cudaStream_t)*cudaStream>>>(
     count, arr_data, value);
   cudaDeviceSynchronize();
     return 0;
@@ -360,7 +360,7 @@ int DLGpuBroadcastTo0(const DLArrayHandle input, DLArrayHandle output, void **cu
  
     float* inputArr = (float*) input->data;
     float* outputArr = (float*) output->data;
-    matrix_broadcast_to_kernel0<<<BLOCK_NUM(outputCount), MAX_THREADS_NUM, 0, *cudaStream>>>(
+    matrix_broadcast_to_kernel0<<<BLOCK_NUM(outputCount), MAX_THREADS_NUM, 0, (cudaStream_t)*cudaStream>>>(
     inputCount, inputArr, outputCount, outputArr);
     cudaDeviceSynchronize();
     return 0;
@@ -460,10 +460,10 @@ int DLGpuBroadcastTo1(const DLArrayHandle input, DLArrayHandle output, void **cu
 
     float* inputArr = (float*) input->data;
     float* outputArr = (float*) output->data;
-    matrix_broadcast_to_kernel11<<<BLOCK_NUM(count1), MAX_THREADS_NUM, 0, *cudaStream>>>(
+    matrix_broadcast_to_kernel11<<<BLOCK_NUM(count1), MAX_THREADS_NUM, 0, (cudaStream_t)*cudaStream>>>(
     inputArr, count1, outputArr, outputlow);
 
-    matrix_broadcast_to_kernel12<<<BLOCK_NUM(count2), MAX_THREADS_NUM, 0, *cudaStream>>>(
+    matrix_broadcast_to_kernel12<<<BLOCK_NUM(count2), MAX_THREADS_NUM, 0, (cudaStream_t)*cudaStream>>>(
     count1, outputArr, count2, outputArr);
 
     cudaDeviceSynchronize();
@@ -996,7 +996,7 @@ int DLGpuConcatForward(const DLArrayHandle input1, const DLArrayHandle input2,DL
     const float* input_data_a = (const float*)input1->data;
     const float* input_data_b = (const float*)input2->data;
     float* output_data = (float*)output->data;
-    matrix_concat_to_kernel<<<BLOCK_NUM(OutputCount), MAX_THREADS_NUM, 0, *cudaStream>>>(
+    matrix_concat_to_kernel<<<BLOCK_NUM(OutputCount), MAX_THREADS_NUM, 0, (cudaStream_t)*cudaStream>>>(
      Count1,input_data_a,Count2, input_data_b,OutputCount,output_data,count);
     cudaDeviceSynchronize();
     return 0;
@@ -1037,7 +1037,7 @@ int DLGpuConcataBackward(const DLArrayHandle input1,const DLArrayHandle input2,c
     const float* input_data_b = (const float*)input2->data;
     const float* doutput_data = (float*)doutput->data;
     float* dinput_data_a = (float*)dinput1->data;
-    matrix_concat_a_backward_to_kernel<<<BLOCK_NUM(OutputCount), MAX_THREADS_NUM, 0, *cudaStream>>>(
+    matrix_concat_a_backward_to_kernel<<<BLOCK_NUM(OutputCount), MAX_THREADS_NUM, 0, (cudaStream_t)*cudaStream>>>(
      Count1,input_data_a,Count2, input_data_b,OutputCount,doutput_data,count,dinput_data_a);
     cudaDeviceSynchronize();
     return 0;
@@ -1077,7 +1077,7 @@ int DLGpuConcatbBackward(const DLArrayHandle input1,const DLArrayHandle input2,c
     const float* input_data_b = (const float*)input2->data;
     const float* doutput_data = (float*)doutput->data;
     float* dinput_data_b = (float*)dinput2->data;
-    matrix_concat_b_backward_to_kernel<<<BLOCK_NUM(OutputCount), MAX_THREADS_NUM, 0, *cudaStream>>>(
+    matrix_concat_b_backward_to_kernel<<<BLOCK_NUM(OutputCount), MAX_THREADS_NUM, 0, (cudaStream_t)*cudaStream>>>(
      Count1,input_data_a,Count2, input_data_b,OutputCount,doutput_data,count,dinput_data_b);
     cudaDeviceSynchronize();
     return 0;
@@ -1100,7 +1100,7 @@ int DLGpuMatrixElementwiseAdd(const DLArrayHandle matA,
   float* matAData = (float*) matA->data;
   float* matBData = (float*) matB->data;
   float* outputData = (float*) output->data;
-  matrix_elementwise_add_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM, 0, *cudaStream>>>(
+  matrix_elementwise_add_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM, 0, (cudaStream_t)*cudaStream>>>(
           matAData, matBData, outputData, count);
   cudaDeviceSynchronize();
     return 0;
@@ -1118,7 +1118,7 @@ int DLGpuMatrixElementwiseAddByConst(const DLArrayHandle input, float val,
 
   float* inputArr = (float*) input->data;
   float* outputArr = (float*) output->data;
-  matrix_elementwise_add_by_const_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM, 0, *cudaStream>>>(
+  matrix_elementwise_add_by_const_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM, 0, (cudaStream_t)*cudaStream>>>(
           inputArr, val, outputArr, count);
   cudaDeviceSynchronize();
     return 0;
@@ -1138,7 +1138,7 @@ int DLGpuMatrixElementwiseMultiply(const DLArrayHandle matA,
   float* matAData = (float*) matA->data;
   float* matBData = (float*) matB->data;
   float* outputData = (float*) output->data;
-  matrix_elementwise_multiply_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM, 0, *cudaStream>>>(
+  matrix_elementwise_multiply_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM, 0, (cudaStream_t)*cudaStream>>>(
           matAData, matBData, outputData, count);
   cudaDeviceSynchronize();
     return 0;
@@ -1157,7 +1157,7 @@ int DLGpuMatrixMultiplyByConst(const DLArrayHandle input, float val,
 
   float* inputArr = (float*) input->data;
   float* outputArr = (float*) output->data;
-  matrix_elementwise_multipy_by_const_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM, 0, *cudaStream>>>(
+  matrix_elementwise_multipy_by_const_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM, 0, (cudaStream_t)*cudaStream>>>(
           inputArr, val, outputArr, count);
   cudaDeviceSynchronize();
     return 0;
@@ -1368,7 +1368,7 @@ int DLGpuDestroycudaStream(void **cudaStream){
 
     cudaStream_t handle = (cudaStream_t)(*cudaStream);
 
-    cudaStreamDestroy(handle)
+    cudaStreamDestroy(handle);
     cudaDeviceSynchronize();
     return 0;
 
@@ -4551,7 +4551,7 @@ int DLGpuSgdUpdate(DLArrayHandle output,
     }
     float* mData = (float*) m->data;
     float* outputData = (float*) output->data;
-    sgd_update_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM, 0, *cudaStream>>>(
+    sgd_update_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM, 0, (cudaStream_t)*cudaStream>>>(
     outputData, mData, 
     b,
     count);
