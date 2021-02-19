@@ -939,7 +939,7 @@ int DLGpuReduceSumAllBackward(const DLArrayHandle input, DLArrayHandle output) {
     cudaMemcpy(val, inputArr, sizeof(float), cudaMemcpyDeviceToHost);
 
 
-    DLGpuArraySet(output, *val);
+  //  DLGpuArraySet(output, *val);
     cudaDeviceSynchronize();
     return 0;
 }
@@ -1280,7 +1280,7 @@ int DLGpuSoftmaxCrossEntropy(const DLArrayHandle input_a,
     }
     // 1 block, each block with 'threads' number of threads with 'nrow' shared
     // memory size
-    matrix_softmax_cross_entropy_kernel << <1, threads, nrow * sizeof(float), 0, (cudaStream_t)*cudaStream >> > (
+    matrix_softmax_cross_entropy_kernel << <1, threads, nrow * sizeof(float), (cudaStream_t)*cudaStream >> > (
         nrow, ncol, input_data_a, input_data_b, output_data);
     cudaStreamSynchronize((cudaStream_t)*cudaStream);
     return 0;
