@@ -57,19 +57,21 @@ def convert_to_one_hot(vals):
     return one_hot_vals
 
 
-def sgd_update_gpu(param, grad_param, learning_rate):
+def sgd_update_gpu(param, grad_param, learning_rate, cuda_stream):
     """Helper GPU SGD update method. Avoids copying NDArray to cpu."""
     assert isinstance(param, ndarray.NDArray)
     assert isinstance(grad_param, ndarray.NDArray)
     gpu_op.matrix_elementwise_multiply_by_const(
-        grad_param, -learning_rate, grad_param)
-    gpu_op.matrix_elementwise_add(param, grad_param, param)
+        grad_param, -learning_rate, grad_param, cuda_stream)
+    gpu_op.matrix_elementwise_add(param, grad_param, param, cuda_stream)
 
 
 def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_queue, top_message_queue):
 
     # 训练一个三层感知机模型
     print("Build 3-layer MLP model...")
+
+    cuda_stream = gpu_op.create_cudaStream()
 
     W1 = ad.Variable(name="W1")
     W2 = ad.Variable(name="W2")
@@ -194,12 +196,12 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
             # sgd_update_cpu(b2_val, grad_b2_val, lr)
             # sgd_update_cpu(b3_val, grad_b3_val, lr)
 
-            sgd_update_gpu(W1_val, grad_W1_val, lr)
-            sgd_update_gpu(W2_val, grad_W2_val, lr)
-            sgd_update_gpu(W3_val, grad_W3_val, lr)
-            sgd_update_gpu(b1_val, grad_b1_val, lr)
-            sgd_update_gpu(b2_val, grad_b2_val, lr)
-            sgd_update_gpu(b3_val, grad_b3_val, lr)
+            sgd_update_gpu(W1_val, grad_W1_val, lr, cuda_stream)
+            sgd_update_gpu(W2_val, grad_W2_val, lr, cuda_stream)
+            sgd_update_gpu(W3_val, grad_W3_val, lr, cuda_stream)
+            sgd_update_gpu(b1_val, grad_b1_val, lr, cuda_stream)
+            sgd_update_gpu(b2_val, grad_b2_val, lr, cuda_stream)
+            sgd_update_gpu(b3_val, grad_b3_val, lr, cuda_stream)
         if print_loss_val_each_epoch:
             if isinstance(loss_val, ndarray.NDArray):
                 print(loss_val.asnumpy())

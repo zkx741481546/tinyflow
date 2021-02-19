@@ -2015,11 +2015,9 @@ class Executor(object):
         self.memoryManagerController = memoryManagerController.MemoryManagerController(self.control_queue,
                                                                                        self.have_done_queue)
 
-        self.cudnnHandle = gpu_op.create_cudnnHandle()
-        self.cublasHandle = gpu_op.create_cublasHandle()
-
-        self.cudnnHandle = gpu_op.create_cudnnHandle()
-        self.cublasHandle = gpu_op.create_cublasHandle()
+        self.cudaStream = gpu_op.create_cudaStream()
+        self.cudnnHandle = gpu_op.create_cudnnHandle(self.cudaStream)
+        self.cublasHandle = gpu_op.create_cublasHandle(self.cudaStream)
 
         # 按照拓扑排序设定index
         for i in range(len(self.topo_order)):
@@ -2223,7 +2221,7 @@ class Executor(object):
                 move_to_gpu = control_message[2]
                 self.control_queue.put((wait_time, node_id, node_to_gpu_map[self.topo_order[node_id]], move_to_gpu))
 
-            node.op.compute(node, input_vals, node_val, self.cudnnHandle, self.cublasHandle, False)
+            node.op.compute(node, input_vals, node_val, self.cudnnHandle, self.cublasHandle, self.cudaStream, False)
             # print(node.index)
 
             # print(node.index)
