@@ -38,9 +38,10 @@ class TrainExecutor(object):
         self.Variable_node_np_value = None
 
         #计算必要的资源
-        self.cudnnHandle = cudnnHandle
-        self.cublasHandle = cublasHandle
-        self.cudaStream = cudaStream
+        self.cudaStream = gpu_op.create_cudaStream()
+        self.cudnnHandle = gpu_op.create_cudnnHandle(self.cudaStream)
+        self.cublasHandle = gpu_op.create_cublasHandle(self.cudaStream)
+
 
         #是否是第一次run
         self.isfirstrun = 0

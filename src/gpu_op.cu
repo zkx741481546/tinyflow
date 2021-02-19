@@ -336,7 +336,7 @@ int DLGpuArraySet(DLArrayHandle arr, float value, void **cudaStream) {
   float *arr_data = (float *)arr->data;
   matrix_array_set_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM, 0, (cudaStream_t)*cudaStream>>>(
     count, arr_data, value);
-  cudaDeviceSynchronize();
+  cudaStreamSynchronize((cudaStream_t)*cudaStream);
     return 0;
 }
 
@@ -362,7 +362,7 @@ int DLGpuBroadcastTo0(const DLArrayHandle input, DLArrayHandle output, void **cu
     float* outputArr = (float*) output->data;
     matrix_broadcast_to_kernel0<<<BLOCK_NUM(outputCount), MAX_THREADS_NUM, 0, (cudaStream_t)*cudaStream>>>(
     inputCount, inputArr, outputCount, outputArr);
-    cudaDeviceSynchronize();
+    cudaStreamSynchronize((cudaStream_t)*cudaStream);
     return 0;
 }
 
@@ -466,7 +466,7 @@ int DLGpuBroadcastTo1(const DLArrayHandle input, DLArrayHandle output, void **cu
     matrix_broadcast_to_kernel12<<<BLOCK_NUM(count2), MAX_THREADS_NUM, 0, (cudaStream_t)*cudaStream>>>(
     count1, outputArr, count2, outputArr);
 
-    cudaDeviceSynchronize();
+    cudaStreamSynchronize((cudaStream_t)*cudaStream);
     return 0;
 }
 
@@ -809,7 +809,7 @@ int DLGReduceSumGetCudnnlist(const int *input_shapes,
 
 
 //new
-int DLGpuReduceSum(const DLArrayHandle input, DLArrayHandle output, void ***cudnnlist, void ** cudnnHandle, int *memorytoSaving){
+int DLGpuReduceSum(const DLArrayHandle input, DLArrayHandle output, void ***cudnnlist, void ** cudnnHandle, int *memorytoSaving, void **cudaStream){
 
     void* indices= nullptr;
     void* workspace= nullptr;
@@ -873,7 +873,7 @@ int DLGpuReduceSum(const DLArrayHandle input, DLArrayHandle output, void ***cudn
     cudaFree(workspace);
     //CUDNN_CALL(cudnnDestroy(handle));
    
-    cudaDeviceSynchronize();
+    cudaStreamSynchronize((cudaStream_t)*cudaStream);
     return 0;
 
 
@@ -998,7 +998,7 @@ int DLGpuConcatForward(const DLArrayHandle input1, const DLArrayHandle input2,DL
     float* output_data = (float*)output->data;
     matrix_concat_to_kernel<<<BLOCK_NUM(OutputCount), MAX_THREADS_NUM, 0, (cudaStream_t)*cudaStream>>>(
      Count1,input_data_a,Count2, input_data_b,OutputCount,output_data,count);
-    cudaDeviceSynchronize();
+    cudaStreamSynchronize((cudaStream_t)*cudaStream);
     return 0;
 }
 
@@ -1039,7 +1039,7 @@ int DLGpuConcataBackward(const DLArrayHandle input1,const DLArrayHandle input2,c
     float* dinput_data_a = (float*)dinput1->data;
     matrix_concat_a_backward_to_kernel<<<BLOCK_NUM(OutputCount), MAX_THREADS_NUM, 0, (cudaStream_t)*cudaStream>>>(
      Count1,input_data_a,Count2, input_data_b,OutputCount,doutput_data,count,dinput_data_a);
-    cudaDeviceSynchronize();
+    cudaStreamSynchronize((cudaStream_t)*cudaStream);
     return 0;
 }
 
@@ -1079,7 +1079,7 @@ int DLGpuConcatbBackward(const DLArrayHandle input1,const DLArrayHandle input2,c
     float* dinput_data_b = (float*)dinput2->data;
     matrix_concat_b_backward_to_kernel<<<BLOCK_NUM(OutputCount), MAX_THREADS_NUM, 0, (cudaStream_t)*cudaStream>>>(
      Count1,input_data_a,Count2, input_data_b,OutputCount,doutput_data,count,dinput_data_b);
-    cudaDeviceSynchronize();
+    cudaStreamSynchronize((cudaStream_t)*cudaStream);
     return 0;
 }
 
@@ -1102,7 +1102,7 @@ int DLGpuMatrixElementwiseAdd(const DLArrayHandle matA,
   float* outputData = (float*) output->data;
   matrix_elementwise_add_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM, 0, (cudaStream_t)*cudaStream>>>(
           matAData, matBData, outputData, count);
-  cudaDeviceSynchronize();
+  cudaStreamSynchronize((cudaStream_t)*cudaStream);
     return 0;
 }
 
@@ -1120,7 +1120,7 @@ int DLGpuMatrixElementwiseAddByConst(const DLArrayHandle input, float val,
   float* outputArr = (float*) output->data;
   matrix_elementwise_add_by_const_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM, 0, (cudaStream_t)*cudaStream>>>(
           inputArr, val, outputArr, count);
-  cudaDeviceSynchronize();
+  cudaStreamSynchronize((cudaStream_t)*cudaStream);
     return 0;
 }
 
@@ -1140,7 +1140,7 @@ int DLGpuMatrixElementwiseMultiply(const DLArrayHandle matA,
   float* outputData = (float*) output->data;
   matrix_elementwise_multiply_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM, 0, (cudaStream_t)*cudaStream>>>(
           matAData, matBData, outputData, count);
-  cudaDeviceSynchronize();
+  cudaStreamSynchronize((cudaStream_t)*cudaStream);
     return 0;
 }
 
@@ -1159,13 +1159,13 @@ int DLGpuMatrixMultiplyByConst(const DLArrayHandle input, float val,
   float* outputArr = (float*) output->data;
   matrix_elementwise_multipy_by_const_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM, 0, (cudaStream_t)*cudaStream>>>(
           inputArr, val, outputArr, count);
-  cudaDeviceSynchronize();
+  cudaStreamSynchronize((cudaStream_t)*cudaStream);
     return 0;
 }
 
 int DLGpuMatrixMultiply(const DLArrayHandle matA, bool transposeA,
                         const DLArrayHandle matB, bool transposeB,
-                        DLArrayHandle matC,void **cublasHandle) {
+                        DLArrayHandle matC,void **cublasHandle, void **cudaStream) {
   // Hint: use cublas
   // cublas assume matrix is column major
   assert(matA->ndim == 2);
@@ -1194,7 +1194,7 @@ matAData, matA->shape[1],
 & beta,
 matCData, (transposeB ? matB->shape[0] : matB->shape[1]));
 
-cudaDeviceSynchronize();
+cudaStreamSynchronize((cudaStream_t)*cudaStream);
     return 0;
 }
 
@@ -1232,7 +1232,7 @@ int DLGpuReluGradient(const DLArrayHandle input, const DLArrayHandle in_grad,
     return 0;
 }
 
-int DLGpuSoftmax(const DLArrayHandle input, DLArrayHandle output) {
+int DLGpuSoftmax(const DLArrayHandle input, DLArrayHandle output, void **cudaStream) {
     assert(input->ndim == 2);
     assert(output->ndim == 2);
     assert(input->shape[0] == output->shape[0]);
@@ -1247,15 +1247,15 @@ int DLGpuSoftmax(const DLArrayHandle input, DLArrayHandle output) {
     float* inputArr = (float*)input->data;
     float* outputArr = (float*)output->data;
 
-    matrix_softmax_kernel << <grid, block >> > (nRow, nCol, inputArr, outputArr);
+    matrix_softmax_kernel << <grid, block, 0, (cudaStream_t)*cudaStream >> > (nRow, nCol, inputArr, outputArr);
 
-    cudaDeviceSynchronize();
+    cudaStreamSynchronize((cudaStream_t)*cudaStream);
     return 0;
 }
 
 int DLGpuSoftmaxCrossEntropy(const DLArrayHandle input_a,
     const DLArrayHandle input_b,
-    DLArrayHandle output) {
+    DLArrayHandle output, void **cudaStream) {
     assert(input_a->ndim == 2);
     assert(input_b->ndim == 2);
     assert(output->ndim == 1);
@@ -1280,9 +1280,9 @@ int DLGpuSoftmaxCrossEntropy(const DLArrayHandle input_a,
     }
     // 1 block, each block with 'threads' number of threads with 'nrow' shared
     // memory size
-    matrix_softmax_cross_entropy_kernel << <1, threads, nrow * sizeof(float) >> > (
+    matrix_softmax_cross_entropy_kernel << <1, threads, nrow * sizeof(float), 0, (cudaStream_t)*cudaStream >> > (
         nrow, ncol, input_data_a, input_data_b, output_data);
-    cudaDeviceSynchronize();
+    cudaStreamSynchronize((cudaStream_t)*cudaStream);
     return 0;
 }
 
@@ -1358,7 +1358,7 @@ int DLGpuCreatecudaStream(void **cudaStream){
 
 
     *cudaStream = handle;
-    cudaDeviceSynchronize();
+
     return 0;
 
 }
@@ -1369,21 +1369,22 @@ int DLGpuDestroycudaStream(void **cudaStream){
     cudaStream_t handle = (cudaStream_t)(*cudaStream);
 
     cudaStreamDestroy(handle);
-    cudaDeviceSynchronize();
+
     return 0;
 
 }
 
 
-int DLGpuCreatecudnnHandle(void **cudnnHandle){
+int DLGpuCreatecudnnHandle(void **cudnnHandle, void **cudaStream){
 
 
     //handle
     cudnnHandle_t handle;
     CUDNN_CALL(cudnnCreate(&handle));
+    CUDNN_CALL(cudnnSetStream(handle,(cudaStream_t)(*cudaStream)));
 
     *cudnnHandle = handle;
-    cudaDeviceSynchronize();
+
     return 0;
 
 }
@@ -1394,22 +1395,24 @@ int DLGpuDestroycudnnHandle(void **cudnnHandle){
     cudnnHandle_t handle = (cudnnHandle_t)(*cudnnHandle);
     CUDNN_CALL(cudnnDestroy(handle));
 
-    cudaDeviceSynchronize();
+
     return 0;
 
 }
 
 
 
-int DLGpuCreatecublasHandle(void **cublasHandle){
+int DLGpuCreatecublasHandle(void **cublasHandle, void **cudaStream){
 
 
     //handle
     cublasHandle_t handle;
     cublasCreate(&handle);
+    cublasSetStream(handle,(cudaStream_t)(*cudaStream));
+
 
     *cublasHandle = handle;
-    cudaDeviceSynchronize();
+
     return 0;
 
 }
@@ -1420,7 +1423,7 @@ int DLGpuDestroycublasHandle(void **cublasHandle){
     cublasHandle_t handle = (cublasHandle_t)(*cublasHandle);
     cublasDestroy(handle);
 
-    cudaDeviceSynchronize();
+
     return 0;
 
 }
@@ -1433,7 +1436,7 @@ int DLGpuConvolution1DForward(const DLArrayHandle input,
     const DLArrayHandle filter,
     DLArrayHandle output,
     void ***cudnnlist,
-    void **cudnnHandle, int *memorytoSaving) {
+    void **cudnnHandle, int *memorytoSaving, void **cudaStream) {
 
     //cout<<dataformat<<endl;
    // cout<<padding<<endl;
@@ -1511,7 +1514,7 @@ int DLGpuConvolution1DForward(const DLArrayHandle input,
     cudaFree(workspace);
     //CUDNN_CALL(cudnnDestroy(handle));
 
-    cudaDeviceSynchronize();
+    cudaStreamSynchronize((cudaStream_t)*cudaStream);
     return 0;
 
 }
@@ -1652,7 +1655,7 @@ int DLGpuConvolutionBackwardFilter(const DLArrayHandle input,
     const DLArrayHandle filter,
     DLArrayHandle dfilter,
     void*** cudnnlist,
-    void **cudnnHandle, int *memorytoSaving) {
+    void **cudnnHandle, int *memorytoSaving, void **cudaStream) {
 
     //handle
     //cudnnHandle_t handle;
@@ -1729,7 +1732,7 @@ int DLGpuConvolutionBackwardFilter(const DLArrayHandle input,
     //�ڴ�
     cudaFree(workspace1);
     //CUDNN_CALL(cudnnDestroy(handle));
-    cudaDeviceSynchronize();
+    cudaStreamSynchronize((cudaStream_t)*cudaStream);
     return 0;
 }
 
@@ -1738,7 +1741,7 @@ int DLGpuConvolutionBackwardData(const DLArrayHandle input,
     const DLArrayHandle filter,
     DLArrayHandle dinput,
     void*** cudnnlist,
-    void ** cudnnHandle, int *memorytoSaving) {
+    void ** cudnnHandle, int *memorytoSaving, void **cudaStream) {
 
 
 
@@ -1815,7 +1818,7 @@ int DLGpuConvolutionBackwardData(const DLArrayHandle input,
 
     cudaFree(workspace2);
     //CUDNN_CALL(cudnnDestroy(handle));
-    cudaDeviceSynchronize();
+    cudaStreamSynchronize((cudaStream_t)*cudaStream);
     return 0;
 
 }
@@ -1950,7 +1953,7 @@ int DLGpuConvolution2DForward(const DLArrayHandle input,
     const DLArrayHandle filter,
     DLArrayHandle output,
     void ***cudnnlist,
-    void ** cudnnHandle, int *memorytoSaving) {
+    void ** cudnnHandle, int *memorytoSaving, void **cudaStream) {
 
     assert(input->ndim == 4);
     assert(filter->ndim == 4);
@@ -2030,7 +2033,7 @@ int DLGpuConvolution2DForward(const DLArrayHandle input,
     //�ڴ�
     cudaFree(workspace);
     //CUDNN_CALL(cudnnDestroy(handle));
-    cudaDeviceSynchronize();
+    cudaStreamSynchronize((cudaStream_t)*cudaStream);
     return 0;
 }
 
@@ -2836,7 +2839,7 @@ int DLGpuPooling1DBackward(const DLArrayHandle input,
 int DLGpuPooling2DForward(const DLArrayHandle input,
     DLArrayHandle output,
     void ***cudnnlist,
-    void **cudnnHandle)
+    void **cudnnHandle, void **cudaStream)
 {
 
 
@@ -2870,7 +2873,7 @@ int DLGpuPooling2DForward(const DLArrayHandle input,
 
 
     //CUDNN_CALL(cudnnDestroy(handle));
-    cudaDeviceSynchronize();
+    cudaStreamSynchronize((cudaStream_t)*cudaStream);
     return 0;
 }
 
@@ -2983,7 +2986,7 @@ int DLGpuPooling2DBackward(const DLArrayHandle input,
     const DLArrayHandle doutput,
     DLArrayHandle dinput,
     void ***cudnnlist,
-    void **cudnnHandle)
+    void **cudnnHandle, void **cudaStream)
 {
 
     //handle
@@ -3016,7 +3019,7 @@ int DLGpuPooling2DBackward(const DLArrayHandle input,
 
 
     //CUDNN_CALL(cudnnDestroy(handle));
-    cudaDeviceSynchronize();
+    cudaStreamSynchronize((cudaStream_t)*cudaStream);
     return 0;
 }
 
@@ -3209,7 +3212,7 @@ int DLGpuActivationForward(const DLArrayHandle input,
     DLArrayHandle output,
     cudnnActivationMode_t activationMode,
     void ***cudnnlist,
-    void **cudnnHandle) {
+    void **cudnnHandle, void **cudaStream) {
 
 
 
@@ -3263,7 +3266,7 @@ int DLGpuActivationForward(const DLArrayHandle input,
 
     //CUDNN_CALL(cudnnDestroy(handle));
 
-    cudaDeviceSynchronize();
+    cudaStreamSynchronize((cudaStream_t)*cudaStream);
     return 0;
 
 
@@ -3475,7 +3478,7 @@ int DLGpuActivationBackward(const DLArrayHandle input,
     const DLArrayHandle doutput,
     cudnnActivationMode_t activationMode,
     void ***cudnnlist,
-    void **cudnnHandle) {
+    void **cudnnHandle, void **cudaStream) {
 
     //assert(input->ndim==4||input->ndim==3||input->ndim==5);
 
@@ -3533,7 +3536,7 @@ int DLGpuActivationBackward(const DLArrayHandle input,
 
     //CUDNN_CALL(cudnnDestroy(handle));
 
-    cudaDeviceSynchronize();
+    cudaStreamSynchronize((cudaStream_t)*cudaStream);
     return 0;
 
 
@@ -3549,7 +3552,7 @@ int DLGpuDropoutForward(const DLArrayHandle input,
     void **reserveSpace_p,/*back use*/
     void ***inputd,
     void ***cudnnlist,
-    void **cudnnHandle, int *memorytoSaving){
+    void **cudnnHandle, int *memorytoSaving, void **cudaStream){
 
 
 
@@ -3626,7 +3629,7 @@ int DLGpuDropoutForward(const DLArrayHandle input,
     (*cudnnlist)[0] = input_descriptor;
     (*cudnnlist)[1] = dropout_descriptor;
 
-    cudaDeviceSynchronize();
+    cudaStreamSynchronize((cudaStream_t)*cudaStream);
     return 0;
 
 }
@@ -3640,7 +3643,7 @@ int DLGpuDropoutBackward(const DLArrayHandle doutput,
     DLArrayHandle dinput,
     void **reserveSpace_p,/*back use*/
     void ***cudnnlist,
-    void **cudnnHandle){
+    void **cudnnHandle, void **cudaStream){
 
 
 
@@ -3684,7 +3687,7 @@ int DLGpuDropoutBackward(const DLArrayHandle doutput,
     //CUDNN_CALL(cudnnDestroy(handle));
     cudaFree(*reserveSpace_p);
     free(*cudnnlist);
-    cudaDeviceSynchronize();
+    cudaStreamSynchronize((cudaStream_t)*cudaStream);
     return 0;
 
 }
@@ -4225,7 +4228,7 @@ int DLGpuBatchNormalizationForward(const DLArrayHandle input,
     void **mean_p,
     void **Variance_p,
     void ***cudnnlist,
-    void **cudnnHandle, int *memorytoSaving) {
+    void **cudnnHandle, int *memorytoSaving, void **cudaStream) {
 
 
 
@@ -4342,7 +4345,7 @@ int DLGpuBatchNormalizationForward(const DLArrayHandle input,
     cudaFree(resultRunningVariance);
 
     //CUDNN_CALL(cudnnDestroy(handle));
-    cudaDeviceSynchronize();
+    cudaStreamSynchronize((cudaStream_t)*cudaStream);
     return 0;
 
 
@@ -4356,7 +4359,7 @@ int DLGpuBatchNormalizationBackward(const DLArrayHandle input,
     void **mean_p,
     void **Variance_p,
     void ***cudnnlist,
-    void **cudnnHandle, int *memorytoSaving) {
+    void **cudnnHandle, int *memorytoSaving, void **cudaStream) {
 
     //assert(input->ndim==4||input->ndim==3||input->ndim==5);
 
@@ -4446,7 +4449,7 @@ int DLGpuBatchNormalizationBackward(const DLArrayHandle input,
     cudaFree(*Variance_p);
     // CUDNN_CALL(cudnnDestroyTensorDescriptor(bnScaleBiasDiffDesc));
     //CUDNN_CALL(cudnnDestroy(handle));
-    cudaDeviceSynchronize();
+    cudaStreamSynchronize((cudaStream_t)*cudaStream);
     return 0;
 
 
@@ -4555,7 +4558,7 @@ int DLGpuSgdUpdate(DLArrayHandle output,
     outputData, mData, 
     b,
     count);
-    cudaDeviceSynchronize();
+    cudaStreamSynchronize((cudaStream_t)*cudaStream);
     return 0;
 }
 

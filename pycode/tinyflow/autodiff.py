@@ -324,7 +324,7 @@ class MatMulOp(Op):
             gpu_op.matrix_multiply(
                 input_vals[0], node.matmul_attr_trans_A,
                 input_vals[1], node.matmul_attr_trans_B,
-                output_val, cublasHandle)
+                output_val, cublasHandle, cudaStream)
 
         return 0
 
@@ -513,7 +513,7 @@ class BroadcastToGradientOp(Op):
         # gpu_op.broadcast_to_backward(input_vals[0], output_val, node.type)
 
         # tic = time.time()
-        memorytoSaving = gpu_op.reduce_sum_new(input_vals[0], output_val, node.cudnnlist[0], cudnnHandle)
+        memorytoSaving = gpu_op.reduce_sum_new(input_vals[0], output_val, node.cudnnlist[0], cudnnHandle, cudaStream)
 
         return memorytoSaving
 
@@ -556,7 +556,7 @@ class SoftmaxCrossEntropyOp(Op):
                 -np.sum(y_ * np.log(softmax), axis=1), keepdims=True)
             output_val[:] = cross_entropy
         else:
-            gpu_op.softmax_cross_entropy(y, y_, output_val)
+            gpu_op.softmax_cross_entropy(y, y_, output_val, cudaStream)
 
         return 0
 
@@ -581,7 +581,7 @@ class SoftmaxOp(Op):
         if use_numpy:
             output_val[:] = softmax_func(input_vals[0])
         else:
-            gpu_op.softmax(input_vals[0], output_val)
+            gpu_op.softmax(input_vals[0], output_val, cudaStream)
 
         return 0
 
@@ -779,10 +779,10 @@ class Convolution1DBackwardOp(Op):
 
         if node.type == 0:
             memorytoSaving = gpu_op.convolution_backward_data(input_vals[0], input_vals[2], input_vals[1], output_val,
-                                                              node.cudnnlist[0], cudnnHandle)
+                                                              node.cudnnlist[0], cudnnHandle, cudaStream)
         if node.type == 1:
             memorytoSaving = gpu_op.convolution_backward_filter(input_vals[0], input_vals[2], input_vals[1], output_val,
-                                                                node.cudnnlist[0], cudnnHandle)
+                                                                node.cudnnlist[0], cudnnHandle, cudaStream)
         return memorytoSaving
 
     def gradient(self, node, output_grad):
@@ -811,7 +811,7 @@ class Convolution2DForwardOp(Op):
         assert len(input_vals) == 2
 
         memorytoSaving = gpu_op.convolution_2d_forward(input_vals[0], input_vals[1], output_val, node.cudnnlist[0],
-                                                       cudnnHandle)
+                                                       cudnnHandle, cudaStream)
 
         return memorytoSaving
 
@@ -848,10 +848,10 @@ class Convolution2DBackwardOp(Op):
 
         if node.type == 0:
             memorytoSaving = gpu_op.convolution_backward_data(input_vals[0], input_vals[2], input_vals[1], output_val,
-                                                              node.cudnnlist[0], cudnnHandle)
+                                                              node.cudnnlist[0], cudnnHandle, cudaStream)
         if node.type == 1:
             memorytoSaving = gpu_op.convolution_backward_filter(input_vals[0], input_vals[2], input_vals[1], output_val,
-                                                                node.cudnnlist[0], cudnnHandle)
+                                                                node.cudnnlist[0], cudnnHandle, cudaStream)
 
         return memorytoSaving
 
@@ -915,10 +915,10 @@ class Convolution3DBackwardOp(Op):
         assert isinstance(input_vals[2], ndarray.NDArray)
         if node.type == 0:
             memorytoSaving = gpu_op.convolution_backward_data(input_vals[0], input_vals[2], input_vals[1], output_val,
-                                                              node.cudnnlist[0], cudnnHandle)
+                                                              node.cudnnlist[0], cudnnHandle, cudaStream)
         if node.type == 1:
             memorytoSaving = gpu_op.convolution_backward_filter(input_vals[0], input_vals[2], input_vals[1], output_val,
-                                                                node.cudnnlist[0], cudnnHandle)
+                                                                node.cudnnlist[0], cudnnHandle, cudaStream)
 
         return memorytoSaving
 
@@ -987,7 +987,7 @@ class ActivationForwardOp(Op):
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
         assert use_numpy == False
-        gpu_op.activation_forward(input_vals[0], output_val, node.activationMode, node.cudnnlist[0], cudnnHandle)
+        gpu_op.activation_forward(input_vals[0], output_val, node.activationMode, node.cudnnlist[0], cudnnHandle, cudaStream)
 
         return 0
 
@@ -1012,7 +1012,7 @@ class ActivationBackwardOp(Op):
         assert use_numpy == False
 
         gpu_op.activation_backward(input_vals[0], output_val, input_vals[2], input_vals[1], node.activationMode,
-                                   node.cudnnlist[0], cudnnHandle)
+                                   node.cudnnlist[0], cudnnHandle, cudaStream)
         return 0
 
     def gradient(self, node, output_grad):
@@ -1094,7 +1094,7 @@ class Pooling2DForwardOp(Op):
         assert use_numpy == False
         assert isinstance(input_vals[0], ndarray.NDArray)
 
-        gpu_op.pooling_2d_forward(input_vals[0], output_val, node.cudnnlist[0], cudnnHandle)
+        gpu_op.pooling_2d_forward(input_vals[0], output_val, node.cudnnlist[0], cudnnHandle, cudaStream)
 
         return 0
 
@@ -1120,7 +1120,7 @@ class Pooling2DBackwardOp(Op):
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
         assert use_numpy == False
         gpu_op.pooling_2d_backward(input_vals[0], input_vals[2], input_vals[1], output_val, node.cudnnlist[0],
-                                   cudnnHandle)
+                                   cudnnHandle, cudaStream)
         return 0
 
     def gradient(self, node, output_grad):
@@ -1208,7 +1208,7 @@ class DropoutForwardOp(Op):
         node.reserveSpace_p[0], node.cudnnlist[0], memorytoSaving = gpu_op.dropout_forward(input_vals[0], output_val,
                                                                                            node.dataformat,
                                                                                            node.dropout, node.seed[0],
-                                                                                           node.inputd[0], cudnnHandle)
+                                                                                           node.inputd[0], cudnnHandle, cudaStream)
         return memorytoSaving
 
     def gradient(self, node, output_grad):
@@ -1230,7 +1230,7 @@ class DropoutBackwardOp(Op):
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
         assert use_numpy == False
-        gpu_op.dropout_backward(input_vals[0], output_val, node.reserveSpace_p[0], node.cudnnlist[0], cudnnHandle)
+        gpu_op.dropout_backward(input_vals[0], output_val, node.reserveSpace_p[0], node.cudnnlist[0], cudnnHandle, cudaStream)
         return 0
 
     def gradient(self, node, output_grad):
@@ -1263,7 +1263,7 @@ class FullyDropoutForwardOp(Op):
         node.reserveSpace_p[0], node.cudnnlist[0], memorytoSaving = gpu_op.dropout_forward(input, output_val,
                                                                                            node.dataformat,
                                                                                            node.dropout, node.seed[0],
-                                                                                           node.inputd[0], cudnnHandle)
+                                                                                           node.inputd[0], cudnnHandle, cudaStream)
         return memorytoSaving
 
     def gradient(self, node, output_grad):
@@ -1287,7 +1287,7 @@ class FullyDropoutBackwardOp(Op):
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
         assert use_numpy == False
 
-        gpu_op.dropout_backward(input_vals[0], output_val, node.reserveSpace_p[0], node.cudnnlist[0], cudnnHandle)
+        gpu_op.dropout_backward(input_vals[0], output_val, node.reserveSpace_p[0], node.cudnnlist[0], cudnnHandle, cudaStream)
         return 0
 
     def gradient(self, node, output_grad):
@@ -1311,7 +1311,7 @@ class FullyActivationForwardOp(Op):
         # print("fullyactivation_start")
         assert use_numpy == False
 
-        gpu_op.activation_forward(input_vals[0], output_val, node.activationMode, node.cudnnlist[0], cudnnHandle)
+        gpu_op.activation_forward(input_vals[0], output_val, node.activationMode, node.cudnnlist[0], cudnnHandle, cudaStream)
 
 
         # print("fullyactivation_end")
@@ -1342,7 +1342,7 @@ class FullyActivationBackwardOp(Op):
 
 
         gpu_op.activation_backward(input_vals[0], output_val, input_vals[2], input_vals[1], node.activationMode,
-                                   node.cudnnlist[0], cudnnHandle)
+                                   node.cudnnlist[0], cudnnHandle, cudaStream)
         # print("FullyActivationBackwardOp_end")
         return 0
 
@@ -1678,7 +1678,7 @@ class BNForwardOp(Op):
         assert isinstance(input_vals[0], ndarray.NDArray)
 
         memorytoSaving = gpu_op.bn_forward(input_vals[0], output_val, node.batchNormMode, node.n, node.Save_p[0],
-                                           node.Save_p[1], node.cudnnlist[0], cudnnHandle)
+                                           node.Save_p[1], node.cudnnlist[0], cudnnHandle, cudaStream)
         node.n = node.n + 1
 
         return memorytoSaving
@@ -1707,7 +1707,7 @@ class BNBackwardOp(Op):
         assert use_numpy == False
 
         memorytoSaving = gpu_op.bn_backward(input_vals[0], input_vals[1], output_val, node.batchNormMode,
-                                            node.Save_p[0], node.Save_p[1], node.cudnnlist[0], cudnnHandle)
+                                            node.Save_p[0], node.Save_p[1], node.cudnnlist[0], cudnnHandle, cudaStream)
 
         return memorytoSaving
 
@@ -1735,7 +1735,7 @@ class FullyBNForwardOp(Op):
         assert isinstance(input_vals[0], ndarray.NDArray)
 
         memorytoSaving = gpu_op.bn_forward(input_vals[0], output_val, node.batchNormMode, node.n, node.Save_p[0],
-                                           node.Save_p[1], node.cudnnlist[0], cudnnHandle)
+                                           node.Save_p[1], node.cudnnlist[0], cudnnHandle, cudaStream)
 
         node.n = node.n + 1
         return memorytoSaving
@@ -1765,7 +1765,7 @@ class FullyBNBackwardOp(Op):
         input = input_vals[0]
         # inputs = input.reshape((input.shape[0], 1, input.shape[1]))
         memorytoSaving = gpu_op.bn_backward(input, input_vals[1], output_val, node.batchNormMode, node.Save_p[0],
-                                            node.Save_p[1], node.cudnnlist[0], cudnnHandle)
+                                            node.Save_p[1], node.cudnnlist[0], cudnnHandle, cudaStream)
         return memorytoSaving
 
     def gradient(self, node, output_grad):
