@@ -5,7 +5,15 @@ from ._base import _LIB,c_array
 from . import ndarray as _nd
 
 
+def create_cudaStream():
+    cudaStream = ctypes.c_int(0)
+    cudaStream = ctypes.pointer(cudaStream)
+    cudaStream = ctypes.pointer(cudaStream)
+    _LIB.DLGpuCreatecudaStream(cudaStream)
+    return cudaStream
 
+def destroy_cudaStream(cudaStream):
+    _LIB.DLGpuDestroycudaStream(cudaStream)
 
 
 def create_cudnnHandle():
@@ -33,18 +41,18 @@ def destroy_cublasHandle(cublasHandle):
 
 
 
-def array_set(arr, value):
+def array_set(arr, value, cudaStream):
     assert isinstance(arr, _nd.NDArray)
-    _LIB.DLGpuArraySet(arr.handle, ctypes.c_float(value))
+    _LIB.DLGpuArraySet(arr.handle, ctypes.c_float(value), cudaStream)
 
 
-def broadcast_to(in_arr, out_arr, type):
+def broadcast_to(in_arr, out_arr, type, cudaStream):
     assert isinstance(in_arr, _nd.NDArray)
     assert isinstance(out_arr, _nd.NDArray)
     if type == "NHWC":
-        _LIB.DLGpuBroadcastTo0(in_arr.handle, out_arr.handle)
+        _LIB.DLGpuBroadcastTo0(in_arr.handle, out_arr.handle, cudaStream)
     elif type == "NCHW":
-        _LIB.DLGpuBroadcastTo1(in_arr.handle, out_arr.handle)
+        _LIB.DLGpuBroadcastTo1(in_arr.handle, out_arr.handle, cudaStream)
 
 
 def broadcast_to_backward(in_arr, out_arr, type):
@@ -166,33 +174,33 @@ def get_shape_size(shape):
     return size
 
 
-def matrix_elementwise_add(matA, matB, matC):
+def matrix_elementwise_add(matA, matB, matC, cudaStream):
     assert isinstance(matA, _nd.NDArray)
     assert isinstance(matB, _nd.NDArray)
     assert isinstance(matC, _nd.NDArray)
-    _LIB.DLGpuMatrixElementwiseAdd(matA.handle, matB.handle, matC.handle)
+    _LIB.DLGpuMatrixElementwiseAdd(matA.handle, matB.handle, matC.handle, cudaStream)
 
 
-def matrix_elementwise_add_by_const(in_mat, val, out_mat):
+def matrix_elementwise_add_by_const(in_mat, val, out_mat, cudaStream):
     assert isinstance(in_mat, _nd.NDArray)
     assert isinstance(out_mat, _nd.NDArray)
     _LIB.DLGpuMatrixElementwiseAddByConst(
-        in_mat.handle, ctypes.c_float(val), out_mat.handle)
+        in_mat.handle, ctypes.c_float(val), out_mat.handle, cudaStream)
 
 
-def matrix_elementwise_multiply(matA, matB, matC):
+def matrix_elementwise_multiply(matA, matB, matC, cudaStream):
     assert isinstance(matA, _nd.NDArray)
     assert isinstance(matB, _nd.NDArray)
     assert isinstance(matC, _nd.NDArray)
     _LIB.DLGpuMatrixElementwiseMultiply(
-        matA.handle, matB.handle, matC.handle)
+        matA.handle, matB.handle, matC.handle, cudaStream)
 
 
-def matrix_elementwise_multiply_by_const(in_mat, val, out_mat):
+def matrix_elementwise_multiply_by_const(in_mat, val, out_mat, cudaStream):
     assert isinstance(in_mat, _nd.NDArray)
     assert isinstance(out_mat, _nd.NDArray)
     _LIB.DLGpuMatrixMultiplyByConst(
-        in_mat.handle, ctypes.c_float(val), out_mat.handle)
+        in_mat.handle, ctypes.c_float(val), out_mat.handle, cudaStream)
 
 
 def matrix_multiply(matA, transA, matB, transB, matC, cublasHandle):
@@ -732,27 +740,27 @@ def l2regular_gradient(in_arr,in_grad_arr, out_arr):
     assert isinstance(in_grad_arr, _nd.NDArray)
     assert isinstance(out_arr, _nd.NDArray)
     _LIB.DLGpuL2regularGradient(in_arr.handle,in_grad_arr.handle, out_arr.handle)
-def concat_forward(in_arr_a, in_arr_b, out_arr):
+def concat_forward(in_arr_a, in_arr_b, out_arr, cudaStream):
     assert isinstance(in_arr_a, _nd.NDArray)
     assert isinstance(in_arr_b, _nd.NDArray)
     assert isinstance(out_arr, _nd.NDArray)
     _LIB.DLGpuConcatForward(
-        in_arr_a.handle, in_arr_b.handle, out_arr.handle)
-def concat_a_backward(in_arr_a, in_arr_b, out_arr,din_arr_a):
+        in_arr_a.handle, in_arr_b.handle, out_arr.handle, cudaStream)
+def concat_a_backward(in_arr_a, in_arr_b, out_arr,din_arr_a, cudaStream):
     assert isinstance(in_arr_a, _nd.NDArray)
     assert isinstance(in_arr_b, _nd.NDArray)
     assert isinstance(din_arr_a, _nd.NDArray)
     assert isinstance(out_arr, _nd.NDArray)
     _LIB.DLGpuConcataBackward(
-        in_arr_a.handle, in_arr_b.handle, out_arr.handle,din_arr_a.handle)
+        in_arr_a.handle, in_arr_b.handle, out_arr.handle,din_arr_a.handle, cudaStream)
 
-def concat_b_backward(in_arr_a, in_arr_b, out_arr,din_arr_b):
+def concat_b_backward(in_arr_a, in_arr_b, out_arr,din_arr_b, cudaStream):
     assert isinstance(in_arr_a, _nd.NDArray)
     assert isinstance(in_arr_b, _nd.NDArray)
     assert isinstance(din_arr_b, _nd.NDArray)
     assert isinstance(out_arr, _nd.NDArray)
     _LIB.DLGpuConcatbBackward(
-        in_arr_a.handle, in_arr_b.handle, out_arr.handle,din_arr_b.handle)
+        in_arr_a.handle, in_arr_b.handle, out_arr.handle,din_arr_b.handle, cudaStream)
 
 
 
@@ -856,11 +864,11 @@ def adam_mv(m,v, g, b1,b2):
 
 
 
-def sgd_update(output, g, learning_rate):
+def sgd_update(output, g, learning_rate, cudaStream):
     assert isinstance(output, _nd.NDArray)
     assert isinstance(g, _nd.NDArray)
     learning_rate = ctypes.c_float(learning_rate)
-    _LIB.DLGpuSgdUpdate(output.handle, g.handle, learning_rate)
+    _LIB.DLGpuSgdUpdate(output.handle, g.handle, learning_rate, cudaStream)
 
 
 def get_index_to_VaribaleNumber_cuda_pointer(index_to_Variable, prefix_list, index_count):

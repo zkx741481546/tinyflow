@@ -76,7 +76,7 @@ TINYFLOW_EXTERN_C {
    * \param value The target value.
    * \return 0 when success, -1 when failure happens
    */
-  int DLGpuArraySet(DLArrayHandle arr, float value);
+  int DLGpuArraySet(DLArrayHandle arr, float value, void **cudaStream);
 
   /*!
    * \brief Broadcast input array to output array.
@@ -84,11 +84,11 @@ TINYFLOW_EXTERN_C {
    * \param output The output array.
    * \return 0 when success, -1 when failure happens
    */
-  int DLGpuBroadcastTo0(const DLArrayHandle input, DLArrayHandle output);
+  int DLGpuBroadcastTo0(const DLArrayHandle input, DLArrayHandle output, void **cudaStream);
 
   int DLGpuBroadcastToBackward0(const DLArrayHandle input, DLArrayHandle output);
 
-  int DLGpuBroadcastTo1(const DLArrayHandle input, DLArrayHandle output);
+  int DLGpuBroadcastTo1(const DLArrayHandle input, DLArrayHandle output, void **cudaStream);
 
   int DLGpuBroadcastToBackward1(const DLArrayHandle input, DLArrayHandle output);
 
@@ -108,7 +108,7 @@ TINYFLOW_EXTERN_C {
    * \return 0 when success, -1 when failure happens
    */
   int DLGpuMatrixElementwiseAdd(const DLArrayHandle matA,
-                                const DLArrayHandle matB, DLArrayHandle output);
+                                const DLArrayHandle matB, DLArrayHandle output, void **cudaStream);
 
   /*!
    * \brief Add matrix by const and store to output.
@@ -118,7 +118,7 @@ TINYFLOW_EXTERN_C {
    * \return 0 when success, -1 when failure happens
    */
   int DLGpuMatrixElementwiseAddByConst(const DLArrayHandle input, float val,
-                                       DLArrayHandle output);
+                                       DLArrayHandle output, void **cudaStream);
 
   /*!
    * \brief Elementwise multiply two matrices and store to output.
@@ -128,7 +128,7 @@ TINYFLOW_EXTERN_C {
    * \return 0 when success, -1 when failure happens
    */
   int DLGpuMatrixElementwiseMultiply(
-      const DLArrayHandle matA, const DLArrayHandle matB, DLArrayHandle output);
+      const DLArrayHandle matA, const DLArrayHandle matB, DLArrayHandle output, void **cudaStream);
 
   /*!
    * \brief Multiply matrix by const and store to output.
@@ -138,7 +138,7 @@ TINYFLOW_EXTERN_C {
    * \return 0 when success, -1 when failure happens
    */
   int DLGpuMatrixMultiplyByConst(const DLArrayHandle input, float val,
-                                 DLArrayHandle output);
+                                 DLArrayHandle output, void **cudaStream);
 
   /*!
    * \brief Matrix multiply two matrices and store to output.
@@ -223,10 +223,12 @@ TINYFLOW_EXTERN_C {
       void **cudnnHandle);
   int DLGpuReduceSum(const DLArrayHandle input, DLArrayHandle output, void ***cudnnlist, void **cudnnHandle, int *memorytoSaving);
 
-  int DLGpuConcatForward(const DLArrayHandle input1,const DLArrayHandle input2,  DLArrayHandle output);
-  int DLGpuConcataBackward(const DLArrayHandle input1,const DLArrayHandle input2,const DLArrayHandle doutput,DLArrayHandle dinput1);
-  int DLGpuConcatbBackward(const DLArrayHandle input1,const DLArrayHandle input2,const DLArrayHandle doutput,DLArrayHandle dinput2);
+  int DLGpuConcatForward(const DLArrayHandle input1,const DLArrayHandle input2,  DLArrayHandle output, void **cudaStream);
+  int DLGpuConcataBackward(const DLArrayHandle input1,const DLArrayHandle input2,const DLArrayHandle doutput,DLArrayHandle dinput1, void **cudaStream);
+  int DLGpuConcatbBackward(const DLArrayHandle input1,const DLArrayHandle input2,const DLArrayHandle doutput,DLArrayHandle dinput2, void **cudaStream);
 
+  int DLGpuCreatecudaStream(void **cudaStream);
+  int DLGpuDestroycudaStream(void **cudaStream);
   int DLGpuCreatecudnnHandle(void **cudnnHandle);
   int DLGpuDestroycudnnHandle(void **cudnnHandle);
   int DLGpuCreatecublasHandle(void **cublasHandle);
@@ -343,8 +345,7 @@ TINYFLOW_EXTERN_C {
       cudnnTensorFormat_t dataformat,
       const paddingStatus_t padding,
       const int v,
-      void ***cudnnlist,
-      void **cudnnHandle);
+      void ***cudnnlist);
 
   int DLGpuActivationForward(const DLArrayHandle input,
     DLArrayHandle output,
@@ -539,7 +540,7 @@ TINYFLOW_EXTERN_C {
                     const DLArrayHandle m,
                    // const int* shape_prefix,
                     //const int number,
-                    float b);
+                    float b, void **cudaStream);
 
 
   int DLGpuGetIndextoVaribaleNumberCudaPointer(int *index_to_number,

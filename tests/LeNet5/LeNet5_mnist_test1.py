@@ -10,7 +10,7 @@ from pycode.tinyflow import gpu_op
 from pycode.tinyflow import ndarray
 from pycode.tinyflow import TrainExecute
 
-
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 # np.set_printoptions(threshold=np.inf)
 
 def load_mnist_data(dataset):
@@ -152,7 +152,7 @@ def LeNet5(num_step = 10, print_loss_val_each_epoch = False):
     isrun = 0
 
     aph = 0.001
-    t = TrainExecute.TrainExecutor(loss, aph)
+    t = TrainExecute.TrainExecutor(loss, aph, ctx = ndarray.gpu(0))
     t.init_Variable({W1: W1_val,
                      W2: W2_val,
                      W3: W3_val,
@@ -161,6 +161,7 @@ def LeNet5(num_step = 10, print_loss_val_each_epoch = False):
                      b2: b2_val,
                      b3: b3_val,
                      b4: b4_val})
+    print("==========================================================")
 
     tic = time.time()
     i = 0

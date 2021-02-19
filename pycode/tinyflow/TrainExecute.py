@@ -5,7 +5,7 @@ from . import ndarray, gpu_op, memoryManager
 import random
 import queue
 from . import autodiff as ad
-
+import os
 
 
 
@@ -16,7 +16,7 @@ class TrainExecutor(object):
     """Executor computes values for given set of nodes in computation graph."""
 
 
-    def __init__(self, targetloss, learning_rate, cudnnHandle =gpu_op.create_cudnnHandle(), cublasHandle = gpu_op.create_cublasHandle(), ctx=ndarray.gpu(0)):
+    def __init__(self, targetloss, learning_rate, cudnnHandle =gpu_op.create_cudnnHandle(), cublasHandle = gpu_op.create_cublasHandle(), cudaStream = gpu_op.create_cudaStream(), ctx=ndarray.gpu(0)):
 
         self.targetloss = targetloss
         self.learning_rate = learning_rate
@@ -40,6 +40,7 @@ class TrainExecutor(object):
         #计算必要的资源
         self.cudnnHandle = cudnnHandle
         self.cublasHandle = cublasHandle
+        self.cudaStream = cudaStream
 
         #是否是第一次run
         self.isfirstrun = 0
@@ -145,13 +146,13 @@ class TrainExecutor(object):
                 node_val = self.node_to_arr_map[node]
 
 
-                memorytoSaving = node.op.compute(node, input_vals, node_val, self.cudnnHandle, self.cublasHandle)
+                memorytoSaving = node.op.compute(node, input_vals, node_val, self.cudnnHandle, self.cublasHandle, self.cudaStream)
                 while memorytoSaving != 0:
                     #不等于0意味着运行需要的临时内存不够，memorytoSaving是申请失败的cudamalloc（，size）的size
                     #这里运行被动模式
                     assert 0
                     #解决了重新计算
-                    memorytoSaving = node.op.compute(node, input_vals, node_val, self.cudnnHandle, self.cublasHandle)
+                    memorytoSaving = node.op.compute(node, input_vals, node_val, self.cudnnHandle, self.cublasHandle, self.cudaStream)
 
                 #此点被计算过了
                 node_computed.add(node)
@@ -270,7 +271,7 @@ class TrainExecutor(object):
 
 #等上面那个run了一次过后再调用
 def getExecutetoComputeAccuracy(execute, resultnode):
-    new_execute = TrainExecutor(targetloss=execute.targetloss, learning_rate=execute.learning_rate, cudnnHandle =execute.cudnnHandle, cublasHandle = execute.cublasHandle,ctx=execute.ctx)
+    new_execute = TrainExecutor(targetloss=execute.targetloss, learning_rate=execute.learning_rate, cudnnHandle =execute.cudnnHandle, cublasHandle = execute.cublasHandle, cudaStream = execute.cudaStream, ctx=execute.ctx)
 
     new_execute.node_to_shape_map = execute.node_to_shape_map.copy()
     new_execute.node_to_arr_map = execute.node_to_arr_map.copy()
