@@ -2110,7 +2110,20 @@ class Executor(object):
             # todo 向上层返回需要的信息
             self.infer_shape(feed_shapes)
             self.feed_shapes = feed_shapes
-
+            return_list = []
+            for node in self.topo_order:
+                node_inputs = []
+                for node_input in node.inputs:
+                    node_inputs.append(node_input.index)
+                if len(self.node_to_shape_map[node]) == 1:
+                    node_size = self.node_to_shape_map[node][0] * 4
+                else:
+                    node_size = self.node_to_shape_map[node][0] * self.node_to_shape_map[node][1] * 4
+                operation_name = node.op
+                return_element = [node.index, node_inputs, node_size, node.index, node_inputs, node_size,
+                                  operation_name]
+                return_list.append(return_element)
+            self.top_message_queue.put(return_list)
 
         # infer shape if feed_shapes changed since last run
         # e.g. call run() on test data after trainng

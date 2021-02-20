@@ -1,11 +1,13 @@
 from multiprocessing import Process
 from pycode.tinyflow import ndarray, gpu_op
 from pycode.tinyflow import autodiff as ad
+from pycode.tinyflow import mainV2 as mp
 import six.moves.cPickle as pickle
 import gzip
 import numpy as np
 import os
 import queue
+import multiprocessing
 
 def load_mnist_data(dataset):
     # 加载mnist数据集
@@ -238,18 +240,35 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
 
 
 if __name__ == '__main__':
+    global_message_queue = multiprocessing.Queue()
+    global_control_queue = multiprocessing.Queue()
+
     top_control_queue_list = []
     top_message_queue_list = []
     executor_ctx = ndarray.gpu(0)
     num_epochs = 20
     print_loss_val_each_epoch = True
-    top_control_queue = queue.Queue()
+    top_control_queue = multiprocessing.Queue()
     top_control_queue_list.append(top_control_queue)
-    top_message_queue = queue.Queue()
+    top_message_queue = multiprocessing.Queue()
     top_message_queue_list.append(top_message_queue)
-    p = Process(target=mnist_mlp, args=(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_queue, top_message_queue))
-    p.start()
-    p.join()
+    job_number = 1
+
+    p1 = Process(target=mnist_mlp, args=(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_queue, top_message_queue))
+    p1.start()
+    p1.join()
+
+    scheduler = Process(target=mp.multiprocess_init(global_message_queue=global_message_queue, global_control_queue=global_control_queue))
+    scheduler.start()
+    scheduler.join()
+
+    print("find output")
+
+    while True:
+        for i in range(job_number):
+            if not top_message_queue_list[i].empty():
+                print("find output")
+
     # todo 算法传入系统的信息规则
     # 上层写入下层的每次的control message：task_id, node_id, start_time, start_node, move_to_gpu, start_node_type, recompute
     # 根据task_id选择对应的control_queue，将其余所有信息作为一个整体list放入queue中。
