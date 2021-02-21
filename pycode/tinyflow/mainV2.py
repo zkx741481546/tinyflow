@@ -38,20 +38,20 @@ class Tensor:
 
 
 class TensorAccess:
-    def __init__(self, tensor, time=None, access_type=None, operation_id=None):
+    def __init__(self, tensor, time, run_time, access_type, operation_id):
         self.tensor = tensor
         self.access_id = None
         self.start_time = None
         self.end_time = None
-        self.time = np.random.random() * time_scale if time is None else time
-        tmp = np.random.normal(loc=0.5, scale=1, size=1)[0]
-        tmp = 1 if tmp > 1 else tmp
-        self.run_time = 0.05 if tmp <= 0.1 else tmp
-        if access_type is None:
-            tmp = np.random.randint(2)
-            self.access_type = AccessType.output if tmp == 0 else AccessType.input
+        self.time = time
+        self.run_time = run_time
+        self.access_type = access_type
+        if self.access_type == AccessType.output:
+            self.end_time = self.time
+            self.start_time = self.time - self.run_time
         else:
-            self.access_type = access_type
+            self.start_time = self.time
+            self.end_time = self.time + self.run_time
         self.release_flag = False
         self.operation_id = operation_id
 
@@ -117,7 +117,7 @@ debug_num = 0
 def get_predicted_execution_time(op_name, input_tensors, logged_time: list):
 
 
-    return 0.1
+    return 50
 
     # input_size = 0
     # for tensor in input_tensors:
@@ -408,15 +408,16 @@ def get_framework_info(info, logged_time, job_id):
         for tensor_id in input_tensor_id:
             input_tensor = tensors[tensor_id]
             input_tensors.append(input_tensor)
-            input_access = TensorAccess(tensor=input_tensor, time=global_time, access_type=AccessType.input, operation_id=output_tensor_id)
-            tensor_access_list.append(input_access)
         output_tensor = Tensor(tensor_id=output_tensor_id, job_id=job_id, size=output_tensor_size, source_tensors=input_tensors)
-        logged_time.append([])
         time_cost = get_predicted_execution_time(operation_name, input_tensors, logged_time[output_tensor_id])
         global_time += time_cost
-        output_access = TensorAccess(tensor=output_tensor, time=time_cost, access_type=AccessType.output, operation_id=output_tensor_id)
+        output_access = TensorAccess(tensor=output_tensor, time=time_cost, run_time=time_cost, access_type=AccessType.output, operation_id=output_tensor_id)
         tensor_access_list.append(output_access)
         tensors[output_tensor.tensor_id] = output_access
+        for tensor_id in input_tensor_id:
+            input_tensor = tensors[tensor_id]
+            input_access = TensorAccess(tensor=input_tensor, time=global_time, run_time=time_cost, access_type=AccessType.input, operation_id=output_tensor_id)
+            tensor_access_list.append(input_access)
     # tensors = list(tensors.values())
     tensor_access_list = sorted(tensor_access_list, key=lambda x: x.time)
     liveness_analysis(tensor_access_list)
@@ -492,6 +493,7 @@ def remove_job(job_id, gpu: int):
 def generate_scheduling_plan(logged_times, gpu: int):
     # 如果是此时logged_times已经清空，则
     # logged_times: [[(operation_id, [time, time, time])]]，外层索引为job_id
+    global total_memory
     init(global_graphs, logged_times, gpu)
     # 指数加权平均更新估计时间
     tensor_nums = list(map(lambda x: len(x), tensor_access_by_tensor))
@@ -615,6 +617,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
                                 # print('recompute')
                                 break
         iter += 1
+    total_memory = nvmlDeviceGetMemoryInfo(handle).free
     stats = 'succeed' if max_memory < total_memory else ' failure'
     print(f'scheduling {stats}')
     # draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
@@ -642,5 +645,3 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                 logged_times[job_id].append([i, [0.1]])
             generate_scheduling_plan(logged_times, 0)
             time.sleep(10)
-
-
