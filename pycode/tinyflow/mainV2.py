@@ -8,6 +8,7 @@ import plotly.figure_factory as ff
 from collections import defaultdict
 import os
 from pynvml import *
+import time
 
 pyplt = py.offline.plot
 
@@ -111,18 +112,23 @@ def numpy_ewma_vectorized(data, window):
     out = offset + cumsums*scale_arr[::-1]
     return out
 
+debug_num = 0
 
 def get_predicted_execution_time(op_name, input_tensors, logged_time: list):
-    input_size = 0
-    for tensor in input_tensors:
-        input_size += tensor.size
-    # TODO
-    predicted_time = 0
-    if len(logged_time)>0:
-        predicted_time = [predicted_time]
-        predicted_time.extend(logged_time)
-        predicted_time = numpy_ewma_vectorized(np.array(predicted_time), 3)
-    return predicted_time
+
+
+    return 0.1
+
+    # input_size = 0
+    # for tensor in input_tensors:
+    #     input_size += tensor.size
+    # # TODO
+    # predicted_time = 0
+    # if len(logged_time)>0:
+    #     predicted_time = [predicted_time]
+    #     predicted_time.extend(logged_time)
+    #     predicted_time = numpy_ewma_vectorized(np.array(predicted_time), 3)
+    # return predicted_time
 
 
 def liveness_analysis(tensor_access_list):
@@ -397,7 +403,7 @@ def get_framework_info(info, logged_time, job_id):
     tensor_access_list = []
     global_time = 0
     #   operation_id
-    for output_tensor_id, input_tensor_id, output_tensor_size, operation_name in enumerate(info):
+    for output_tensor_id, input_tensor_id, output_tensor_size, operation_name in info:
         input_tensors = []
         for tensor_id in input_tensor_id:
             input_tensor = tensors[tensor_id]
@@ -405,6 +411,7 @@ def get_framework_info(info, logged_time, job_id):
             input_access = TensorAccess(tensor=input_tensor, time=global_time, access_type=AccessType.input, operation_id=output_tensor_id)
             tensor_access_list.append(input_access)
         output_tensor = Tensor(tensor_id=output_tensor_id, job_id=job_id, size=output_tensor_size, source_tensors=input_tensors)
+        logged_time.append([])
         time_cost = get_predicted_execution_time(operation_name, input_tensors, logged_time[output_tensor_id])
         global_time += time_cost
         output_access = TensorAccess(tensor=output_tensor, time=time_cost, access_type=AccessType.output, operation_id=output_tensor_id)
@@ -617,6 +624,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
 
 
 def multiprocess_init(global_message_queue: multiprocessing.Queue, global_control_queue: multiprocessing.Queue):
+    logged_times = []
     while True:
         if not global_message_queue.empty():
             global_message = global_message_queue.get()
@@ -627,6 +635,12 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
             # todo add to add_job
             global job_num
             job_num += 1
+            logged_times.append([])
+            global_graphs.append(message_graph)
+            tensor_num = len(message_graph)
+            for i in range(tensor_num):
+                logged_times[job_id].append([i, [0.1]])
+            generate_scheduling_plan(logged_times, 0)
+            time.sleep(10)
 
-            add_job(message_graph, job_id, 0)
 
