@@ -2120,10 +2120,9 @@ class Executor(object):
                 else:
                     node_size = self.node_to_shape_map[node][0] * self.node_to_shape_map[node][1] * 4
                 operation_name = node.op
-                return_element = [node.index, node_inputs, node_size, node.index, node_inputs, node_size,
-                                  operation_name]
+                return_element = [node.index, node_inputs, node_size, operation_name]
                 return_list.append(return_element)
-            self.top_message_queue.put(return_list)
+            self.top_message_queue.put([0, return_list])
 
         # infer shape if feed_shapes changed since last run
         # e.g. call run() on test data after trainng

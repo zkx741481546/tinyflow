@@ -473,7 +473,7 @@ def add_job(graph, job_id, gpu: int):
         global_graphs.append(graph)
     else:
         global_graphs[job_id] = graph
-    init(global_graphs, [], gpu)
+    init(global_graphs, [[] for _ in range(job_num)], gpu)
 
 
 def remove_job(job_id, gpu: int):
@@ -616,5 +616,17 @@ def generate_scheduling_plan(logged_times, gpu: int):
     return generate_swap_recomputation_release_order(tensor_access_by_tensor, swap_scheduler, recomputations, job_num)
 
 
-def multiprocess_init(global_message_queue, global_control_queue):
-    pass
+def multiprocess_init(global_message_queue: multiprocessing.Queue, global_control_queue: multiprocessing.Queue):
+    while True:
+        if not global_message_queue.empty():
+            global_message = global_message_queue.get()
+            job_id = global_message[0]
+            message_type = global_message[1][0]
+            message_graph = global_message[1][1]
+
+            # todo add to add_job
+            global job_num
+            job_num += 1
+
+            add_job(message_graph, job_id, 0)
+

@@ -256,18 +256,17 @@ if __name__ == '__main__':
 
     p1 = Process(target=mnist_mlp, args=(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_queue, top_message_queue))
     p1.start()
-    p1.join()
+    # p1.join()
 
-    scheduler = Process(target=mp.multiprocess_init(global_message_queue=global_message_queue, global_control_queue=global_control_queue))
+    scheduler = Process(target=mp.multiprocess_init, args=(global_message_queue, global_control_queue))
     scheduler.start()
-    scheduler.join()
+    # scheduler.join()
 
-    print("find output")
 
     while True:
         for i in range(job_number):
             if not top_message_queue_list[i].empty():
-                print("find output")
+                global_message_queue.put([i, top_message_queue.get()])
 
     # todo 算法传入系统的信息规则
     # 上层写入下层的每次的control message：task_id, node_id, start_time, start_node, move_to_gpu, start_node_type, recompute
