@@ -413,7 +413,7 @@ def get_framework_info(info, logged_time, job_id):
         global_time += time_cost
         output_access = TensorAccess(tensor=output_tensor, time=time_cost, run_time=time_cost, access_type=AccessType.output, operation_id=output_tensor_id)
         tensor_access_list.append(output_access)
-        tensors[output_tensor.tensor_id] = output_access
+        tensors[output_tensor.tensor_id] = output_tensor
         for tensor_id in input_tensor_id:
             input_tensor = tensors[tensor_id]
             input_access = TensorAccess(tensor=input_tensor, time=global_time, run_time=time_cost, access_type=AccessType.input, operation_id=output_tensor_id)
