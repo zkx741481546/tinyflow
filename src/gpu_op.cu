@@ -1302,7 +1302,7 @@ int DLGpuMatrixExp(const DLArrayHandle input, DLArrayHandle output) {
 }
 
 
-int DLGpuMatrixLog(const DLArrayHandle input, DLArrayHandle output) {
+int DLGpuMatrixLog(const DLArrayHandle input, DLArrayHandle output, void **cudaStream) {
     assert(input->ndim == output->ndim);
     int count = 1;
     for (int i = 0; i < input->ndim; ++i) {
@@ -1311,9 +1311,9 @@ int DLGpuMatrixLog(const DLArrayHandle input, DLArrayHandle output) {
     }
     float* inputArr = (float*) input->data;
     float* outputArr = (float*) output->data;
-    matrix_log_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM>>>(
+    matrix_log_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM, 0, (cudaStream_t)*cudaStream>>>(
     inputArr, outputArr, count);
-    cudaDeviceSynchronize();
+    cudaStreamSynchronize((cudaStream_t)*cudaStream);
     return 0;
 }
 
@@ -4469,7 +4469,7 @@ __global__ void adam_kernel(float* outputArr, float* mArr, float* vArr,
 
 int DLGpuAdam(DLArrayHandle output,
               const DLArrayHandle m, const DLArrayHandle v,
-              float b1t,float b2t,float e,float learning_rate) {
+              float b1t,float b2t,float e,float learning_rate, void **cudaStream) {
     assert(m->ndim == output->ndim);
     assert(v->ndim == output->ndim);
     int count = 1;
@@ -4479,11 +4479,11 @@ int DLGpuAdam(DLArrayHandle output,
     float* mData = (float*) m->data;
     float* vData = (float*) v->data;
     float* outputData = (float*) output->data;
-    adam_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM>>>(
+    adam_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM, 0, (cudaStream_t)*cudaStream>>>(
         outputData, mData, vData,  
         b1t, b2t, e, learning_rate,
         count);
-    cudaDeviceSynchronize();
+    cudaStreamSynchronize((cudaStream_t)*cudaStream);
     return 0;
 }
 
@@ -4511,7 +4511,7 @@ int DLGpuAdam_mv(DLArrayHandle m,
                 DLArrayHandle v,
                 const DLArrayHandle g,
                 float b1,
-                float b2) {
+                float b2, void **cudaStream) {
     assert(v->ndim == g->ndim);
     assert(m->ndim == g->ndim);
     int count = 1;
@@ -4522,17 +4522,78 @@ int DLGpuAdam_mv(DLArrayHandle m,
     float* mData = (float*) m->data;
     float* vData = (float*) v->data;
     float* gData = (float*) g->data;
-    adam_mv_kernel<<<BLOCK_NUM(count*2), MAX_THREADS_NUM>>>(
+    adam_mv_kernel<<<BLOCK_NUM(count*2), MAX_THREADS_NUM, 0, (cudaStream_t)*cudaStream>>>(
     mData, vData, gData,
     b1,b2,
     count*2,
     count);
-    cudaDeviceSynchronize();
+    cudaStreamSynchronize((cudaStream_t)*cudaStream);
     return 0;
 }
 
 
 
+
+__global__ void cross_kernel(float* xArr, float* yArr, float* outputArr,
+                                    float b, int count) {
+    CUDA_1D_KERNEL_LOOP(index, count) {
+    outputArr[index] = log(xArr[index])  * yArr[index] * (-1) * b;
+    }
+}
+
+
+int DLGpuCross(const DLArrayHandle x,
+                    const DLArrayHandle y,
+                    DLArrayHandle output,
+                    float b, void **cudaStream) {
+    assert(x->ndim == output->ndim);
+    assert(x->ndim == y->ndim);
+    int count = 1;
+    for (int i = 0; i < output->ndim; ++i) {
+        count *= output->shape[i];
+    }
+    float* xData = (float*) x->data;
+    float* yData = (float*) y->data;
+    float* outputData = (float*) output->data;
+    cross_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM, 0, (cudaStream_t)*cudaStream>>>(
+    xData, yData, outputData,
+    b,
+    count);
+    cudaStreamSynchronize((cudaStream_t)*cudaStream);
+    return 0;
+}
+
+
+__global__ void cross_backward_kernel(float* xArr, float* yArr, float* doutputArr, float* outputArr,
+                                    float b, int count) {
+    CUDA_1D_KERNEL_LOOP(index, count) {
+    outputArr[index] =  yArr[index] * (-1) * b * (1.0 / xArr[index]) * doutputArr[index];
+    }
+}
+
+
+int DLGpuCrossBackward(const DLArrayHandle x,
+                    const DLArrayHandle y,
+                    const DLArrayHandle doutput,
+                    DLArrayHandle output,
+                    float b, void **cudaStream) {
+    assert(x->ndim == output->ndim);
+    assert(x->ndim == y->ndim);
+    int count = 1;
+    for (int i = 0; i < output->ndim; ++i) {
+        count *= output->shape[i];
+    }
+    float* xData = (float*) x->data;
+    float* yData = (float*) y->data;
+    float* doutputData = (float*) doutput->data;
+    float* outputData = (float*) output->data;
+    cross_backward_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM, 0, (cudaStream_t)*cudaStream>>>(
+    xData, yData, doutputData, outputData,
+    b,
+    count);
+    cudaStreamSynchronize((cudaStream_t)*cudaStream);
+    return 0;
+}
 
 
 __global__ void sgd_update_kernel(float* outputArr, float* mArr, 

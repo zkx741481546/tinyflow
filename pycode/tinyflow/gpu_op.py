@@ -100,6 +100,8 @@ def reduce_sum_get_real_shape(input_shapes, output_shapes, dataformat):
             assert 1 == output_shapes[0]
             return (1,1,input_shapes), (1, 1, 1)
         if len(input_shapes) == 2:
+            if output_shapes[0] == 1:
+                return (1, input_shapes[0], input_shapes[1]), (1, 1, output_shapes[0])
             assert input_shapes[1] == output_shapes[0]
             return (1, input_shapes[0], input_shapes[1]), (1, 1, output_shapes[0])
         if len(input_shapes) == 3:
@@ -251,10 +253,10 @@ def matrix_exp(in_arr, out_arr):
 
 
 
-def matrix_log(in_arr, out_arr):
+def matrix_log(in_arr, out_arr, cudaStream):
     assert isinstance(in_arr, _nd.NDArray)
     assert isinstance(out_arr, _nd.NDArray)
-    _LIB.DLGpuMatrixLog(in_arr.handle, out_arr.handle)
+    _LIB.DLGpuMatrixLog(in_arr.handle, out_arr.handle, cudaStream)
 
 def matrix_reverse(in_arr, out_arr):
     assert isinstance(in_arr, _nd.NDArray)
@@ -266,6 +268,7 @@ def matrix_pow(in_arr, val, out_arr):
     assert isinstance(out_arr, _nd.NDArray)
     val = ctypes.c_float(val)
     _LIB.DLGpuMatrixPow(in_arr.handle,val, out_arr.handle)
+
 
 
 #��
@@ -840,7 +843,7 @@ def bn_backward(input,doutput,dinput,batchNormMode,mean_p,var_p,cudnnlist, cudnn
     return memorytoSaving
 
 
-def adam_compute(output, m, v, b1t, b2t, e, learning_rate):
+def adam_compute(output, m, v, b1t, b2t, e, learning_rate, cudaStream):
     assert isinstance(output, _nd.NDArray)
     assert isinstance(m, _nd.NDArray)
     assert isinstance(v, _nd.NDArray)
@@ -848,20 +851,32 @@ def adam_compute(output, m, v, b1t, b2t, e, learning_rate):
     b2t = ctypes.c_float(b2t)
     e = ctypes.c_float(e)
     learning_rate = ctypes.c_float(learning_rate)
-    _LIB.DLGpuAdam(output.handle, m.handle, v.handle, b1t, b2t, e, learning_rate)
+    _LIB.DLGpuAdam(output.handle, m.handle, v.handle, b1t, b2t, e, learning_rate, cudaStream)
 
 
-def adam_mv(m,v, g, b1,b2):
+def adam_mv(m,v, g, b1,b2, cudaStream):
     assert isinstance(m, _nd.NDArray)
     assert isinstance(v, _nd.NDArray)
     assert isinstance(g, _nd.NDArray)
     b1 = ctypes.c_float(b1)
     b2 = ctypes.c_float(b2)
-    _LIB.DLGpuAdam_mv(m.handle,v.handle, g.handle, b1,b2)
+    _LIB.DLGpuAdam_mv(m.handle,v.handle, g.handle, b1,b2, cudaStream)
 
 
+def cross(x, y, output, mean, cudaStream):
+    assert isinstance(x, _nd.NDArray)
+    assert isinstance(y, _nd.NDArray)
+    assert isinstance(output, _nd.NDArray)
+    mean = ctypes.c_float(mean)
+    _LIB.DLGpuCross(x.handle, y.handle, output.handle, mean, cudaStream)
 
-
+def cross_backward(x, y, doutput, output, mean, cudaStream):
+    assert isinstance(x, _nd.NDArray)
+    assert isinstance(y, _nd.NDArray)
+    assert isinstance(output, _nd.NDArray)
+    assert isinstance(doutput, _nd.NDArray)
+    mean = ctypes.c_float(mean)
+    _LIB.DLGpuCrossBackward(x.handle, y.handle, doutput.handle, output.handle, mean, cudaStream)
 
 
 def sgd_update(output, g, learning_rate, cudaStream):
