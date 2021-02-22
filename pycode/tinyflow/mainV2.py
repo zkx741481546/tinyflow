@@ -117,7 +117,7 @@ debug_num = 0
 def get_predicted_execution_time(op_name, input_tensors, logged_time: list):
 
 
-    return 0.5
+    return 50
 
     # input_size = 0
     # for tensor in input_tensors:
@@ -649,17 +649,21 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
             message_type = global_message[1][0]
             message_graph = global_message[1][1]
 
-            # todo add to add_job
-            global job_num
-            job_num += 1
-            logged_times.append([])
-            global_graphs.append(message_graph)
-            tensor_num = len(message_graph)
-            for i in range(tensor_num):
-                logged_times[job_id].append([i, [0.1]])
-            release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
-            control_messages = []
-            for i in range(job_num):
-                control_message = [swap_order[i], release_order[i], recomputation_order[i]]
-                control_messages.append(control_message)
-            global_control_queue.put(control_messages)
+            if message_type == 0:
+                # todo add to add_job
+                global job_num
+                job_num += 1
+                logged_times.append([])
+                global_graphs.append(message_graph)
+                tensor_num = len(message_graph)
+                for i in range(tensor_num):
+                    logged_times[job_id].append([i, [0.1]])
+                release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
+                control_messages = []
+                for i in range(job_num):
+                    control_message = [swap_order[i], release_order[i], recomputation_order[i]]
+                    control_messages.append(control_message)
+                global_control_queue.put(control_messages)
+            else:
+                for node_message in message_graph:
+                    logged_times[job_id][node_message[0]].append(node_message[1])
