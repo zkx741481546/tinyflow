@@ -117,7 +117,7 @@ debug_num = 0
 
 
 def get_predicted_execution_time(op_name, input_tensors, logged_time: list):
-    return 0.5
+    return 5
 
     # input_size = 0
     # for tensor in input_tensors:
@@ -279,6 +279,7 @@ def get_max_memory_used(tensor_access_list, swap_tasks, swapped_out_tensor, reco
                 return 0
 
     time_axis = sorted(tmp, key=cmp_to_key(custom_cmp))
+    # occupied by handle, cudnn, cuda stream and cudart
     memory_used = 0
     max_memory_actual = float('-inf')
     # max_memory = float('-inf')
@@ -344,8 +345,9 @@ def get_max_memory_used(tensor_access_list, swap_tasks, swapped_out_tensor, reco
             # max_memory_actual与是否有考虑价值无关，单纯计量峰值
             max_memory_actual = memory_used
         # if memory_used > max_memory:
-        #     if (np.logical_and(np.array([t not in swapped_out_tensor for t in in_gpu_tensors]), np.array([t not in recomputation_tensor for t in in_gpu_tensors])) == True).any():
-                # and (True in [len(tensor_access_by_tensor[t]) >= 3 or (len(tensor_access_by_tensor[t])>=2 and tensor_access_by_tensor[t][1].start_time-tensor_access_by_tensor[t][0].end_time>=2*t.swap_time) for t in in_gpu_tensors])
+        #     if (np.logical_and(np.array([t not in swapped_out_tensor for t in in_gpu_tensors]), np.array([t not in recomputation_tensor for t in in_gpu_tensors])) == True).any() and (True in [
+        #         len(tensor_access_by_tensor[t]) >= 3 or (len(tensor_access_by_tensor[t]) >= 2 and tensor_access_by_tensor[t][1].start_time - tensor_access_by_tensor[t][0].end_time >= 2 * t.swap_time) for t in
+        #         in_gpu_tensors]):
             max_memory_tensors = copy.copy(in_gpu_tensors)
             max_last_access = copy.copy(last_input_tensor_access)
             max_time = time
@@ -409,6 +411,7 @@ def can_next_input_access_swap_in(i, all_access_of_tensor, swap_out_task, swap_s
 
 
 def get_framework_info(info, logged_time, job_id):
+    global global_tensors
     tensors = {}
     tensor_access_list = []
     global_time = 0
@@ -431,7 +434,8 @@ def get_framework_info(info, logged_time, job_id):
             input_tensor = tensors[tensor_id]
             input_access = TensorAccess(tensor=input_tensor, time=global_time, run_time=time_cost, access_type=AccessType.input, operation_id=output_tensor_id)
             tensor_access_list.append(input_access)
-    # tensors = list(tensors.values())
+    tensors = list(tensors.values())
+    global_tensors.extend(tensors)
     tensor_access_list = sorted(tensor_access_list, key=lambda x: x.time)
     liveness_analysis(tensor_access_list)
     return tensor_access_list
@@ -454,7 +458,7 @@ total_memory = 0
 handle = None
 enable_recomputation = True
 global_graphs = []
-
+global_tensors =[]
 
 def init(graphs, logged_times: list, gpu: int):
     global job_num
@@ -464,6 +468,7 @@ def init(graphs, logged_times: list, gpu: int):
     global handle
     global jobs_weights
     global global_graphs
+    global global_tensors
     global_graphs = graphs
     jobs_weights = [weight for _ in range(len(graphs))]
     os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu)
@@ -471,7 +476,6 @@ def init(graphs, logged_times: list, gpu: int):
     nvmlInit()
     handle = nvmlDeviceGetHandleByIndex(gpu)
     total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
-
     job_num = len(graphs)
     global_tensor_access = [get_framework_info(graphs[i], logged_times[i], i) for i in range(job_num)]
     # task-tensor-access
@@ -581,11 +585,12 @@ def generate_scheduling_plan(logged_times, gpu: int):
                                     break
                                 else:
                                     swap_scheduler[swap_out_task.tensor.job_id].remove(swap_out_task)
+                                    swapped_out_tensor.remove(tensor)
                                     continue
                         # 安排失败
                         if not succeed:
                             continue
-                        # 至少将第一个访问swap in才算成功，后续的能换入的话，则把前一个的release_flag设为True
+                        #后续的能换入的话，则把前一个的release_flag设为True
                         for i in range(selected_first_access_index + 1, len(all_access_of_tensor)):
                             access = all_access_of_tensor[i]
                             if i == 0 or access in swapped_in_access:
@@ -593,8 +598,6 @@ def generate_scheduling_plan(logged_times, gpu: int):
                             else:
                                 if can_next_input_access_swap_in(i, all_access_of_tensor, swap_out_task, swap_scheduler):
                                     # print(f'成功{access}')
-                                    swapped_out_tensor.add(tensor)
-                                    swap_out_dict[tensor] = swap_out_task
                                     swapped_in_access.add(access)
                                     if all_access_of_tensor[i - 1].start_time > swap_out_task.end_time:
                                         all_access_of_tensor[i - 1].release_flag = True
@@ -634,7 +637,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
     total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
     stats = 'succeed' if max_memory < total_memory else ' failure'
     print(f'scheduling {stats}')
-    # draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
+    draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
     memory_saved_ratio = format((1 - last_memory_used / original_memory_used) * 100, '.2f')
     print(f'memory_saved_ratio:{memory_saved_ratio}%')
     return generate_swap_recomputation_release_order(tensor_access_by_tensor, swap_scheduler, recomputations, job_num)
@@ -657,5 +660,5 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
             tensor_num = len(message_graph)
             for i in range(tensor_num):
                 logged_times[job_id].append([i, [0.1]])
-            generate_scheduling_plan(logged_times, 0)
+            generate_scheduling_plan(logged_times, 6)
             time.sleep(10)
