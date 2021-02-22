@@ -34,6 +34,7 @@ class Node(object):
         self.control_message_out = []
         self.control_message_out_time = 0
         self.recompute_list = []
+        self.release_list = []
         # 是不是参数
         self.issgd = 0
         self.isw = 0
@@ -2142,6 +2143,46 @@ class Executor(object):
         for node in self.topo_order:
             node.array_status = 0
 
+        if not self.top_control_queue.empty():
+            print("get control message")
+            # todo 解析从上游传入的控制信息。
+
+            top_swap_list, top_release_list, top_recomputation_list = self.top_control_queue.get()
+
+            # 顺序为(start_node, start_node_type, start_time, node_id, move_to_gpu)
+            # 此处保证start_time按照顺序排布
+
+            for control_node in self.topo_order:
+                control_node.control_message_in = []
+                control_node.control_message_in_time = 0
+                control_node.control_message_out = []
+                control_node.control_message_out_time = 0
+                # wait_time, node_id, move_to_gpu
+                control_node.recompute_list = []
+                control_node.release_list = []
+
+            for swap_message in top_swap_list:
+                node_index = swap_message[0]
+                start_time = swap_message[1]
+                start_node_id = swap_message[2]
+                move_to_gpu = swap_message[3]
+
+                start_node = self.topo_order[start_node_id]
+                if start_node.control_message_out_time == 0:
+                    start_node.control_message_out_time = start_time
+                    start_node.control_message_out.append((0, node_index, move_to_gpu))
+                else:
+                    start_node.control_message_out.append(
+                        (start_time - start_node.control_message_out_time, node_index, move_to_gpu))
+                    start_node.control_message_out_time = start_time
+
+            for release_message in top_release_list:
+                start_node_id = release_message[0]
+                node_id = release_message[1]
+
+                start_node = self.topo_order[start_node_id]
+                start_node.release_list.append(node_id)
+
         # Traverse graph in topo order and compute values for all nodes.
         for node in self.topo_order:
 
@@ -2150,45 +2191,6 @@ class Executor(object):
                 # 找出feed_dict中已经包含的ndarray
                 node.array_status = 1
                 continue
-
-            if not self.top_control_queue.empty():
-                # todo 解析从上游传入的控制信息。
-
-                top_control_message_list = self.top_control_queue.get()
-
-                # 顺序为(start_node, start_node_type, start_time, node_id, move_to_gpu)
-                # 此处保证start_time按照顺序排布
-
-                for control_node in self.topo_order:
-                    control_node.control_message_in = []
-                    control_node.control_message_in_time = 0
-                    control_node.control_message_out = []
-                    control_node.control_message_out_time = 0
-                    control_node.recompute_list = []
-
-                for top_control_message in top_control_message_list:
-                    start_node_index = top_control_message[0]
-                    start_node = self.topo_order[start_node_index]
-                    start_node_type = top_control_message[1]
-                    start_time = top_control_message[2]
-                    node_id = top_control_message[3]
-                    move_to_gpu = top_control_message[4]
-                    is_recompute = top_control_message[5]
-
-                    if is_recompute:
-                        start_node.recompute_list.append(node_id)
-                        continue
-                    if start_node_type == 0:
-                        # (wait_time, node_index, node_ndarray, move_to_gpu)
-                        start_node.control_message_in.append(
-                            (start_time - start_node.control_message_in_time, node_id, move_to_gpu))
-                        start_node.control_message_in_time = start_time
-                    else:
-                        start_node.control_message_out.append(
-                            (start_time - start_node.control_message_out_time, node_id, move_to_gpu))
-                        start_node.control_message_out_time = start_time
-                    # 此处未知node的handle，在下面具体操作时将handle传入
-                    # 此时是(wait_time, node_index, move_to_gpu)
 
             input_vals = []
 
