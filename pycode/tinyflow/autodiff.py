@@ -5,6 +5,7 @@ import numpy as np
 from . import ndarray, gpu_op, memoryManager, memoryManagerController
 import random
 import queue
+import datetime
 
 
 class Node(object):
@@ -35,6 +36,8 @@ class Node(object):
         self.control_message_out_time = 0
         self.recompute_list = []
         self.release_list = []
+        self.runtime = 0
+
         # 是不是参数
         self.issgd = 0
         self.isw = 0
@@ -2124,6 +2127,12 @@ class Executor(object):
                 return_element = [node.index, node_inputs, node_size, operation_name]
                 return_list.append(return_element)
             self.top_message_queue.put([0, return_list])
+        else:
+            return_list = []
+            for i in range(len(self.topo_order)):
+                return_element = (i, self.topo_order[i].runtime)
+                return_list.append(return_element)
+            self.top_message_queue.put([1, return_list])
 
         # infer shape if feed_shapes changed since last run
         # e.g. call run() on test data after trainng
@@ -2235,17 +2244,24 @@ class Executor(object):
                 move_to_gpu = control_message[2]
                 self.control_queue.put((wait_time, node_id, node_to_gpu_map[self.topo_order[node_id]], move_to_gpu))
 
+            t1 = datetime.datetime.now()
             node.op.compute(node, input_vals, node_val, self.cudnnHandle, self.cublasHandle, self.cudaStream, False)
+            t2 = datetime.datetime.now()
+            node.runtime = (t2 - t1).microseconds
             # print(node.index)
 
             # print(node.index)
             node_to_gpu_map[node] = node_val
+
 
             for control_message in node.control_message_out:
                 wait_time = control_message[0]
                 node_id = control_message[1]
                 move_to_gpu = control_message[2]
                 self.control_queue.put((wait_time, node_id, node_to_gpu_map[self.topo_order[node_id]], move_to_gpu))
+
+            for release_message in node.release_list:
+                node_to_gpu_map[self.topo_order[release_message]] = None
 
             while not self.have_done_queue.empty():
                 (node_index, node_ndarray_new) = self.have_done_queue.get()
