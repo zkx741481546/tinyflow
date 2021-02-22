@@ -2119,10 +2119,11 @@ class Executor(object):
                 node_inputs = []
                 for node_input in node.inputs:
                     node_inputs.append(node_input.index)
-                if len(self.node_to_shape_map[node]) == 1:
-                    node_size = self.node_to_shape_map[node][0] * 4
-                else:
-                    node_size = self.node_to_shape_map[node][0] * self.node_to_shape_map[node][1] * 4
+                node_size = np.prod(self.node_to_shape_map[node])*4
+                # if len(self.node_to_shape_map[node]) == 1:
+                #     node_size = self.node_to_shape_map[node][0] * 4
+                # else:
+                #     node_size = self.node_to_shape_map[node][0] * self.node_to_shape_map[node][1] * 4
                 operation_name = node.op
                 return_element = [node.index, node_inputs, node_size, operation_name]
                 return_list.append(return_element)
