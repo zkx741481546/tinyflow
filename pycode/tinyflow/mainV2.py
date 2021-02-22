@@ -657,5 +657,9 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
             tensor_num = len(message_graph)
             for i in range(tensor_num):
                 logged_times[job_id].append([i, [0.1]])
-            generate_scheduling_plan(logged_times, 0)
-            time.sleep(10)
+            release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
+            control_messages = []
+            for i in range(job_num):
+                control_message = [swap_order[i], release_order[i], recomputation_order[i]]
+                control_messages.append(control_message)
+            global_control_queue.put(control_messages)

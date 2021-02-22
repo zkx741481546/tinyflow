@@ -8,7 +8,7 @@ import numpy as np
 import os
 import queue
 import multiprocessing
-os.environ['CUDA_VISIBLE_DEVICES'] = '7'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 def load_mnist_data(dataset):
     # 加载mnist数据集
@@ -212,6 +212,7 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
                 print(loss_val)
 
     print("success")
+    return
 
     correct_predictions = []
     for minibatch_index in range(n_valid_batches):
@@ -268,8 +269,14 @@ if __name__ == '__main__':
         for i in range(job_number):
             if not top_message_queue_list[i].empty():
                 global_message_queue.put([i, top_message_queue.get()])
+        if not global_control_queue.empty():
+            global_control = global_control_queue.get()
+            for i in range(job_number):
+                top_control_queue.put(global_control[i])
+
 
     # todo 算法传入系统的信息规则
+    # 上层传入下层包括三个list: swap list, release list, recomputation list
     # 上层写入下层的每次的control message：task_id, node_id, start_time, start_node, move_to_gpu, start_node_type, recompute
     # 根据task_id选择对应的control_queue，将其余所有信息作为一个整体list放入queue中。
     # 顺序为(start_node, start_node_type, start_time, node_id, move_to_gpu, recompute)
