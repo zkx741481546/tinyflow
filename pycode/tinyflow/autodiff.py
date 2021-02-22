@@ -36,7 +36,7 @@ class Node(object):
         self.control_message_out_time = 0
         self.recompute_list = []
         self.release_list = []
-        self.runtime = 0
+        self.runtime = 1
 
         # 是不是参数
         self.issgd = 0
