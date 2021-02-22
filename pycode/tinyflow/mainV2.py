@@ -117,8 +117,7 @@ debug_num = 0
 
 
 def get_predicted_execution_time(op_name, input_tensors, logged_time: list):
-    return 5
-
+    return np.random.random()*5 + 0.1
     # input_size = 0
     # for tensor in input_tensors:
     #     input_size += tensor.size
@@ -426,7 +425,6 @@ def get_framework_info(info, logged_time, job_id):
             input_tensors.append(input_tensor)
         time_cost = get_predicted_execution_time(operation_name, input_tensors, logged_time[output_tensor_id])
         output_tensor = Tensor(tensor_id=output_tensor_id, job_id=job_id, size=output_tensor_size, source_tensors=input_tensors, recomputation_time=time_cost)
-        global_time += time_cost
         output_access = TensorAccess(tensor=output_tensor, time=global_time + time_cost, run_time=time_cost, access_type=AccessType.output, operation_id=output_tensor_id)
         tensor_access_list.append(output_access)
         tensors[output_tensor.tensor_id] = output_tensor
@@ -434,6 +432,8 @@ def get_framework_info(info, logged_time, job_id):
             input_tensor = tensors[tensor_id]
             input_access = TensorAccess(tensor=input_tensor, time=global_time, run_time=time_cost, access_type=AccessType.input, operation_id=output_tensor_id)
             tensor_access_list.append(input_access)
+        global_time += time_cost
+
     tensors = list(tensors.values())
     global_tensors.extend(tensors)
     tensor_access_list = sorted(tensor_access_list, key=lambda x: x.time)
@@ -585,7 +585,8 @@ def generate_scheduling_plan(logged_times, gpu: int):
                                     break
                                 else:
                                     swap_scheduler[swap_out_task.tensor.job_id].remove(swap_out_task)
-                                    swapped_out_tensor.remove(tensor)
+                                    assert tensor not in swapped_out_tensor
+                                    # swapped_out_tensor.remove(tensor)
                                     continue
                         # 安排失败
                         if not succeed:
