@@ -143,6 +143,7 @@ debug_num = 0
 
 def get_predicted_execution_time(op_name, input_tensors, logged_time: list):
     return np.random.random()*5 + 0.1
+    # return 5
     # input_size = 0
     # for tensor in input_tensors:
     #     input_size += tensor.size
@@ -313,8 +314,7 @@ def get_max_memory_used(tensor_access_list, swap_tasks, swapped_out_tensor, reco
     max_last_access = None
     wait_to_be_released = []
     max_time = None
-    foot_print = []
-    time_print = []
+    foot_print = {}
     for time_index, event in enumerate(time_axis):
         time = event.time
         for i in range(len(wait_to_be_released) - 1, -1, -1):
@@ -367,8 +367,7 @@ def get_max_memory_used(tensor_access_list, swap_tasks, swapped_out_tensor, reco
             else:
                 memory_used -= event.tensor.size
                 in_gpu_tensors.remove(event.tensor)
-        foot_print.append(memory_used)
-        time_print.append(time)
+        foot_print[time] = memory_used
         if memory_used > max_memory_actual:
             # max_memory_actual与是否有考虑价值无关，单纯计量峰值
             max_memory_actual = memory_used
@@ -380,7 +379,7 @@ def get_max_memory_used(tensor_access_list, swap_tasks, swapped_out_tensor, reco
             max_last_access = copy.copy(last_input_tensor_access)
             max_time = time
             # max_memory = memory_used
-    return max_memory_actual, max_memory_tensors, max_last_access, max_time, (time_print,foot_print)
+    return max_memory_actual, max_memory_tensors, max_last_access, max_time,foot_print
 
 
 def run_global_memory_analysis(global_tensor_access, swap_tasks, swapped_out_tensor, recomputation_tensor, tensor_access_by_tensor):
@@ -668,12 +667,12 @@ def generate_scheduling_plan(logged_times, gpu: int):
                                 # print('recompute')
                                 break
         iter += 1
-    # fig = go.Figure(data=[go.Scatter(x=foot_prints[0][0], y=original_memory_footprint[0][1]), go.Scatter(x=foot_prints[0][0], y=foot_prints[0][1])])
+    # fig = go.Figure(data=[go.Scatter(x=list(original_memory_footprint[0].keys()), y=list(original_memory_footprint[0].values())), go.Scatter(x=list(foot_prints[0].keys()), y=list(foot_prints[0].values()))])
     # plotly.offline.plot(fig, filename='../../footprint.html')
     total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
     stats = 'succeed' if max_memory < total_memory else ' failure'
     print(f'scheduling {stats}')
-    draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
+    # draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
     memory_saved_ratio = format((1 - last_memory_used / original_memory_used) * 100, '.2f')
     print(f'memory_saved_ratio:{memory_saved_ratio}%')
     return generate_swap_recomputation_release_order(tensor_access_by_tensor, swap_scheduler, recomputations, job_num)
