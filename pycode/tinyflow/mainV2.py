@@ -642,7 +642,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
     total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
     stats = 'succeed' if max_memory < total_memory else ' failure'
     print(f'scheduling {stats}')
-    draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
+    # draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
     memory_saved_ratio = format((1 - last_memory_used / original_memory_used) * 100, '.2f')
     print(f'memory_saved_ratio:{memory_saved_ratio}%')
     return generate_swap_recomputation_release_order(tensor_access_by_tensor, swap_scheduler, recomputations, job_num)
@@ -683,5 +683,5 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                     for i in range(job_num):
                         control_message = [swap_order[i], release_order[i], recomputation_order[i]]
                         control_messages.append(control_message)
-                    global_control_queue.put(control_messages)
+                    # global_control_queue.put(control_messages)
                 # print(logged_times[0])
