@@ -562,6 +562,7 @@ TINYFLOW_EXTERN_C {
   int DLGpuGetN2CudaPointer(void** output, void** g, int number,void **** result);
 
   int getInt(int *intp);
+  int testPcie();
 
 //  int DLGpuSgdUpdate(DLArrayHandle* output,
 //                    const DLArrayHandle* m,

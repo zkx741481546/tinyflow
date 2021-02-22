@@ -959,6 +959,8 @@ def adam_compute_o(n4list,indexinfolist,count, b1, b2, b1t, b2t, e, learning_rat
 
 def getInt(intp):
     return _LIB.getInt(intp)
+def testPcie():
+    _LIB.testPcie()
 
 
 
