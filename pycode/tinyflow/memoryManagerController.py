@@ -30,7 +30,7 @@ class MemoryManagerController(threading.Thread):
                 continue
             if not move_to_gpu and not ndarray.is_gpu_ctx(node_ndarray.ctx):
                 continue
-            time.sleep(wait_time)
+            time.sleep(wait_time/1000.0)
             self.will_do_queue.put((node_index, node_ndarray))
 
 
