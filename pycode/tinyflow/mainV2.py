@@ -162,11 +162,12 @@ def get_predicted_execution_time(op_name, input_tensors, logged_time: list):
 
 
 def liveness_analysis(tensor_access_list):
+    global tensor_access_by_tensor
     # 活跃性分析结果生成
     tmp = set()
     for i in range(len(tensor_access_list) - 1, -1, -1):
         tensor_access = tensor_access_list[i]
-        if tensor_access.tensor not in tmp:
+        if tensor_access.tensor not in tmp and len(tensor_access_by_tensor[tensor_access.tensor.job_id][tensor_access.tensor])>1:
             tmp.add(tensor_access.tensor)
             tensor_access.release_flag = True
 
@@ -472,6 +473,12 @@ def get_framework_info(info, logged_time, job_id):
     tensors = list(tensors.values())
     global_tensors.extend(tensors)
     tensor_access_list = sorted(tensor_access_list, key=lambda x: x.time)
+    dic = defaultdict(list)
+    for access in tensor_access_list:
+        dic[access.tensor].append(access)
+    for k, v in dic.items():
+        dic[k] = sorted(v, key=lambda x: x.time)
+    tensor_access_by_tensor[job_id]=dic
     liveness_analysis(tensor_access_list)
     return tensor_access_list
 
@@ -506,6 +513,7 @@ def init(graphs, logged_times: list, gpu: int):
     global global_tensors
     global_graphs = graphs
     jobs_weights = [weight for _ in range(len(graphs))]
+    tensor_access_by_tensor = [[] for _ in range(job_num)]
     os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu)
     # 获取当前剩余显存总量
     nvmlInit()
@@ -515,15 +523,15 @@ def init(graphs, logged_times: list, gpu: int):
     global_tensor_access = [get_framework_info(graphs[i], logged_times[i], i) for i in range(job_num)]
     # task-tensor-access
     # [dict()]，外层索引为job_id, 内层为tensor对象
-    tensor_access_by_tensor = []
-    for i in range(job_num):
-        tensor_accesses = global_tensor_access[i]
-        dic = defaultdict(list)
-        for access in tensor_accesses:
-            dic[access.tensor].append(access)
-        for k, v in dic.items():
-            dic[k] = sorted(v, key=lambda x: x.time)
-        tensor_access_by_tensor.append(dic)
+    # tensor_access_by_tensor = []
+    # for i in range(job_num):
+    #     tensor_accesses = global_tensor_access[i]
+    #     dic = defaultdict(list)
+    #     for access in tensor_accesses:
+    #         dic[access.tensor].append(access)
+    #     for k, v in dic.items():
+    #         dic[k] = sorted(v, key=lambda x: x.time)
+    #     tensor_access_by_tensor.append(dic)
 
 
 def add_job(graph, job_id, gpu: int):
@@ -607,7 +615,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
                                 # 看一下后面第一个swap_in能否放下
                                 first_access_index = None
                                 for i, access in enumerate(all_access_of_tensor):
-                                    if access.start_time > swap_out_task.end_time:
+                                    if access.start_time > swap_out_task.start_time:
                                         first_access_index = i
                                         break
                                 if first_access_index is not None and can_next_input_access_swap_in(first_access_index, all_access_of_tensor, swap_out_task, swap_scheduler):
@@ -677,7 +685,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
     total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
     stats = 'succeed' if max_memory < total_memory else ' failure'
     print(f'scheduling {stats}')
-    # draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
+    draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
     memory_saved_ratio = format((1 - last_memory_used / original_memory_used) * 100, '.2f')
     print(f'memory_saved_ratio:{memory_saved_ratio}%')
     return generate_swap_recomputation_release_order(tensor_access_by_tensor, swap_scheduler, recomputations, job_num)
