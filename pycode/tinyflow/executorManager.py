@@ -8,7 +8,7 @@ import numpy as np
 import os
 import queue
 import multiprocessing
-os.environ['CUDA_VISIBLE_DEVICES'] = '6'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 def load_mnist_data(dataset):
     # 加载mnist数据集
@@ -132,11 +132,11 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
     # Initialize parameters
     # 随机初始化网络中的w和b
     rand = np.random.RandomState(seed=123)
-    W1_val = rand.normal(scale=0.1, size=(784, 4096))
-    W2_val = rand.normal(scale=0.1, size=(4096, 1024))
-    W3_val = rand.normal(scale=0.1, size=(1024, 10))
-    b1_val = rand.normal(scale=0.1, size=(4096))
-    b2_val = rand.normal(scale=0.1, size=(1024))
+    W1_val = rand.normal(scale=0.1, size=(784, 256))
+    W2_val = rand.normal(scale=0.1, size=(256, 100))
+    W3_val = rand.normal(scale=0.1, size=(100, 10))
+    b1_val = rand.normal(scale=0.1, size=(256))
+    b2_val = rand.normal(scale=0.1, size=(100))
     b3_val = rand.normal(scale=0.1, size=(10))
     X_val = np.empty(shape=(batch_size, 784), dtype=np.float32)
     y_val = np.empty(shape=(batch_size, 10), dtype=np.float32)
@@ -212,6 +212,7 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
                 print(loss_val)
 
     print("success")
+    return
 
     correct_predictions = []
     for minibatch_index in range(n_valid_batches):
@@ -268,8 +269,14 @@ if __name__ == '__main__':
         for i in range(job_number):
             if not top_message_queue_list[i].empty():
                 global_message_queue.put([i, top_message_queue.get()])
+        if not global_control_queue.empty():
+            global_control = global_control_queue.get()
+            for i in range(job_number):
+                top_control_queue.put(global_control[i])
+
 
     # todo 算法传入系统的信息规则
+    # 上层传入下层包括三个list: swap list, release list, recomputation list
     # 上层写入下层的每次的control message：task_id, node_id, start_time, start_node, move_to_gpu, start_node_type, recompute
     # 根据task_id选择对应的control_queue，将其余所有信息作为一个整体list放入queue中。
     # 顺序为(start_node, start_node_type, start_time, node_id, move_to_gpu, recompute)
