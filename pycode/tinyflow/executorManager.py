@@ -242,6 +242,8 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
 
 
 if __name__ == '__main__':
+
+
     global_message_queue = multiprocessing.Queue()
     global_control_queue = multiprocessing.Queue()
 
