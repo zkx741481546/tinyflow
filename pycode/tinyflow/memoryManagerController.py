@@ -5,7 +5,7 @@ from . import ndarray, gpu_op, memoryManager
 
 
 class MemoryManagerController(threading.Thread):
-    def __init__(self, control_queue: queue.Queue, have_done_queue: queue.Queue):
+    def __init__(self, control_queue: queue.Queue, have_done_queue: queue.Queue, index_to_cpu_map, index_to_gpu_map):
         threading.Thread.__init__(self)
         self.will_do_queue = queue.Queue()
         self.have_done_queue = have_done_queue
@@ -13,8 +13,9 @@ class MemoryManagerController(threading.Thread):
         # todo hard code with device id again, may need to change
         self.cpu_ctx = ndarray.cpu(0)
         self.gpu_ctx = ndarray.gpu(0)
-        self.memoryManager = memoryManager.MemoryManager(self.will_do_queue, self.have_done_queue)
+        self.memoryManager = memoryManager.MemoryManager(self.will_do_queue, self.have_done_queue, index_to_cpu_map, index_to_gpu_map)
         self.memoryManager.start()
+
 
     def run(self):
         while True:
@@ -24,15 +25,10 @@ class MemoryManagerController(threading.Thread):
             control_message = self.control_queue.get(block=True)
             wait_time = control_message[0]
             node_index = control_message[1]
-            node_ndarray = control_message[2]
-            move_to_gpu = control_message[3]
+            move_to_gpu = control_message[2]
             # print(node_index, move_to_gpu)
-            if move_to_gpu and ndarray.is_gpu_ctx(node_ndarray.ctx):
-                continue
-            if not move_to_gpu and not ndarray.is_gpu_ctx(node_ndarray.ctx):
-                continue
             time.sleep(wait_time/1000.0)
-            self.will_do_queue.put((node_index, node_ndarray))
+            self.will_do_queue.put((node_index, move_to_gpu))
 
 
 
