@@ -51,7 +51,7 @@ while True:
     for i in range(8):
         handle = nvmlDeviceGetHandleByIndex(i)
         flag = []
-        for _ in range(10):
+        for _ in range(1):
             flag.append(nvmlDeviceGetUtilizationRates(handle).gpu == 0)
             time.sleep(1)
         if False not in flag:

@@ -5,6 +5,9 @@ import numpy as np
 from functools import cmp_to_key
 import plotly as py
 import plotly.figure_factory as ff
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import plotly
 from collections import defaultdict
 import os
 from pynvml import *
@@ -78,15 +81,37 @@ class SwapTask(object):
         # 最晚结束时间
         self.back_boundary = back_boundary
         self.time = time
-        if task_type == TaskType.swap_out:
-            self.start_time = self.time
-            self.end_time = self.start_time + self.time_cost
-        else:
-            self.end_time = self.time
-            self.start_time = self.end_time - self.time_cost
+        # if task_type == TaskType.swap_out:
+        #     self.start_time = self.time
+        #     self.end_time = self.start_time + self.time_cost
+        # else:
+        #     self.end_time = self.time
+        #     self.start_time = self.end_time - self.time_cost
         self.weight = weight
         self.execute_time = None
         self.execute_ref = None
+
+    @property
+    def start_time(self):
+        return self.start_time_
+
+    @start_time.setter
+    def start_time(self, value):
+        self.start_time_ = value
+        if self.task_type==TaskType.swap_out:
+            self.time = self.start_time_
+
+    @property
+    def end_time(self):
+        return self.end_time_
+
+    @end_time.setter
+    def end_time(self, value):
+        self.end_time_=value
+        if self.task_type==TaskType.swap_in:
+            self.time = self.end_time_
+
+
 
     @classmethod
     def from_access(cls, access: TensorAccess, weight, task_type, front_boundary=None, back_boundary=None):
@@ -294,6 +319,7 @@ def get_max_memory_used(tensor_access_list, swap_tasks, swapped_out_tensor, reco
     max_last_access = None
     wait_to_be_released = []
     max_time = None
+    foot_print = {}
     for time_index, event in enumerate(time_axis):
         time = event.time
         for i in range(len(wait_to_be_released) - 1, -1, -1):
@@ -346,6 +372,7 @@ def get_max_memory_used(tensor_access_list, swap_tasks, swapped_out_tensor, reco
             else:
                 memory_used -= event.tensor.size
                 in_gpu_tensors.remove(event.tensor)
+        foot_print[time] = memory_used
         if memory_used > max_memory_actual:
             # max_memory_actual与是否有考虑价值无关，单纯计量峰值
             max_memory_actual = memory_used
@@ -357,7 +384,7 @@ def get_max_memory_used(tensor_access_list, swap_tasks, swapped_out_tensor, reco
             max_last_access = copy.copy(last_input_tensor_access)
             max_time = time
             # max_memory = memory_used
-    return max_memory_actual, max_memory_tensors, max_last_access, max_time
+    return max_memory_actual, max_memory_tensors, max_last_access, max_time,foot_print
 
 
 def run_global_memory_analysis(global_tensor_access, swap_tasks, swapped_out_tensor, recomputation_tensor, tensor_access_by_tensor):
@@ -365,13 +392,15 @@ def run_global_memory_analysis(global_tensor_access, swap_tasks, swapped_out_ten
     max_memory_tensors = []
     last_input_accesses = []
     max_time = []
+    foot_prints= []
     for job_id, tensor_accesses in enumerate(global_tensor_access):
-        job_max_memory, job_max_memory_tensors, last_input_access, now_time = get_max_memory_used(tensor_accesses, swap_tasks[job_id], swapped_out_tensor, recomputation_tensor, tensor_access_by_tensor[job_id])
+        job_max_memory, job_max_memory_tensors, last_input_access, now_time, foot_print = get_max_memory_used(tensor_accesses, swap_tasks[job_id], swapped_out_tensor, recomputation_tensor, tensor_access_by_tensor[job_id])
+        foot_prints.append(foot_print)
         max_memory_tensors.extend(job_max_memory_tensors)
         last_input_accesses.append(last_input_access)
         max_time.append(now_time)
         max_memory += job_max_memory
-    return max_memory, max_memory_tensors, last_input_accesses, max_time
+    return max_memory, max_memory_tensors, last_input_accesses, max_time, foot_prints
 
 
 def draw(tensor_access_list, swap_schedule):
@@ -431,7 +460,6 @@ def get_framework_info(info, logged_time, job_id):
             input_tensors.append(input_tensor)
         time_cost = get_predicted_execution_time(operation_name, input_tensors, logged_time[output_tensor_id])
         output_tensor = Tensor(tensor_id=output_tensor_id, job_id=job_id, size=output_tensor_size, source_tensors=input_tensors, recomputation_time=time_cost)
-        global_time += time_cost
         output_access = TensorAccess(tensor=output_tensor, time=global_time + time_cost, run_time=time_cost, access_type=AccessType.output, operation_id=output_tensor_id)
         tensor_access_list.append(output_access)
         tensors[output_tensor.tensor_id] = output_tensor
@@ -439,6 +467,8 @@ def get_framework_info(info, logged_time, job_id):
             input_tensor = tensors[tensor_id]
             input_access = TensorAccess(tensor=input_tensor, time=global_time, run_time=time_cost, access_type=AccessType.input, operation_id=output_tensor_id)
             tensor_access_list.append(input_access)
+        global_time += time_cost
+
     tensors = list(tensors.values())
     global_tensors.extend(tensors)
     tensor_access_list = sorted(tensor_access_list, key=lambda x: x.time)
@@ -532,15 +562,17 @@ def generate_scheduling_plan(logged_times, gpu: int):
     recomputation_flag = True
     iter = 0
     original_memory_used = 0
+    original_memory_footprint = None
     last_memory_used = 0
     max_memory = 0
     job_id_ordered_by_weights = list(map(lambda x: x[0], sorted([(job_id, weights) for job_id, weights in enumerate(jobs_weights)], key=lambda x: x[1], reverse=True)))
     while swapped_flag or (recomputation_flag and enable_recomputation):
         # MB
         total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
-        max_memory, max_tensors, last_input_accesses, max_time = run_global_memory_analysis(global_tensor_access, swap_scheduler, swapped_out_tensor, recomputation_tensor, tensor_access_by_tensor)
+        max_memory, max_tensors, last_input_accesses, max_time, foot_prints = run_global_memory_analysis(global_tensor_access, swap_scheduler, swapped_out_tensor, recomputation_tensor, tensor_access_by_tensor)
         if iter == 0:
             original_memory_used = max_memory
+            original_memory_footprint = foot_prints
         else:
             last_memory_used = max_memory
         print(f'iter:{iter}, max_memory:{max_memory}')
@@ -590,7 +622,8 @@ def generate_scheduling_plan(logged_times, gpu: int):
                                     break
                                 else:
                                     swap_scheduler[swap_out_task.tensor.job_id].remove(swap_out_task)
-                                    swapped_out_tensor.remove(tensor)
+                                    assert tensor not in swapped_out_tensor
+                                    # swapped_out_tensor.remove(tensor)
                                     continue
                         # 安排失败
                         if not succeed:
@@ -639,6 +672,8 @@ def generate_scheduling_plan(logged_times, gpu: int):
                                 # print('recompute')
                                 break
         iter += 1
+    # fig = go.Figure(data=[go.Scatter(x=list(original_memory_footprint[0].keys()), y=list(original_memory_footprint[0].values())), go.Scatter(x=list(foot_prints[0].keys()), y=list(foot_prints[0].values()))])
+    # plotly.offline.plot(fig, filename='../../footprint.html')
     total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
     stats = 'succeed' if max_memory < total_memory else ' failure'
     print(f'scheduling {stats}')
