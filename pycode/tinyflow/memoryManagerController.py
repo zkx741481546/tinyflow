@@ -26,7 +26,7 @@ class MemoryManagerController(threading.Thread):
             node_index = control_message[1]
             node_ndarray = control_message[2]
             move_to_gpu = control_message[3]
-            print(node_index, move_to_gpu)
+            # print(node_index, move_to_gpu)
             if move_to_gpu and ndarray.is_gpu_ctx(node_ndarray.ctx):
                 continue
             if not move_to_gpu and not ndarray.is_gpu_ctx(node_ndarray.ctx):

@@ -2290,9 +2290,9 @@ class Executor(object):
                 else:
                     self.control_queue.put((wait_time, node_id, node_to_gpu_map[self.topo_order[node_id]], move_to_gpu))
 
-                # todo 仅用于测试
-                self.have_done_queue.get(block=True)
-                print("swap end")
+                # # todo 仅用于测试
+                # self.have_done_queue.get(block=True)
+                # print("swap end")
 
 
 
