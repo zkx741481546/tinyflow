@@ -2018,6 +2018,7 @@ class Executor(object):
         self.have_done_queue = queue.Queue()
         self.memoryManagerController = memoryManagerController.MemoryManagerController(self.control_queue,
                                                                                        self.have_done_queue)
+        self.memoryManagerController.start()
 
         self.cudaStream = gpu_op.create_cudaStream()
         self.cudnnHandle = gpu_op.create_cudnnHandle(self.cudaStream)
@@ -2288,6 +2289,12 @@ class Executor(object):
                     self.control_queue.put((wait_time, node_id, node_to_cpu_map[self.topo_order[node_id]], move_to_gpu))
                 else:
                     self.control_queue.put((wait_time, node_id, node_to_gpu_map[self.topo_order[node_id]], move_to_gpu))
+
+                # todo 仅用于测试
+                self.have_done_queue.get(block=True)
+                print("swap end")
+
+
 
             for release_message in node.release_list:
                 node_to_gpu_map[self.topo_order[release_message]] = None
