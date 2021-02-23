@@ -12,6 +12,8 @@ class MemoryManager(threading.Thread):
         # todo hard code with device id again, may need to change
         self.cpu_ctx = ndarray.cpu(0)
         self.gpu_ctx = ndarray.gpu(0)
+        self.cudaSwapStream = gpu_op.create_cudaStream()
+
 
     def run(self):
         while (True):
@@ -24,7 +26,7 @@ class MemoryManager(threading.Thread):
                 node_ndarray_new = ndarray.empty(node_ndarray.shape, self.cpu_ctx)
             else:
                 node_ndarray_new = ndarray.empty(node_ndarray.shape, self.gpu_ctx)
-            node_ndarray.copyto(node_ndarray_new)
+            node_ndarray.copyto(node_ndarray_new, self.cudaSwapStream)
             self.have_done_queue.put((node_index, node_ndarray_new))
 
 

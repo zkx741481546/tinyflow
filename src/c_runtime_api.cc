@@ -89,7 +89,6 @@ inline size_t GetDataAlignment(DLArray *arr) {
 
 using namespace tinyflow::runtime;
 
-cudaStream_t cudaSwapStream;
 
 int DLArrayAlloc(const index_t *shape, index_t ndim, DLContext ctx,
                  DLArrayHandle *out,int *memorytoSaving) {
@@ -145,16 +144,12 @@ int DLArrayCopyFromTo(DLArrayHandle from, DLArrayHandle to,
   }
 
   DeviceAPIManager::Get(ctx)->CopyDataFromTo(from->data, to->data, from_size,
-                                             from->ctx, to->ctx, cudaSwapStream);
+                                             from->ctx, to->ctx, stream);
   if (from->ctx.device_type == kGPU) {
-    DeviceAPIManager::Get(ctx)->StreamSync(from->ctx, cudaSwapStream);
+    DeviceAPIManager::Get(ctx)->StreamSync(from->ctx, stream);
   } else {
-    DeviceAPIManager::Get(ctx)->StreamSync(to->ctx, cudaSwapStream);
+    DeviceAPIManager::Get(ctx)->StreamSync(to->ctx, stream);
   }
 
   API_END();
-}
-
-void DLArrayStreamCreate() {
-    cudaStreamCreate(&cudaSwapStream);
 }

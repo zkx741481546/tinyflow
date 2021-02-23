@@ -164,7 +164,7 @@ class NDArray(object):
         return np_arr
     #如果target是DLContext，用isinstance==int判断
     #如果target是NDArray,不用判断
-    def copyto(self, target):
+    def copyto(self, target, cudaStream):
         """Copy array to target
         Parameters
         ----------
@@ -178,7 +178,7 @@ class NDArray(object):
         if isinstance(target, NDArray):
 
             check_call(_LIB.DLArrayCopyFromTo(
-                self.handle, target.handle, None))
+                self.handle, target.handle, cudaStream))
 
         else:
             raise ValueError("Unsupported target type %s" % str(type(target)))

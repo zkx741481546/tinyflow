@@ -8,7 +8,7 @@ import numpy as np
 import os
 import queue
 import multiprocessing
-os.environ['CUDA_VISIBLE_DEVICES'] = '6'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 def load_mnist_data(dataset):
     # 加载mnist数据集
