@@ -161,7 +161,7 @@ def liveness_analysis(tensor_access_list):
     tmp = set()
     for i in range(len(tensor_access_list) - 1, -1, -1):
         tensor_access = tensor_access_list[i]
-        if tensor_access.tensor not in tmp:
+        if tensor_access.tensor not in tmp and len(tensor_access_by_tensor[tensor_access.tensor])>1:
             tmp.add(tensor_access.tensor)
             tensor_access.release_flag = True
 
