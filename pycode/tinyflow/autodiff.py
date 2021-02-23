@@ -5,6 +5,7 @@ import numpy as np
 from . import ndarray, gpu_op, memoryManager, memoryManagerController
 import random
 import queue
+import datetime
 
 
 class Node(object):
@@ -34,6 +35,9 @@ class Node(object):
         self.control_message_out = []
         self.control_message_out_time = 0
         self.recompute_list = []
+        self.release_list = []
+        self.runtime = 0.01
+
         # 是不是参数
         self.issgd = 0
         self.isw = 0
@@ -2124,6 +2128,12 @@ class Executor(object):
                 return_element = [node.index, node_inputs, node_size, operation_name]
                 return_list.append(return_element)
             self.top_message_queue.put([0, return_list])
+        else:
+            return_list = []
+            for i in range(len(self.topo_order)):
+                return_element = (i, self.topo_order[i].runtime)
+                return_list.append(return_element)
+            self.top_message_queue.put([1, return_list])
 
         # infer shape if feed_shapes changed since last run
         # e.g. call run() on test data after trainng
@@ -2143,6 +2153,53 @@ class Executor(object):
         for node in self.topo_order:
             node.array_status = 0
 
+        if not self.top_control_queue.empty():
+            print("get control message")
+            # todo 解析从上游传入的控制信息。
+
+            top_swap_list, top_release_list, top_recomputation_list = self.top_control_queue.get()
+
+            # 顺序为(start_node, start_node_type, start_time, node_id, move_to_gpu)
+            # 此处保证start_time按照顺序排布
+
+            for control_node in self.topo_order:
+                control_node.control_message_in = []
+                control_node.control_message_in_time = 0
+                control_node.control_message_out = []
+                control_node.control_message_out_time = 0
+                # wait_time, node_id, move_to_gpu
+                control_node.recompute_list = []
+                control_node.release_list = []
+
+            for swap_message in top_swap_list:
+                node_index = swap_message[0]
+                start_time = swap_message[1]
+                start_node_id = swap_message[2]
+                move_to_gpu = swap_message[3]
+
+                start_node = self.topo_order[start_node_id]
+                if start_node.control_message_out_time == 0:
+                    start_node.control_message_out_time = start_time
+                    start_node.control_message_out.append((start_time, node_index, move_to_gpu))
+                else:
+                    start_node.control_message_out.append(
+                        (start_time - start_node.control_message_out_time, node_index, move_to_gpu))
+                    start_node.control_message_out_time = start_time
+
+            for release_message in top_release_list:
+                start_node_id = release_message[0]
+                node_id = release_message[1]
+
+                start_node = self.topo_order[start_node_id]
+                start_node.release_list.append(node_id)
+
+            # print(top_swap_list)
+            # print(top_release_list)
+            # print(top_recomputation_list)
+            for node in self.topo_order:
+                print(node.control_message_out)
+            print("update control message")
+
         # Traverse graph in topo order and compute values for all nodes.
         for node in self.topo_order:
 
@@ -2151,45 +2208,6 @@ class Executor(object):
                 # 找出feed_dict中已经包含的ndarray
                 node.array_status = 1
                 continue
-
-            if not self.top_control_queue.empty():
-                # todo 解析从上游传入的控制信息。
-
-                top_control_message_list = self.top_control_queue.get()
-
-                # 顺序为(start_node, start_node_type, start_time, node_id, move_to_gpu)
-                # 此处保证start_time按照顺序排布
-
-                for control_node in self.topo_order:
-                    control_node.control_message_in = []
-                    control_node.control_message_in_time = 0
-                    control_node.control_message_out = []
-                    control_node.control_message_out_time = 0
-                    control_node.recompute_list = []
-
-                for top_control_message in top_control_message_list:
-                    start_node_index = top_control_message[0]
-                    start_node = self.topo_order[start_node_index]
-                    start_node_type = top_control_message[1]
-                    start_time = top_control_message[2]
-                    node_id = top_control_message[3]
-                    move_to_gpu = top_control_message[4]
-                    is_recompute = top_control_message[5]
-
-                    if is_recompute:
-                        start_node.recompute_list.append(node_id)
-                        continue
-                    if start_node_type == 0:
-                        # (wait_time, node_index, node_ndarray, move_to_gpu)
-                        start_node.control_message_in.append(
-                            (start_time - start_node.control_message_in_time, node_id, move_to_gpu))
-                        start_node.control_message_in_time = start_time
-                    else:
-                        start_node.control_message_out.append(
-                            (start_time - start_node.control_message_out_time, node_id, move_to_gpu))
-                        start_node.control_message_out_time = start_time
-                    # 此处未知node的handle，在下面具体操作时将handle传入
-                    # 此时是(wait_time, node_index, move_to_gpu)
 
             input_vals = []
 
@@ -2234,17 +2252,24 @@ class Executor(object):
                 move_to_gpu = control_message[2]
                 self.control_queue.put((wait_time, node_id, node_to_gpu_map[self.topo_order[node_id]], move_to_gpu))
 
+            t1 = datetime.datetime.now()
             node.op.compute(node, input_vals, node_val, self.cudnnHandle, self.cublasHandle, self.cudaStream, False)
+            t2 = datetime.datetime.now()
+            node.runtime = (t2 - t1).microseconds
             # print(node.index)
 
             # print(node.index)
             node_to_gpu_map[node] = node_val
+
 
             for control_message in node.control_message_out:
                 wait_time = control_message[0]
                 node_id = control_message[1]
                 move_to_gpu = control_message[2]
                 self.control_queue.put((wait_time, node_id, node_to_gpu_map[self.topo_order[node_id]], move_to_gpu))
+
+            for release_message in node.release_list:
+                node_to_gpu_map[self.topo_order[release_message]] = None
 
             while not self.have_done_queue.empty():
                 (node_index, node_ndarray_new) = self.have_done_queue.get()
@@ -2257,6 +2282,7 @@ class Executor(object):
                     node_to_gpu_map[self.topo_order[node_index]] = None
 
         # Collect node values.
+        # print("success one batch")
         return [node_to_gpu_map[n] for n in self.eval_node_list]
 
 

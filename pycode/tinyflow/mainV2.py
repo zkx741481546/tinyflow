@@ -615,7 +615,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
                                 # 看一下后面第一个swap_in能否放下
                                 first_access_index = None
                                 for i, access in enumerate(all_access_of_tensor):
-                                    if access.start_time > swap_out_task.end_time:
+                                    if access.start_time > swap_out_task.start_time:
                                         first_access_index = i
                                         break
                                 if first_access_index is not None and can_next_input_access_swap_in(first_access_index, all_access_of_tensor, swap_out_task, swap_scheduler):
