@@ -2180,7 +2180,7 @@ class Executor(object):
                 start_node = self.topo_order[start_node_id]
                 if start_node.control_message_out_time == 0:
                     start_node.control_message_out_time = start_time
-                    start_node.control_message_out.append((0, node_index, move_to_gpu))
+                    start_node.control_message_out.append((start_time, node_index, move_to_gpu))
                 else:
                     start_node.control_message_out.append(
                         (start_time - start_node.control_message_out_time, node_index, move_to_gpu))
@@ -2193,9 +2193,11 @@ class Executor(object):
                 start_node = self.topo_order[start_node_id]
                 start_node.release_list.append(node_id)
 
-            print(top_swap_list)
-            print(top_release_list)
-            print(top_recomputation_list)
+            # print(top_swap_list)
+            # print(top_release_list)
+            # print(top_recomputation_list)
+            for node in self.topo_order:
+                print(node.control_message_out)
             print("update control message")
 
         # Traverse graph in topo order and compute values for all nodes.
