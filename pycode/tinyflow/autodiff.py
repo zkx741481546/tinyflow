@@ -36,7 +36,7 @@ class Node(object):
         self.control_message_out_time = 0
         self.recompute_list = []
         self.release_list = []
-        self.runtime = 1
+        self.runtime = 0.01
 
         # 是不是参数
         self.issgd = 0
@@ -2193,6 +2193,11 @@ class Executor(object):
                 start_node = self.topo_order[start_node_id]
                 start_node.release_list.append(node_id)
 
+            print(top_swap_list)
+            print(top_release_list)
+            print(top_recomputation_list)
+            print("update control message")
+
         # Traverse graph in topo order and compute values for all nodes.
         for node in self.topo_order:
 
@@ -2275,6 +2280,7 @@ class Executor(object):
                     node_to_gpu_map[self.topo_order[node_index]] = None
 
         # Collect node values.
+        # print("success one batch")
         return [node_to_gpu_map[n] for n in self.eval_node_list]
 
 

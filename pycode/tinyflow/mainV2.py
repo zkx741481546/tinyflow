@@ -718,5 +718,5 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                     for i in range(job_num):
                         control_message = [swap_order[i], release_order[i], recomputation_order[i]]
                         control_messages.append(control_message)
-                    # global_control_queue.put(control_messages)
+                    global_control_queue.put(control_messages)
                 # print(logged_times[0])
