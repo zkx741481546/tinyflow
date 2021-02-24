@@ -10,6 +10,7 @@ import queue
 import datetime
 
 index_to_cpu_map = {}
+index_to_cpu_flag = {}
 index_to_gpu_map = {}
 
 
@@ -60,19 +61,32 @@ class MemoryManager(threading.Thread):
             global index_to_cpu_map
             global index_to_gpu_map
 
+
             if move_to_gpu == 0:
                 node_ndarray = index_to_gpu_map[node_index]
+                time1 = datetime.datetime.now()
+
                 node_ndarray_new = ndarray.empty(node_ndarray.shape, self.cpu_ctx)
+                time2 = datetime.datetime.now()
+
                 node_ndarray.copyto(node_ndarray_new, self.cudaSwapStream)
                 index_to_cpu_map[node_index] = node_ndarray_new
                 index_to_gpu_map[node_index] = None
                 print("swap finish: node " + str(node_index) + " to " + str(move_to_gpu))
+                print((time2 - time1).microseconds)
+
             else:
                 node_ndarray = index_to_cpu_map[node_index]
+                time1 = datetime.datetime.now()
+
                 node_ndarray_new = ndarray.empty(node_ndarray.shape, self.gpu_ctx)
+                time2 = datetime.datetime.now()
+
                 node_ndarray.copyto(node_ndarray_new, self.cudaSwapStream)
                 index_to_gpu_map[node_index] = node_ndarray_new
                 print("swap finish: node " + str(node_index) + " to " + str(move_to_gpu))
+                print((time2 - time1).microseconds)
+
 
 
 

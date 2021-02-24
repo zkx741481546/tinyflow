@@ -1,6 +1,12 @@
+""" library to take autodiff and execute a computation graph """
 from __future__ import absolute_import
 
 import threading
+import time
+import numpy as np
+import random
+import queue
+import datetime
 import time
 import numpy as np
 from pycode.tinyflow import ndarray, gpu_op, memoryManager, memoryManagerController
@@ -31,13 +37,14 @@ import queue
 # time.sleep(10)
 
 
-class Test1(threading.Thread):
-    def __init__(self, list1):
-        threading.Thread.__init__(self)
+ctx_cpu = ndarray.cpu(0)
+ctx_gpu = ndarray.gpu(0)
+w1 = ndarray.empty((10000, 100000), ctx_cpu)
+w2 = ndarray.empty((10000, 100000), ctx_gpu)
 
 
-    def run(self):
-        list1.append(1)
-
-
+t1 = datetime.datetime.now()
+w1.copyto(w2, None)
+t2 = datetime.datetime.now()
+print((t2 - t1).microseconds)
 
