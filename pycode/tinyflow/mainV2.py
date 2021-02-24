@@ -164,7 +164,7 @@ def liveness_analysis(tensor_access_list):
         tmp = set()
         for i in range(len(tensor_access_list[job_id]) - 1, -1, -1):
             tensor_access = tensor_access_list[job_id][i]
-            if tensor_access.tensor not in tmp:
+            if tensor_access.tensor not in tmp and len(tensor_access_by_tensor[tensor_access.tensor.job_id][tensor_access.tensor])>1:
                 tmp.add(tensor_access.tensor)
                 tensor_access.release_flag = True
 
@@ -583,13 +583,17 @@ def generate_scheduling_plan(logged_times, gpu: int):
                         succeed = False
                         front_boundary = output_access.time
                         failed_input_access = []
-                        while not succeed and front_boundary<back_boundary:
+                        swap_out_succeed = True
+                        # 如果是因为swap out放不下，则不用继续更新可行区间了，直接break
+                        while not succeed and front_boundary<back_boundary and swap_out_succeed:
                             swap_out_task = SwapTask(tensor, None, output_access.time, tensor.swap_time, TaskType.swap_out, front_boundary=front_boundary, back_boundary=back_boundary)
                             free_intervals = get_free_intervals(swap_out_task, swap_scheduler[swap_out_task.tensor.job_id])
                             selected_first_access_index = None
                             # 选出能容纳该任务的剩余空间
+                            swap_out_succeed = False
                             for interval in free_intervals:
                                 if interval[1] - interval[0] >= swap_out_task.time_cost:
+                                    swap_out_succeed = True
                                     swap_out_task.start_time = interval[0]
                                     swap_out_task.end_time = swap_out_task.start_time + swap_out_task.time_cost
                                     swap_scheduler[swap_out_task.tensor.job_id].append(swap_out_task)
@@ -616,6 +620,8 @@ def generate_scheduling_plan(logged_times, gpu: int):
                                     if not succeed:
                                         if swap_out_task in swap_scheduler[swap_out_task.tensor.job_id]:
                                             swap_scheduler[swap_out_task.tensor.job_id].remove(swap_out_task)
+                                            # 如果不是因为swap out没安排下则重新生成区间
+                                            break
                                     else:
                                         break
                         # 安排失败
@@ -673,6 +679,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
     draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
     memory_saved_ratio = format((1 - last_memory_used / original_memory_used) * 100, '.2f')
     print(f'memory_saved_ratio:{memory_saved_ratio}%')
+    print(f'swap ratio:{len(swap_scheduler[0])/len(global_tensors)}')
     return generate_swap_recomputation_release_order(tensor_access_by_tensor, swap_scheduler, recomputations, job_num)
 
 
@@ -698,7 +705,9 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                 # logged_times[job_id] = [[50, 0.01], [50, 0.01], [50, 351], [50, 0.01], [50, 87], [50, 136], [50, 98], [50, 0.01], [50, 77], [50, 0.01], [50, 23], [50, 85], [50, 33], [50, 0.01], [50, 63], [50, 0.01], [50, 23],
                 #      [50, 71], [50, 0.01], [50, 80], [50, 65], [50, 56], [50, 69], [50, 56], [50, 203], [50, 28], [50, 66], [50, 60], [50, 66], [50, 29], [50, 75], [50, 62], [50, 32], [50, 24], [50, 81],
                 #      [50, 114], [50, 50], [50, 42], [50, 707], [50, 554], [50, 121]]
+                s = time.time()
                 release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
+                print(f'time:{time.time()-s}')
                 control_messages = []
                 for i in range(job_num):
                     control_message = [swap_order[i], release_order[i], recomputation_order[i]]
