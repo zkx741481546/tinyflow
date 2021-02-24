@@ -25,6 +25,7 @@ class MemoryManager(threading.Thread):
             node_ndarray_new = None
 
             if move_to_gpu == 0:
+                print(self.index_to_gpu_map)
                 node_ndarray = self.index_to_gpu_map[node_index]
                 node_ndarray_new = ndarray.empty(node_ndarray.shape, self.cpu_ctx)
                 node_ndarray.copyto(node_ndarray_new, self.cudaSwapStream)
