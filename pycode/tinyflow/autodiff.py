@@ -2355,7 +2355,7 @@ class Executor(object):
             t1 = datetime.datetime.now()
             node.op.compute(node, input_vals, node_val, self.cudnnHandle, self.cublasHandle, self.cudaStream, False)
             t2 = datetime.datetime.now()
-            node.runtime = (t2 - t1).microseconds
+            node.runtime = (t2 - t1).microseconds / 1000
             # print(node.index)
 
             # print(node.index)
