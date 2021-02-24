@@ -22,7 +22,7 @@ namespace runtime {
 static void GPUCopy(const void *from, void *to, size_t size,
                     cudaMemcpyKind kind, cudaStream_t stream) {
   if (stream != 0) {
-    cudaMemcpyAsync(to, from, size, kind, stream);
+    CUDA_CALL(cudaMemcpyAsync(to, from, size, kind, stream));
 //    printf("\nerror code:%d\n", e);
 //    CUDA_CALL(cudaMemcpyAsync(to, from, size, kind, stream));
   } else {
@@ -76,8 +76,8 @@ void CUDADeviceAPI::CopyDataFromTo(const void *from, void *to, size_t size,
 }
 
 void CUDADeviceAPI::StreamSync(DLContext ctx, DLStreamHandle stream) {
-  cudaSetDevice(ctx.device_id);
-  cudaStreamSynchronize(static_cast<cudaStream_t>(stream));
+  CUDA_CALL(cudaSetDevice(ctx.device_id));
+  CUDA_CALL(cudaStreamSynchronize(static_cast<cudaStream_t>(stream)));
 }
 
 

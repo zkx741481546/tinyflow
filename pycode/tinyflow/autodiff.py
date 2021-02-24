@@ -2199,6 +2199,7 @@ class Executor(object):
                 for node_input in node.inputs:
                     node_inputs.append(node_input.index)
                 node_size = np.prod(self.node_to_shape_map[node]) * 4
+                print("node" + str(node.index) + " size: " + str(node_size))
                 # if len(self.node_to_shape_map[node]) == 1:
                 #     node_size = self.node_to_shape_map[node][0] * 4
                 # else:
