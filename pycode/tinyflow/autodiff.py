@@ -56,6 +56,8 @@ class MemoryManager(threading.Thread):
             move_to_gpu = node[1]
             node_ndarray_new = None
 
+            print("swaping node:" + str(node_index) + "to" + str(move_to_gpu))
+
             global index_to_cpu_map
             global index_to_gpu_map
 
@@ -64,6 +66,7 @@ class MemoryManager(threading.Thread):
                 node_ndarray_new = ndarray.empty(node_ndarray.shape, self.cpu_ctx)
                 node_ndarray.copyto(node_ndarray_new, self.cudaSwapStream)
                 index_to_cpu_map[node_index] = node_ndarray_new
+                index_to_gpu_map[node_index] = None
             else:
                 node_ndarray = index_to_cpu_map[node_index]
                 node_ndarray_new = ndarray.empty(node_ndarray.shape, self.gpu_ctx)
@@ -2307,11 +2310,12 @@ class Executor(object):
                 index_to_gpu_map[recompute_node.index] = recompute_ndarray
 
             for n in node.inputs:
-                if n.array_status == 0:
+                if index_to_gpu_map[n.index] is None:
+                    print("passive import")
                     # todo 考虑如何被动进行swap in
                     node_ndarray_new = ndarray.empty(self.node_to_shape_map[n], self.ctx_gpu)
-                    index_to_cpu_map[n.index].copyto(node_ndarray_new)
-                    index_to_gpu_map[n] = node_ndarray_new
+                    index_to_cpu_map[n.index].copyto(node_ndarray_new, self.cudaStream)
+                    index_to_gpu_map[n.index] = node_ndarray_new
                     n.array_status = 1
                 input_vals.append(index_to_gpu_map[n.index])
 
