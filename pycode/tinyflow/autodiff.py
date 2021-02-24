@@ -64,28 +64,22 @@ class MemoryManager(threading.Thread):
 
             if move_to_gpu == 0:
                 node_ndarray = index_to_gpu_map[node_index]
-                time1 = datetime.datetime.now()
-
-                node_ndarray_new = ndarray.empty(node_ndarray.shape, self.cpu_ctx)
-                time2 = datetime.datetime.now()
-
-                node_ndarray.copyto(node_ndarray_new, self.cudaSwapStream)
-                index_to_cpu_map[node_index] = node_ndarray_new
+                node_ndarray.copyto(index_to_cpu_map[node_index], self.cudaSwapStream)
+                index_to_cpu_flag[node_index] = True
                 index_to_gpu_map[node_index] = None
-                print("swap finish: node " + str(node_index) + " to " + str(move_to_gpu))
-                print((time2 - time1).microseconds)
+                # print("swap finish: node " + str(node_index) + " to " + str(move_to_gpu))
 
             else:
                 node_ndarray = index_to_cpu_map[node_index]
-                time1 = datetime.datetime.now()
+                # time1 = datetime.datetime.now()
 
                 node_ndarray_new = ndarray.empty(node_ndarray.shape, self.gpu_ctx)
-                time2 = datetime.datetime.now()
+                # time2 = datetime.datetime.now()
 
                 node_ndarray.copyto(node_ndarray_new, self.cudaSwapStream)
                 index_to_gpu_map[node_index] = node_ndarray_new
-                print("swap finish: node " + str(node_index) + " to " + str(move_to_gpu))
-                print((time2 - time1).microseconds)
+                # print("swap finish: node " + str(node_index) + " to " + str(move_to_gpu))
+                # print((time2 - time1).microseconds)
 
 
 
@@ -2188,8 +2182,9 @@ class Executor(object):
         # Assume self.ctx is None implies numpy array and numpy ops.
         global index_to_gpu_map
         global index_to_cpu_map
+        global index_to_cpu_flag
         index_to_gpu_map = {}
-        index_to_cpu_map = {}
+        index_to_cpu_flag = {}
         for node, value in feed_dict.items():
             # convert values to ndarray.NDArray if necessary
             # 源代码会在此处将所有CPU的内容引入GPU，为了自定义，禁用自动引入的功能，改为手动引入
@@ -2209,6 +2204,8 @@ class Executor(object):
             # todo 向上层返回需要的信息
             self.infer_shape(feed_shapes)
             self.feed_shapes = feed_shapes
+            for node in self.node_to_shape_map:
+                index_to_cpu_map[node.index] = ndarray.empty(self.node_to_shape_map[node], self.ctx_cpu)
             return_list = []
             for node in self.topo_order:
                 node_inputs = []
@@ -2330,6 +2327,7 @@ class Executor(object):
                 if index_to_gpu_map[n.index] is None:
                     print("passive import " + str(n.index))
                     # todo 考虑如何被动进行swap in
+                    assert index_to_cpu_flag[n.index], "输入tensor不在cpu上"
                     node_ndarray_new = ndarray.empty(self.node_to_shape_map[n], self.ctx_gpu)
                     index_to_cpu_map[n.index].copyto(node_ndarray_new, self.cudaStream)
                     index_to_gpu_map[n.index] = node_ndarray_new
