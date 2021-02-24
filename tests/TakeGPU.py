@@ -15,7 +15,7 @@ def run(gpu):
     import torch
     gpu = f'cuda:{gpu}'
     a = torch.ones((100000, 100), device=gpu)
-    b = torch.ones((100, 15000), device=gpu)
+    b = torch.ones((100, 12000), device=gpu)
     d = []
     # os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu)
     # cublasHandle = gpu_op.create_cublasHandle()
