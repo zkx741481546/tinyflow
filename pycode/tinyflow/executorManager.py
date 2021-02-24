@@ -8,7 +8,7 @@ import numpy as np
 import os
 import queue
 import multiprocessing
-os.environ['CUDA_VISIBLE_DEVICES'] = '6'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 def load_mnist_data(dataset):
     # 加载mnist数据集
@@ -242,6 +242,8 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
 
 
 if __name__ == '__main__':
+
+
     global_message_queue = multiprocessing.Queue()
     global_control_queue = multiprocessing.Queue()
 

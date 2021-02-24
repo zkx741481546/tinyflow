@@ -2018,6 +2018,7 @@ class Executor(object):
         self.have_done_queue = queue.Queue()
         self.memoryManagerController = memoryManagerController.MemoryManagerController(self.control_queue,
                                                                                        self.have_done_queue)
+        self.memoryManagerController.start()
 
         self.cudaStream = gpu_op.create_cudaStream()
         self.cudnnHandle = gpu_op.create_cudnnHandle(self.cudaStream)
@@ -2093,22 +2094,22 @@ class Executor(object):
             return len(unmatched_item) == 0
 
         # Assume self.ctx is None implies numpy array and numpy ops.
-        node_to_gpu_map = {}
-        node_to_cpu_map = {}
+        index_to_gpu_map = {}
+        index_to_cpu_map = {}
         for node, value in feed_dict.items():
             # convert values to ndarray.NDArray if necessary
             # 源代码会在此处将所有CPU的内容引入GPU，为了自定义，禁用自动引入的功能，改为手动引入
             if isinstance(value, np.ndarray):
-                node_to_gpu_map[node] = ndarray.array(value, ctx=self.ctx_cpu)
+                index_to_gpu_map[node.index] = ndarray.array(value, ctx=self.ctx_cpu)
             elif isinstance(value, ndarray.NDArray):
-                node_to_gpu_map[node] = value
+                index_to_gpu_map[node.index] = value
             else:
                 assert False, "feed_dict value type not supported"
 
         # collect shapes for all placeholders
         feed_shapes = {}
-        for node in node_to_gpu_map:
-            feed_shapes[node] = node_to_gpu_map[node].shape
+        for i in index_to_gpu_map:
+            feed_shapes[self.topo_order[i]] = index_to_gpu_map[node.index].shape
 
         if self.feed_shapes is None:
             # todo 向上层返回需要的信息
@@ -2148,12 +2149,12 @@ class Executor(object):
         for node in self.topo_order:
             node.array_status = 0
 
-        # calculate started
 
-        for node in self.topo_order:
-            node.array_status = 0
+        # todo 测试用
+        have_got_global_message = False
 
         if not self.top_control_queue.empty():
+            have_got_global_message = True
             print("get control message")
             # todo 解析从上游传入的控制信息。
 
@@ -2196,14 +2197,23 @@ class Executor(object):
             # print(top_swap_list)
             # print(top_release_list)
             # print(top_recomputation_list)
+            print("swap list")
             for node in self.topo_order:
                 print(node.control_message_out)
+            print("recompute list")
+            for node in self.topo_order:
+                print(node.recompute_list)
+            print("release list")
+            for node in self.topo_order:
+                print(node.release_list)
             print("update control message")
 
         # Traverse graph in topo order and compute values for all nodes.
         for node in self.topo_order:
+            if have_got_global_message:
+                print(node.index)
 
-            if node in node_to_gpu_map:
+            if node.index in index_to_gpu_map:
                 # Skip placeholder nodes. Values already provided by feed_dict.
                 # 找出feed_dict中已经包含的ndarray
                 node.array_status = 1
@@ -2211,13 +2221,6 @@ class Executor(object):
 
             input_vals = []
 
-            while not self.have_done_queue.empty():
-                (node_index, node_val) = self.have_done_queue.get(block=False)
-                node_to_gpu_map[self.topo_order[node_index]] = node_val
-                if ndarray.is_gpu_ctx(node_val.ctx):
-                    self.topo_order[node_index].array_status = 1
-                else:
-                    self.topo_order[node_index].array_status = 0
 
             for recompute_index in node.recompute_list:
                 # todo  加入重计算的过程,重计算在被动swap in之前
@@ -2228,16 +2231,16 @@ class Executor(object):
                 recompute_ndarray = ndarray.empty(self.node_to_shape_map[recompute_node], self.ctx_gpu)
                 recompute_node.array_status = 1
                 recompute_node.op.compute(recompute_node, recompute_inputs, recompute_ndarray, False)
-                node_to_gpu_map[recompute_node] = recompute_ndarray
+                index_to_gpu_map[recompute_node.index] = recompute_ndarray
 
             for n in node.inputs:
                 if n.array_status == 0:
                     # todo 考虑如何被动进行swap in
                     node_ndarray_new = ndarray.empty(node_to_cpu_map[n].shape, self.ctx_gpu)
-                    node_to_cpu_map[n].copyto(node_ndarray_new)
-                    node_to_gpu_map[n] = node_ndarray_new
+                    index_to_cpu_map[n.index].copyto(node_ndarray_new)
+                    index_to_gpu_map[n] = node_ndarray_new
                     n.array_status = 1
-                input_vals.append(node_to_gpu_map[n])
+                input_vals.append(index_to_gpu_map[n.index])
 
             # input_vals = [node_to_gpu_map[n] for n in node.inputs]
             node_val = ndarray.empty(self.node_to_shape_map[node], self.ctx_gpu)
@@ -2250,7 +2253,10 @@ class Executor(object):
                 wait_time = control_message[0]
                 node_id = control_message[1]
                 move_to_gpu = control_message[2]
-                self.control_queue.put((wait_time, node_id, node_to_gpu_map[self.topo_order[node_id]], move_to_gpu))
+                if move_to_gpu:
+                    self.control_queue.put((wait_time, node_id, node_to_cpu_map[self.topo_order[node_id]], move_to_gpu))
+                else:
+                    self.control_queue.put((wait_time, node_id, node_to_gpu_map[self.topo_order[node_id]], move_to_gpu))
 
             t1 = datetime.datetime.now()
             node.op.compute(node, input_vals, node_val, self.cudnnHandle, self.cublasHandle, self.cudaStream, False)
@@ -2259,31 +2265,31 @@ class Executor(object):
             # print(node.index)
 
             # print(node.index)
-            node_to_gpu_map[node] = node_val
+            index_to_gpu_map[node.index] = node_val
 
 
             for control_message in node.control_message_out:
                 wait_time = control_message[0]
                 node_id = control_message[1]
                 move_to_gpu = control_message[2]
-                self.control_queue.put((wait_time, node_id, node_to_gpu_map[self.topo_order[node_id]], move_to_gpu))
+                if move_to_gpu:
+                    self.control_queue.put((wait_time, node_id, node_to_cpu_map[self.topo_order[node_id]], move_to_gpu))
+                else:
+                    self.control_queue.put((wait_time, node_id, node_to_gpu_map[self.topo_order[node_id]], move_to_gpu))
+
+                # # todo 仅用于测试
+                # self.have_done_queue.get(block=True)
+                # print("swap end")
+
 
             for release_message in node.release_list:
-                node_to_gpu_map[self.topo_order[release_message]] = None
+                index_to_gpu_map[release_message] = None
+                self.topo_order[release_message].array_status = 0
 
-            while not self.have_done_queue.empty():
-                (node_index, node_ndarray_new) = self.have_done_queue.get()
-                if ndarray.is_gpu_ctx(node_ndarray_new.ctx):
-                    self.topo_order[node_index].array_status = 1
-                    node_to_gpu_map[self.topo_order[node_index]] = node_ndarray_new
-                else:
-                    self.topo_order[node_index].array_status = 0
-                    node_to_cpu_map[self.topo_order[node_index]] = node_ndarray_new
-                    node_to_gpu_map[self.topo_order[node_index]] = None
 
         # Collect node values.
         # print("success one batch")
-        return [node_to_gpu_map[n] for n in self.eval_node_list]
+        return [index_to_gpu_map[n.index] for n in self.eval_node_list]
 
 
 def gradients(output_node, node_list):
