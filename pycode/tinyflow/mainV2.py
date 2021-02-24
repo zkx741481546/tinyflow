@@ -163,7 +163,7 @@ def liveness_analysis(tensor_access_list):
     tmp = set()
     for i in range(len(tensor_access_list) - 1, -1, -1):
         tensor_access = tensor_access_list[i]
-        if tensor_access.tensor not in tmp and len(tensor_access_by_tensor[tensor_access.tensor.job_id][tensor_access.tensor]) > 1:
+        if tensor_access.tensor not in tmp:
             tmp.add(tensor_access.tensor)
             tensor_access.release_flag = True
 
@@ -349,17 +349,6 @@ def get_max_memory_used(tensor_access_list, swap_tasks, swapped_out_tensor, reco
                 if isinstance(time_axis[j], TensorAccess) and time_axis[j].end_time <= event.start_time:
                     last_event = time_axis[j]
                     break
-            # for j in range(time_index-1,-1,-1):
-            #     if time_axis[j].end_time == event.start_time:
-            #         last_event = time_axis[j]
-            #         last_time = 0
-            #         break
-            # if last_event is None:
-            #     for j in range(time_index - 1, -1, -1):
-            #         if time_axis[j].end_time<event.start_time:
-            #             last_event = time_axis[j]
-            #             last_time = event.start_time - time_axis[j].end_time
-            #             break
             assert last_event is not None
             event.execute_ref = last_event
             event.execute_time = event.start_time - last_event.end_time
@@ -519,17 +508,7 @@ def init(graphs, logged_times: list, gpu: int):
     total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
     job_num = len(graphs)
     global_tensor_access = [get_framework_info(graphs[i], logged_times[i], i) for i in range(job_num)]
-    # task-tensor-access
-    # [dict()]，外层索引为job_id, 内层为tensor对象
-    # tensor_access_by_tensor = []
-    # for i in range(job_num):
-    #     tensor_accesses = global_tensor_access[i]
-    #     dic = defaultdict(list)
-    #     for access in tensor_accesses:
-    #         dic[access.tensor].append(access)
-    #     for k, v in dic.items():
-    #         dic[k] = sorted(v, key=lambda x: x.time)
-    #     tensor_access_by_tensor.append(dic)
+
 
 
 def add_job(graph, job_id, gpu: int):
@@ -590,7 +569,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
                 if swap_out_number[tensor.job_id] <= swap_out_number_limits[tensor.job_id] and len(tensor_access_by_tensor[tensor.job_id][tensor]) > 1:
                     # swapped_out表示所有可能的swap_in已经调度过了
                     if tensor not in swapped_out_tensor:
-                        all_access_of_tensor = tensor_access_by_tensor[tensor.job_id][tensor]
+                        all_access_of_tensor = tensor_access_by_tensor[tensor.job_id][tensor][1:]
                         # 首先确定swap_out的时间范围，最迟不能超过此时此刻，最早不能超过第一次访问结束时刻
                         output_access = tensor_access_by_tensor[tensor.job_id][tensor][0]
                         assert output_access.access_type == AccessType.output
@@ -616,7 +595,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
                                     # 看一下后面第一个swap_in能否放下
                                     for i, access in enumerate(all_access_of_tensor):
                                         # 找到后面第一个访问
-                                        if i>0 and access.start_time > swap_out_task.start_time and access not in failed_input_access:
+                                        if access.start_time > swap_out_task.start_time and access not in failed_input_access:
                                             if can_next_input_access_swap_in(i, all_access_of_tensor, swap_out_task, swap_scheduler):
                                                 swapped_out_tensor.add(tensor)
                                                 swap_out_dict[tensor] = swap_out_task
