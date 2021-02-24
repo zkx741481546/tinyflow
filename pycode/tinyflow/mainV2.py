@@ -160,12 +160,13 @@ def get_predicted_execution_time(op_name, input_tensors, logged_time: list):
 def liveness_analysis(tensor_access_list):
     global tensor_access_by_tensor
     # 活跃性分析结果生成
-    tmp = set()
-    for i in range(len(tensor_access_list) - 1, -1, -1):
-        tensor_access = tensor_access_list[i]
-        if tensor_access.tensor not in tmp:
-            tmp.add(tensor_access.tensor)
-            tensor_access.release_flag = True
+    for job_id in range(len(tensor_access_list)):
+        tmp = set()
+        for i in range(len(tensor_access_list[job_id]) - 1, -1, -1):
+            tensor_access = tensor_access_list[job_id][i]
+            if tensor_access.tensor not in tmp:
+                tmp.add(tensor_access.tensor)
+                tensor_access.release_flag = True
 
 
 def is_overlap(task: SwapTask, target: SwapTask):
@@ -465,7 +466,6 @@ def get_framework_info(info, logged_time, job_id):
     for k, v in dic.items():
         dic[k] = sorted(v, key=lambda x: x.time)
     tensor_access_by_tensor[job_id] = dic
-    liveness_analysis(tensor_access_list)
     return tensor_access_list
 
 
@@ -558,6 +558,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
         if iter == 0:
             original_memory_used = max_memory
             original_memory_footprint = foot_prints
+            liveness_analysis(global_tensor_access)
         else:
             last_memory_used = max_memory
         print(f'iter:{iter}, max_memory:{max_memory}')
@@ -664,8 +665,8 @@ def generate_scheduling_plan(logged_times, gpu: int):
                                 # print('recompute')
                                 break
         iter += 1
-    # fig = go.Figure(data=[go.Scatter(x=list(original_memory_footprint[0].keys()), y=list(original_memory_footprint[0].values())), go.Scatter(x=list(foot_prints[0].keys()), y=list(foot_prints[0].values()))])
-    # plotly.offline.plot(fig, filename='../../footprint.html')
+    fig = go.Figure(data=[go.Scatter(x=list(original_memory_footprint[0].keys()), y=list(original_memory_footprint[0].values())), go.Scatter(x=list(foot_prints[0].keys()), y=list(foot_prints[0].values()))])
+    plotly.offline.plot(fig, filename='../../footprint.html')
     total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
     stats = 'succeed' if max_memory < total_memory else ' failure'
     print(f'scheduling {stats}')
