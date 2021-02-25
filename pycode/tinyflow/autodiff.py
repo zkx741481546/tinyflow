@@ -77,7 +77,10 @@ class MemoryManager(threading.Thread):
                 # time2 = datetime.datetime.now()
 
                 node_ndarray.copyto(node_ndarray_new, self.cudaSwapStream)
-                index_to_gpu_map[node_index] = node_ndarray_new
+                if index_to_gpu_map[node_index] is None:
+                    index_to_gpu_map[node_index] = node_ndarray_new
+                else:
+                    print("swap in 和 passive import 重合")
                 # print("swap finish: node " + str(node_index) + " to " + str(move_to_gpu))
                 # print((time2 - time1).microseconds)
 
@@ -2114,6 +2117,10 @@ class Executor(object):
         for i in range(len(self.topo_order)):
             self.topo_order[i].index = i
 
+        print("最后输出index：")
+        for node in eval_node_list:
+            print(node.index)
+
         # todo 此处hard code，后续需要修改
         self.ctx_cpu = ndarray.cpu(0)
         self.ctx_gpu = ndarray.gpu(0)
@@ -2325,7 +2332,7 @@ class Executor(object):
 
             for n in node.inputs:
                 if index_to_gpu_map[n.index] is None:
-                    print("passive import " + str(n.index))
+                    print("when computing " + str(node.index) + " passive import " + str(n.index))
                     # todo 考虑如何被动进行swap in
                     assert index_to_cpu_flag[n.index], "输入tensor不在cpu上"
                     node_ndarray_new = ndarray.empty(self.node_to_shape_map[n], self.ctx_gpu)

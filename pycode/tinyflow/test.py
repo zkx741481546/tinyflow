@@ -39,8 +39,8 @@ import queue
 
 ctx_cpu = ndarray.cpu(0)
 ctx_gpu = ndarray.gpu(0)
-w1 = ndarray.empty((10000, 100000), ctx_cpu)
-w2 = ndarray.empty((10000, 100000), ctx_gpu)
+w1 = ndarray.empty((10000, 10000), ctx_cpu)
+w2 = ndarray.empty((10000, 10000), ctx_gpu)
 
 
 t1 = datetime.datetime.now()

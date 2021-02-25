@@ -132,11 +132,11 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
     # Initialize parameters
     # 随机初始化网络中的w和b
     rand = np.random.RandomState(seed=123)
-    W1_val = rand.normal(scale=0.1, size=(784, 2560))
-    W2_val = rand.normal(scale=0.1, size=(2560, 1000))
-    W3_val = rand.normal(scale=0.1, size=(1000, 10))
-    b1_val = rand.normal(scale=0.1, size=(2560))
-    b2_val = rand.normal(scale=0.1, size=(1000))
+    W1_val = rand.normal(scale=0.1, size=(784, 256))
+    W2_val = rand.normal(scale=0.1, size=(256, 100))
+    W3_val = rand.normal(scale=0.1, size=(100, 10))
+    b1_val = rand.normal(scale=0.1, size=(256))
+    b2_val = rand.normal(scale=0.1, size=(100))
     b3_val = rand.normal(scale=0.1, size=(10))
     X_val = np.empty(shape=(batch_size, 784), dtype=np.float32)
     y_val = np.empty(shape=(batch_size, 10), dtype=np.float32)
