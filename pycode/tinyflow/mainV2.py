@@ -28,7 +28,7 @@ class AccessType(Enum):
 
 
 class Tensor:
-    def __init__(self, tensor_id, job_id, size, recomputation_time, source_tensors=None):
+    def __init__(self, tensor_id, job_id, size, recomputation_time, source_tensors=None, is_parameter=False, in_gpu=True):
         self.tensor_id = tensor_id
         self.job_id = job_id
         self.size = size
@@ -36,13 +36,15 @@ class Tensor:
         self.source_tensors = source_tensors if source_tensors is not None else []
         self.recomputation_time = recomputation_time
         self.recomputation_metric = self.size / self.recomputation_time
+        self.is_parameter = is_parameter
+        self.in_gpu = in_gpu
 
     def __repr__(self):
         return f'tensor_id:{self.tensor_id}, job_id":{self.job_id}, size:{self.size}'
 
 
 class TensorAccess:
-    def __init__(self, tensor, time, run_time, access_type, operation_id):
+    def __init__(self, tensor, time, run_time, access_type, operation_id, operation_name):
         self.tensor = tensor
         self.access_id = None
         self.start_time = None
@@ -58,6 +60,7 @@ class TensorAccess:
             self.end_time = self.time + self.run_time
         self.release_flag = False
         self.operation_id = operation_id
+        self.operation_name = operation_name
 
     def to_tuple(self):
         return (self.tensor.tensor_id, self.time)
@@ -69,7 +72,7 @@ class TensorAccess:
 class SwapTask(object):
     '''Date weighted interval'''
 
-    def __init__(self, tensor, weight, time, time_cost, task_type: TaskType, front_boundary=None, back_boundary=None):
+    def __init__(self, tensor, time, time_cost, task_type: TaskType, front_boundary=None, back_boundary=None):
         self.tensor = tensor
         self.time_cost = time_cost
         self.data_type = np.float64
@@ -87,7 +90,6 @@ class SwapTask(object):
         # else:
         #     self.end_time = self.time
         #     self.start_time = self.end_time - self.time_cost
-        self.weight = weight
         self.execute_time = None
         self.execute_ref = None
 
@@ -116,7 +118,7 @@ class SwapTask(object):
         return cls(access.tensor, weight, access.time, access.tensor.swap_time, task_type, front_boundary=front_boundary, back_boundary=back_boundary)
 
     def __repr__(self):
-        return f'id={self.tensor}, type={self.task_type}, start_time={self.start_time}, end_time={self.end_time}, weight={self.weight}'
+        return f'id={self.tensor}, type={self.task_type}, start_time={self.start_time}, end_time={self.end_time}'
 
 
 def numpy_ewma_vectorized(data, window):
@@ -164,7 +166,10 @@ def liveness_analysis(tensor_access_list):
         tmp = set()
         for i in range(len(tensor_access_list[job_id]) - 1, -1, -1):
             tensor_access = tensor_access_list[job_id][i]
-            if tensor_access.tensor not in tmp and len(tensor_access_by_tensor[tensor_access.tensor.job_id][tensor_access.tensor])>1:
+            if tensor_access.tensor not in tmp and len(tensor_access_by_tensor[tensor_access.tensor.job_id][tensor_access.tensor]) > 1:
+                # 新生成的参数不会释放
+                if tensor_access.operation_name != 'feed_dict' and tensor_access.tensor.is_parameter:
+                    continue
                 tmp.add(tensor_access.tensor)
                 tensor_access.release_flag = True
 
@@ -331,8 +336,10 @@ def get_max_memory_used(tensor_access_list, swap_tasks, swapped_out_tensor, reco
                     in_gpu_tensors.remove(access.tensor)
         if isinstance(event, TensorAccess):
             if event.access_type == AccessType.output:
-                memory_used += event.tensor.size
-                in_gpu_tensors.add(event.tensor)
+                # feed dict进入的参数已经swap in了，他们的feed dict不按照增加显存处理
+                if not (event.tensor.is_parameter and event.operation_name == 'feed_dict'):
+                    memory_used += event.tensor.size
+                    in_gpu_tensors.add(event.tensor)
             else:
                 # 用完即释放的
                 # input本身并不增加gpu使用，swap in增加
@@ -371,7 +378,7 @@ def get_max_memory_used(tensor_access_list, swap_tasks, swapped_out_tensor, reco
             max_last_access = copy.copy(last_input_tensor_access)
             max_time = time
             # max_memory = memory_used
-    return max_memory_actual, max_memory_tensors, max_last_access, max_time, foot_print
+    return max_memory_actual, max_memory_tensors, max_last_access, max_time, foot_print, time_axis
 
 
 def run_global_memory_analysis(global_tensor_access, swap_tasks, swapped_out_tensor, recomputation_tensor, tensor_access_by_tensor):
@@ -380,15 +387,17 @@ def run_global_memory_analysis(global_tensor_access, swap_tasks, swapped_out_ten
     last_input_accesses = []
     max_time = []
     foot_prints = []
+    time_axis = []
     for job_id, tensor_accesses in enumerate(global_tensor_access):
-        job_max_memory, job_max_memory_tensors, last_input_access, now_time, foot_print = get_max_memory_used(tensor_accesses, swap_tasks[job_id], swapped_out_tensor, recomputation_tensor,
-                                                                                                              tensor_access_by_tensor[job_id])
+        job_max_memory, job_max_memory_tensors, last_input_access, now_time, foot_print, t_axis = get_max_memory_used(tensor_accesses, swap_tasks[job_id], swapped_out_tensor, recomputation_tensor,
+                                                                                                                      tensor_access_by_tensor[job_id])
+        time_axis.append(t_axis)
         foot_prints.append(foot_print)
         max_memory_tensors.extend(job_max_memory_tensors)
         last_input_accesses.append(last_input_access)
         max_time.append(now_time)
         max_memory += job_max_memory
-    return max_memory, max_memory_tensors, last_input_accesses, max_time, foot_prints
+    return max_memory, max_memory_tensors, last_input_accesses, max_time, foot_prints, time_axis
 
 
 def draw(tensor_access_list, swap_schedule):
@@ -410,12 +419,7 @@ def draw(tensor_access_list, swap_schedule):
     pyplt(fig, filename=f'../../pic/job{tensor_access_list[0].tensor.job_id}.html', auto_open=True)
 
 
-def can_next_input_access_swap_in(i, all_access_of_tensor, swap_out_task, swap_scheduler):
-    # 至少将第一个访问swap in才算成功，后续的能换入的话，则把前一个的release_flag设为True
-    access = all_access_of_tensor[i]
-    swap_in_task = SwapTask(access.tensor, None, access.time, access.tensor.swap_time, TaskType.swap_in,
-                            front_boundary=swap_out_task.end_time if swap_out_task.end_time > all_access_of_tensor[i - 1].end_time else all_access_of_tensor[i - 1].end_time,
-                            back_boundary=access.time)
+def try_swap_in(swap_in_task: SwapTask, swap_scheduler):
     # swap_in越晚越好，按结束时间降序排序
     free_intervals = get_free_intervals(swap_in_task, swap_scheduler[swap_in_task.tensor.job_id], 1, asc=False)
     succeed = False
@@ -432,13 +436,24 @@ def can_next_input_access_swap_in(i, all_access_of_tensor, swap_out_task, swap_s
         return True
 
 
+def can_next_input_access_swap_in(i, all_access_of_tensor, swap_out_task, swap_scheduler):
+    # 至少将第一个访问swap in才算成功，后续的能换入的话，则把前一个的release_flag设为True
+    access = all_access_of_tensor[i]
+    swap_in_task = SwapTask(access.tensor, access.time, access.tensor.swap_time, TaskType.swap_in,
+                            front_boundary=swap_out_task.end_time if swap_out_task.end_time > all_access_of_tensor[i - 1].end_time else all_access_of_tensor[i - 1].end_time,
+                            back_boundary=access.time)
+    return try_swap_in(swap_in_task, swap_scheduler)
+
+
 def get_framework_info(info, logged_time, job_id):
     global global_tensors
     tensors = {}
     tensor_access_list = []
     global_time = 0
+    parameter = []
     #   operation_id
-    for output_tensor_id, input_tensor_id, output_tensor_size, operation_name in info:
+    for output_tensor_id, input_tensor_id, output_tensor_size, operation_name, is_parameter, in_gpu in info:
+        # is_parameter: 生成的张量是否为参数
         # 输入的为Byte
         # 转换为MB
         output_tensor_size = output_tensor_size / 1000000
@@ -447,18 +462,20 @@ def get_framework_info(info, logged_time, job_id):
             input_tensor = tensors[tensor_id]
             input_tensors.append(input_tensor)
         time_cost = get_predicted_execution_time(operation_name, input_tensors, logged_time[output_tensor_id])
-        output_tensor = Tensor(tensor_id=output_tensor_id, job_id=job_id, size=output_tensor_size, source_tensors=input_tensors, recomputation_time=time_cost)
-        output_access = TensorAccess(tensor=output_tensor, time=global_time + time_cost, run_time=time_cost, access_type=AccessType.output, operation_id=output_tensor_id)
+        output_tensor = Tensor(tensor_id=output_tensor_id, job_id=job_id, size=output_tensor_size, source_tensors=input_tensors, recomputation_time=time_cost, is_parameter=is_parameter, in_gpu=in_gpu)
+        output_access = TensorAccess(tensor=output_tensor, time=global_time + time_cost, run_time=time_cost, access_type=AccessType.output, operation_id=output_tensor_id, operation_name=operation_name)
         tensor_access_list.append(output_access)
         tensors[output_tensor.tensor_id] = output_tensor
+        if is_parameter:
+            parameter.append(output_tensor)
         for tensor_id in input_tensor_id:
             input_tensor = tensors[tensor_id]
-            input_access = TensorAccess(tensor=input_tensor, time=global_time, run_time=time_cost, access_type=AccessType.input, operation_id=output_tensor_id)
+            input_access = TensorAccess(tensor=input_tensor, time=global_time, run_time=time_cost, access_type=AccessType.input, operation_id=output_tensor_id, operation_name=operation_name)
             tensor_access_list.append(input_access)
         global_time += time_cost
 
     tensors = list(tensors.values())
-    global_tensors.extend(tensors)
+    global_tensors[job_id] = tensors
     tensor_access_list = sorted(tensor_access_list, key=lambda x: x.time)
     dic = defaultdict(list)
     for access in tensor_access_list:
@@ -466,7 +483,35 @@ def get_framework_info(info, logged_time, job_id):
     for k, v in dic.items():
         dic[k] = sorted(v, key=lambda x: x.time)
     tensor_access_by_tensor[job_id] = dic
-    return tensor_access_list
+
+    swap_scheduler = []
+    # 对参数进行swap in调度
+    # earliest_swap = None
+    earliest_time = float('inf')
+    # 从最早的参数开始安排
+    parameter = sorted(parameter, key=lambda x: dic[x][0].start_time)
+    # for para in parameter:
+    #     if not para.in_gpu:
+    #         # 找到第一次访问
+    #         first_access = dic[para][0]
+    #         swap_in_task = SwapTask(para, first_access.time, first_access.tensor.swap_time, TaskType.swap_in, front_boundary=float('-inf'), back_boundary=first_access.start_time)
+    #         # 对所有参数的第一次访问进行调度
+    #         res = try_swap_in(swap_in_task, swap_scheduler)
+    #         assert not res, f'swap in parameter:{para} failed'
+    #         if swap_in_task.start_time < earliest_time:
+    #             earliest_time = swap_in_task.start_time
+    #             # earliest_swap = swap_in_task
+    # # 重置时间轴
+    # if earliest_time < 0:
+    #     delta_time = -earliest_time
+    #     tmp = copy.copy(swap_scheduler)
+    #     tmp.extend(tensor_access_list)
+    #     for event in tmp:
+    #         event.time += delta_time
+    #         event.end_time = event.end_time + delta_time
+    #         event.end_time = event.end_time + delta_time
+
+    return tensor_access_list, swap_scheduler, parameters
 
 
 # 随机生成数据用的参数
@@ -486,7 +531,9 @@ total_memory = 0
 handle = None
 enable_recomputation = True
 global_graphs = []
-global_tensors = []
+global_tensors = {}
+swap_scheduler = []
+parameters = []
 
 
 def init(graphs, logged_times: list, gpu: int):
@@ -498,6 +545,8 @@ def init(graphs, logged_times: list, gpu: int):
     global jobs_weights
     global global_graphs
     global global_tensors
+    global swap_scheduler
+    global parameters
     global_graphs = graphs
     jobs_weights = [weight for _ in range(len(graphs))]
     tensor_access_by_tensor = [[] for _ in range(job_num)]
@@ -507,8 +556,10 @@ def init(graphs, logged_times: list, gpu: int):
     handle = nvmlDeviceGetHandleByIndex(gpu)
     total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
     job_num = len(graphs)
-    global_tensor_access = [get_framework_info(graphs[i], logged_times[i], i) for i in range(job_num)]
-
+    tmp = [get_framework_info(graphs[i], logged_times[i], i) for i in range(job_num)]
+    global_tensor_access = [tmp[i][0] for i in range(job_num)]
+    swap_scheduler = [tmp[i][1] for i in range(job_num)]
+    parameters = [tmp[i][2] for i in range(job_num)]
 
 
 def add_job(graph, job_id, gpu: int):
@@ -531,12 +582,12 @@ def generate_scheduling_plan(logged_times, gpu: int):
     # 如果是此时logged_times已经清空，则
     # logged_times: [[(operation_id, [time, time, time])]]，外层索引为job_id
     global total_memory
+    global global_tensors
     init(global_graphs, logged_times, gpu)
     # 指数加权平均更新估计时间
     tensor_nums = list(map(lambda x: len(x), tensor_access_by_tensor))
     swap_out_number_limits = [int(weight * tensor_num) for weight, tensor_num in zip(jobs_weights, tensor_nums)]
     swap_out_number = [0 for _ in tensor_nums]
-    swap_scheduler = [[] for _ in range(job_num)]
     swapped_out_tensor = set()
     swap_out_dict = {}
     swapped_in_access = set()
@@ -554,7 +605,8 @@ def generate_scheduling_plan(logged_times, gpu: int):
     while swapped_flag or (recomputation_flag and enable_recomputation):
         # MB
         total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
-        max_memory, max_tensors, last_input_accesses, max_time, foot_prints = run_global_memory_analysis(global_tensor_access, swap_scheduler, swapped_out_tensor, recomputation_tensor, tensor_access_by_tensor)
+        max_memory, max_tensors, last_input_accesses, max_time, foot_prints, time_axis = run_global_memory_analysis(global_tensor_access, swap_scheduler, swapped_out_tensor, recomputation_tensor,
+                                                                                                                    tensor_access_by_tensor)
         if iter == 0:
             original_memory_used = max_memory
             original_memory_footprint = foot_prints
@@ -567,79 +619,117 @@ def generate_scheduling_plan(logged_times, gpu: int):
             swapped_flag = False
             for tensor in max_tensors:
                 # 对该张量进行swap_out计划的安排
-                if swap_out_number[tensor.job_id] <= swap_out_number_limits[tensor.job_id] and len(tensor_access_by_tensor[tensor.job_id][tensor]) > 1:
-                    # swapped_out表示所有可能的swap_in已经调度过了
-                    if tensor not in swapped_out_tensor:
-                        all_access_of_tensor = tensor_access_by_tensor[tensor.job_id][tensor][1:]
-                        # 首先确定swap_out的时间范围，最迟不能超过此时此刻，最早不能超过第一次访问结束时刻
-                        output_access = tensor_access_by_tensor[tensor.job_id][tensor][0]
-                        assert output_access.access_type == AccessType.output
-                        if last_input_accesses[tensor.job_id] is not None:
-                            # 此时此刻
-                            back_boundary = last_input_accesses[tensor.job_id].time
-                        else:
-                            last_time_access = tensor_access_by_tensor[tensor.job_id][tensor][-1]
-                            back_boundary = last_time_access.time + tensor.swap_time
-                        succeed = False
-                        front_boundary = output_access.time
-                        failed_input_access = []
-                        swap_out_succeed = True
-                        # 如果是因为swap out放不下，则不用继续更新可行区间了，直接break
-                        while not succeed and front_boundary<back_boundary and swap_out_succeed:
-                            swap_out_task = SwapTask(tensor, None, output_access.time, tensor.swap_time, TaskType.swap_out, front_boundary=front_boundary, back_boundary=back_boundary)
-                            free_intervals = get_free_intervals(swap_out_task, swap_scheduler[swap_out_task.tensor.job_id])
-                            selected_first_access_index = None
-                            # 选出能容纳该任务的剩余空间
-                            swap_out_succeed = False
-                            for interval in free_intervals:
-                                if interval[1] - interval[0] >= swap_out_task.time_cost:
-                                    swap_out_succeed = True
-                                    swap_out_task.start_time = interval[0]
-                                    swap_out_task.end_time = swap_out_task.start_time + swap_out_task.time_cost
-                                    swap_scheduler[swap_out_task.tensor.job_id].append(swap_out_task)
-                                    # 看一下后面第一个swap_in能否放下
-                                    for i, access in enumerate(all_access_of_tensor):
-                                        # 找到后面第一个访问
-                                        if access.start_time > swap_out_task.start_time and access not in failed_input_access:
-                                            if can_next_input_access_swap_in(i, all_access_of_tensor, swap_out_task, swap_scheduler):
-                                                swapped_out_tensor.add(tensor)
-                                                swap_out_dict[tensor] = swap_out_task
-                                                swapped_in_access.add(access)
-                                                swap_out_number[tensor.job_id] += 1
-                                                selected_first_access_index = i
-                                                succeed = True
-                                                swapped_flag = True
-                                            else:
-                                                failed_input_access.append(access)
-                                                swap_scheduler[swap_out_task.tensor.job_id].remove(swap_out_task)
-                                                # 修正swap_out_task前向限制为这个失败的input_access的结束时间
-                                                front_boundary = access.end_time
-                                                assert tensor not in swapped_out_tensor
-                                                # swapped_out_tensor.remove(tensor)
-                                            break
-                                    if not succeed:
-                                        if swap_out_task in swap_scheduler[swap_out_task.tensor.job_id]:
-                                            swap_scheduler[swap_out_task.tensor.job_id].remove(swap_out_task)
-                                            # 如果不是因为swap out没安排下则重新生成区间
-                                            break
-                                    else:
-                                        break
-                        # 安排失败
-                        if not succeed:
-                            continue
-                        # 后续的能换入的话，则把前一个的release_flag设为True
-                        for i in range(selected_first_access_index + 1, len(all_access_of_tensor)):
-                            access = all_access_of_tensor[i]
-                            if i == 0 or access in swapped_in_access:
-                                continue
+                is_new_parameter = tensor.is_parameter and tensor_access_by_tensor[tensor.job_id][tensor][0].operation_name != 'feed_dict' and len(tensor_access_by_tensor[tensor.job_id][tensor]) == 1
+                if not is_new_parameter:
+                    if swap_out_number[tensor.job_id] <= swap_out_number_limits[tensor.job_id] and len(tensor_access_by_tensor[tensor.job_id][tensor]) > 1:
+                        # swapped_out表示所有可能的swap_in已经调度过了
+                        if tensor not in swapped_out_tensor:
+                            all_access_of_tensor = tensor_access_by_tensor[tensor.job_id][tensor][1:]
+                            # 首先确定swap_out的时间范围，最迟不能超过此时此刻，最早不能超过第一次访问结束时刻
+                            output_access = tensor_access_by_tensor[tensor.job_id][tensor][0]
+                            assert output_access.access_type == AccessType.output
+                            if last_input_accesses[tensor.job_id] is not None:
+                                # 此时此刻
+                                back_boundary = last_input_accesses[tensor.job_id].time
                             else:
-                                if can_next_input_access_swap_in(i, all_access_of_tensor, swap_out_task, swap_scheduler):
-                                    # print(f'成功{access}')
-                                    swapped_in_access.add(access)
-                                    if all_access_of_tensor[i - 1].start_time > swap_out_task.end_time:
-                                        all_access_of_tensor[i - 1].release_flag = True
-                        if swapped_flag:
+                                last_time_access = tensor_access_by_tensor[tensor.job_id][tensor][-1]
+                                back_boundary = last_time_access.time + tensor.swap_time
+                            succeed = False
+                            front_boundary = output_access.time
+                            failed_input_access = []
+                            swap_out_succeed = True
+                            # 如果是因为swap out放不下，则不用继续更新可行区间了，直接break
+                            while not succeed and front_boundary < back_boundary and swap_out_succeed:
+                                swap_out_task = SwapTask(tensor, output_access.time, tensor.swap_time, TaskType.swap_out, front_boundary=front_boundary, back_boundary=back_boundary)
+                                free_intervals = get_free_intervals(swap_out_task, swap_scheduler[swap_out_task.tensor.job_id])
+                                selected_first_access_index = None
+                                # 选出能容纳该任务的剩余空间
+                                swap_out_succeed = False
+                                for interval in free_intervals:
+                                    if interval[1] - interval[0] >= swap_out_task.time_cost:
+                                        swap_out_succeed = True
+                                        swap_out_task.start_time = interval[0]
+                                        swap_out_task.end_time = swap_out_task.start_time + swap_out_task.time_cost
+                                        swap_scheduler[swap_out_task.tensor.job_id].append(swap_out_task)
+                                        # 看一下后面第一个swap_in能否放下
+                                        for i, access in enumerate(all_access_of_tensor):
+                                            # 找到后面第一个访问
+                                            if access.start_time > swap_out_task.start_time and access not in failed_input_access:
+                                                if can_next_input_access_swap_in(i, all_access_of_tensor, swap_out_task, swap_scheduler):
+                                                    swapped_out_tensor.add(tensor)
+                                                    swap_out_dict[tensor] = swap_out_task
+                                                    swapped_in_access.add(access)
+                                                    swap_out_number[tensor.job_id] += 1
+                                                    selected_first_access_index = i
+                                                    succeed = True
+                                                    swapped_flag = True
+                                                else:
+                                                    failed_input_access.append(access)
+                                                    swap_scheduler[swap_out_task.tensor.job_id].remove(swap_out_task)
+                                                    # 修正swap_out_task前向限制为这个失败的input_access的结束时间
+                                                    front_boundary = access.end_time
+                                                    assert tensor not in swapped_out_tensor
+                                                    # swapped_out_tensor.remove(tensor)
+                                                break
+                                        if not succeed:
+                                            if swap_out_task in swap_scheduler[swap_out_task.tensor.job_id]:
+                                                swap_scheduler[swap_out_task.tensor.job_id].remove(swap_out_task)
+                                                # 如果不是因为swap out没安排下则重新生成区间
+                                                break
+                                        else:
+                                            break
+                            # 安排失败
+                            if not succeed:
+                                continue
+                            if not is_new_parameter:
+                                # 后续的能换入的话，则把前一个的release_flag设为True
+                                for i in range(selected_first_access_index + 1, len(all_access_of_tensor)):
+                                    access = all_access_of_tensor[i]
+                                    if i == 0 or access in swapped_in_access:
+                                        continue
+                                    else:
+                                        if can_next_input_access_swap_in(i, all_access_of_tensor, swap_out_task, swap_scheduler):
+                                            # print(f'成功{access}')
+                                            swapped_in_access.add(access)
+                                            if all_access_of_tensor[i - 1].start_time > swap_out_task.end_time:
+                                                all_access_of_tensor[i - 1].release_flag = True
+                            if swapped_flag:
+                                break
+                # 如果是新参数，则尝试对新参数进行swap out，对对应的旧参数进行swap in
+                else:
+                    output_access = tensor_access_by_tensor[tensor.job_id][tensor][0]
+                    assert output_access.access_type == AccessType.output
+                    # TODO: 框架在开始下一个batch的计算前需要等待最后一个swap结束
+                    swap_out_task = SwapTask(tensor, time=output_access.time, time_cost=tensor.swap_time, task_type=TaskType.swap_out, front_boundary=output_access.end_time, back_boundary=float('inf'))
+                    free_intervals = get_free_intervals(swap_out_task, swap_scheduler[swap_out_task.tensor.job_id])
+                    swap_out_succeed = False
+                    for interval in free_intervals:
+                        if interval[1] - interval[0] >= swap_out_task.time_cost:
+                            swap_out_succeed = True
+                            swap_out_task.start_time = interval[0]
+                            swap_out_task.end_time = swap_out_task.start_time + swap_out_task.time_cost
+                            swap_scheduler[swap_out_task.tensor.job_id].append(swap_out_task)
                             break
+                    # 由于二者可行域无关，所以直接查看对应的swap in 能否调度
+                    if swap_out_succeed:
+                        # 找到对应的旧参数张量
+                        for t in global_tensors[tensor.job_id]:
+                            if tensor in t.source_tensors:
+                                # 试图swap in
+                                # 找到第一次访问
+                                first_access = tensor_access_by_tensor[t.job_id][t][0]
+                                assert first_access.access_type == AccessType.output
+                                swap_in_task = SwapTask(t, first_access.time, first_access.tensor.swap_time, TaskType.swap_in, front_boundary=float('-inf'), back_boundary=first_access.start_time)
+                                res = try_swap_in(swap_in_task, swap_scheduler)
+                                assert not res, f'swap in parameter:{t} failed'
+                                if swap_in_task.start_time < earliest_time:
+                                    earliest_time = swap_in_task.start_time
+                                    # earliest_swap = swap_in_task
+                    swapped_out_tensor.add(tensor)
+                    swap_out_dict[tensor] = swap_out_task
+                    swap_out_number[tensor.job_id] += 1
+
+
         elif enable_recomputation:
             recomputation_flag = False
             # 需要重计算
@@ -648,8 +738,8 @@ def generate_scheduling_plan(logged_times, gpu: int):
                 for job_id in job_id_ordered_by_weights:
                     max_tensors_filtered = []
                     for tensor in max_tensors:
-                        # 张量没被逐出过，且他的所有源张量从未被swap或recomputation
-                        if tensor not in swapped_out_tensor and tensor.source_tensors is not None and len(tensor.source_tensors) > 0 and \
+                        # 张量不是参数，没被逐出过，且他的所有源张量从未被swap或recomputation
+                        if not tensor.is_parameter and tensor not in swapped_out_tensor and tensor.source_tensors is not None and len(tensor.source_tensors) > 0 and \
                                 False not in [t not in swapped_out_tensor for t in tensor.source_tensors] and False not in [t not in recomputations for t in tensor.source_tensors]:
                             max_tensors_filtered.append(tensor)
                     if len(max_tensors_filtered) == 0:
@@ -679,7 +769,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
     draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
     memory_saved_ratio = format((1 - last_memory_used / original_memory_used) * 100, '.2f')
     print(f'memory_saved_ratio:{memory_saved_ratio}%')
-    print(f'swap ratio:{len(swap_scheduler[0])/len(global_tensors)}')
+    print(f'swap ratio:{len(swap_scheduler[0]) / len(global_tensors)}')
     return generate_swap_recomputation_release_order(tensor_access_by_tensor, swap_scheduler, recomputations, job_num)
 
 
@@ -707,7 +797,7 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                 #      [50, 114], [50, 50], [50, 42], [50, 707], [50, 554], [50, 121]]
                 s = time.time()
                 release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
-                print(f'time:{time.time()-s}')
+                print(f'time:{time.time() - s}')
                 control_messages = []
                 for i in range(job_num):
                     control_message = [swap_order[i], release_order[i], recomputation_order[i]]
