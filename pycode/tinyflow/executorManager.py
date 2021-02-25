@@ -205,6 +205,7 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
             sgd_update_gpu(b1_val, grad_b1_val, lr, cuda_stream)
             sgd_update_gpu(b2_val, grad_b2_val, lr, cuda_stream)
             sgd_update_gpu(b3_val, grad_b3_val, lr, cuda_stream)
+            # print(loss_val.asnumpy())
         if print_loss_val_each_epoch:
             if isinstance(loss_val, ndarray.NDArray):
                 print(loss_val.asnumpy())

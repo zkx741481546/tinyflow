@@ -2476,6 +2476,9 @@ class Executor(object):
 
         # Collect node values.
         # print("success one batch")
+        for n in self.eval_node_list:
+            if index_to_gpu_map[n.index] is None:
+                assert False, "node " + str(n.index) + "is not on gpu"
         return [index_to_gpu_map[n.index] for n in self.eval_node_list]
 
 
