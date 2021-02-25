@@ -36,15 +36,17 @@ import queue
 
 # time.sleep(10)
 
-
+cudaStream = gpu_op.create_cudaStream()
 ctx_cpu = ndarray.cpu(0)
 ctx_gpu = ndarray.gpu(0)
-w1 = ndarray.empty((10000, 10000), ctx_cpu)
+w1_np = np.ones((10000, 10000), dtype=np.float32)
+w1 = ndarray.array(w1_np, ctx_cpu)
 w2 = ndarray.empty((10000, 10000), ctx_gpu)
 
 
 t1 = datetime.datetime.now()
-w1.copyto(w2, None)
+w1.copyto(w2, cudaStream)
 t2 = datetime.datetime.now()
+print(w2.asnumpy())
 print((t2 - t1).microseconds)
 
