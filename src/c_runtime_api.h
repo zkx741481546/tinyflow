@@ -197,7 +197,7 @@ TINYFLOW_EXTERN_C {
   int DLGpuMatrixExp(const DLArrayHandle input, DLArrayHandle output);
 
 
-  int DLGpuMatrixLog(const DLArrayHandle input, DLArrayHandle output);
+  int DLGpuMatrixLog(const DLArrayHandle input, DLArrayHandle output, void **cudaStream);
 
 
   int DLGpuMatrixReverse(const DLArrayHandle input, DLArrayHandle output);
@@ -511,7 +511,7 @@ TINYFLOW_EXTERN_C {
   
   int DLGpuAdam(DLArrayHandle output,
                 const DLArrayHandle m, const DLArrayHandle v,
-                float b1t,float b2t,float e,float learning_rate);
+                float b1t,float b2t,float e,float learning_rate, void **cudaStream);
   
 
 
@@ -519,7 +519,7 @@ TINYFLOW_EXTERN_C {
                 DLArrayHandle v,
                 const DLArrayHandle g,
                 float b1,
-                float b2);
+                float b2, void **cudaStream);
 
   int DLGpuAdam_o(void **** n4list,
                 const void ***indexlist,
@@ -541,6 +541,15 @@ TINYFLOW_EXTERN_C {
                    // const int* shape_prefix,
                     //const int number,
                     float b, void **cudaStream);
+  int DLGpuCross(const DLArrayHandle x,
+                    const DLArrayHandle y,
+                    DLArrayHandle output,
+                    float b, void **cudaStream);
+  int DLGpuCrossBackward(const DLArrayHandle x,
+                    const DLArrayHandle y,
+                    const DLArrayHandle doutput,
+                    DLArrayHandle output,
+                    float b, void **cudaStream);
 
 
   int DLGpuGetIndextoVaribaleNumberCudaPointer(int *index_to_number,
@@ -553,6 +562,7 @@ TINYFLOW_EXTERN_C {
   int DLGpuGetN2CudaPointer(void** output, void** g, int number,void **** result);
 
   int getInt(int *intp);
+  int testPcie();
 
 //  int DLGpuSgdUpdate(DLArrayHandle* output,
 //                    const DLArrayHandle* m,

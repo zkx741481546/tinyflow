@@ -1,10 +1,10 @@
 from __future__ import absolute_import
-
+import os
 import numpy as np
 from . import autodiff as ad
 from . import ndarray, gpu_op
 import time
-
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 class GradientDescent_minimize(object):
 
@@ -23,6 +23,7 @@ class GradientDescent_minimize(object):
         self.Variable_node_grad_list = ad.gradients(targetnode, self.Variable_node_list)
         self.compute_list = self.Variable_node_grad_list.copy()
         self.compute_list.append(self.targetnode)
+        self.compute_list.reverse()
 
         self.executor = TrainExecutor(self.compute_list, ctx=self.ctx)
 
@@ -40,6 +41,7 @@ class GradientDescent_minimize(object):
 
     def init_Variable(self,feed_dict):
         #判断是否对上
+        # print("variable_start")
         self.Variable_node_to_val_map = {}
         for node in self.Variable_node_list:
             if node not in feed_dict.keys():
@@ -93,6 +95,7 @@ class GradientDescent_minimize(object):
 
         self.n2_cuda_pointer = gpu_op.get_n2_cuda_pointer(Variable_val_list, g_list, self.number)
 
+        # print("variable_end")
 
     def run(self,feed_dict,learning_rate="default"):
 
@@ -106,18 +109,21 @@ class GradientDescent_minimize(object):
         if self.except_nodelist != None:
             for i in range(self.except_nodelist_len):
                 self.except_nodelist_node_val_map[self.except_nodelist[self.except_nodelist_len-i-1]] = result_list.pop()
-
+        result_list.reverse()
         self.targetnode_value = result_list.pop()
 
 
 
-        # i = 0
-        # for node in self.Variable_node_list:
-        #     gpu_op.sgd_update(self.Variable_node_to_val_map[node],result_list[i],learning_rate)
-        #     i = i + 1
+        i = 0
+        for node in self.Variable_node_list:
+            print('SgdOp', self.Variable_node_to_val_map[node].shape, self.Variable_node_to_val_map[node].asnumpy())
+            print('SgdOp', result_list[i].shape, result_list[i].asnumpy())
+            gpu_op.sgd_update(self.Variable_node_to_val_map[node],result_list[i],learning_rate,self.executor.cudaStream)
+            print('SgdOp', self.Variable_node_to_val_map[node].shape, self.Variable_node_to_val_map[node].asnumpy())
+            i = i + 1
 
-        gpu_op.sgd_compute_o(self.n2_cuda_pointer, self.index_to_VaribaleNumber_cuda_pointer,
-                              self.index_count, learning_rate)
+        # gpu_op.sgd_compute_o(self.n2_cuda_pointer, self.index_to_VaribaleNumber_cuda_pointer,
+        #                       self.index_count, learning_rate)
 
 
 
@@ -208,6 +214,9 @@ class Adam_minimize(object):
         self.except_nodelist_len = None
         self.except_nodelist_node_val_map = {}
 
+        #计算正确率
+        self.once_executor = None
+
         #optimse
         self.index_to_VaribaleNumber = None
         self.Variable_node_feed_shapes_prefix_list = None
@@ -219,6 +228,8 @@ class Adam_minimize(object):
 
     def init_Variable(self,feed_dict):
         #判断是否对上
+        # print("variable_start")
+
         self.Variable_node_to_val_map = {}
 
 
@@ -283,7 +294,7 @@ class Adam_minimize(object):
 
         self.n4_cuda_pointer = gpu_op.get_n4_cuda_pointer(Variable_val_list,Mt_list,Vt_list,g_list,self.number)
 
-
+        # print("variable_end")
 
 
 
@@ -332,10 +343,15 @@ class Adam_minimize(object):
 
     def run_get_nodelist_once(self,feed_dict,nodelist,learning_rate="default"):
 
+
         once_except_nodelist_node_val_map = {}
         once_except_nodelist_len = len(nodelist)
-        once_compute_list = self.compute_list + nodelist
-        once_executor = TrainExecutor(once_compute_list, ctx=self.ctx)
+
+        if self.once_executor == None:
+            once_compute_list = self.compute_list + nodelist
+            self.once_executor = TrainExecutor(once_compute_list, self.executor.cudnnHandle, self.executor.cublasHandle, ctx=self.ctx)
+            self.once_executor.node_to_arr_map = self.executor.node_to_arr_map
+            self.once_executor.input_arr = self.executor.input_arr
 
 
 
@@ -346,7 +362,7 @@ class Adam_minimize(object):
 
         if self.Variable_node_to_val_map is None:
             assert False, "没有初始化参数"
-        result_list = once_executor.run(feed_dict,self.Variable_node_to_val_map,self.Variable_node_feed_shapes,self.g_map)
+        result_list = self.once_executor.run(feed_dict,self.Variable_node_to_val_map,self.Variable_node_feed_shapes,self.g_map)
 
 
         if nodelist != None:
@@ -432,8 +448,15 @@ class TrainExecutor(object):
         self.topo_order = ad.find_topo_sort(self.eval_node_list)
         # print(nodelist_to_name(self.topo_order))
         self.node_to_shape_map = None
-        self.node_to_arr_map = None
+        self.node_to_arr_map = {}
         self.feed_shapes = None
+        self.mcount = 0
+        self.icount = 0
+        self.input_arr = {}
+        self.cudaStream = gpu_op.create_cudaStream()
+        self.cudnnHandle = gpu_op.create_cudnnHandle(self.cudaStream)
+        self.cublasHandle = gpu_op.create_cublasHandle(self.cudaStream)
+
 
     def infer_shape(self, feed_shapes):
         """Given shapes of feed_dict nodes, infer shape for all nodes in graph.
@@ -453,7 +476,7 @@ class TrainExecutor(object):
                 continue
             input_shapes = [self.node_to_shape_map[i] for i in node.inputs]
             assert None not in input_shapes
-            self.node_to_shape_map[node] = node.op.infer_shape(node, input_shapes)
+            self.node_to_shape_map[node] = node.op.infer_shape(node, input_shapes, self.cudnnHandle)
 
     def memory_plan(self, feed_shapes, g_map={}, Var_map={}):
         """Allocates ndarray.NDArray for every node except feed_dict nodes.
@@ -472,14 +495,15 @@ class TrainExecutor(object):
         ----------
         feed_shapes: node->shapes mapping for feed_dict nodes.
         """
-        self.node_to_arr_map = {}
+
         for node in self.topo_order:
-            if node not in g_map.keys() and node not in Var_map.keys():
+            if node not in g_map.keys() and node not in Var_map.keys() and node not in self.node_to_arr_map.keys():
                 self.node_to_arr_map[node] = ndarray.empty(self.node_to_shape_map[node], ctx=self.ctx)
         self.node_to_arr_map.update(g_map)
 
 
-    def run(self, feed_dict, Variable_node_to_val_map, Variable_node_feed_shapes, g_map={}, convert_to_numpy_ret_vals=False):
+    def run(self, feed_dict, Variable_node_to_val_map={}, Variable_node_feed_shapes={}, g_map={}, convert_to_numpy_ret_vals=False):
+        # print("run_start")
         """
         Parameters
         ----------
@@ -502,15 +526,16 @@ class TrainExecutor(object):
         use_numpy = self.ctx is None
         node_to_val_map = {}
         for node, value in feed_dict.items():
-            if use_numpy:
-                # all values passed in feed_dict must be np.ndarray
 
-                assert isinstance(value, np.ndarray)
-                node_to_val_map[node] = value
-            else:
-                # convert values to ndarray.NDArray if necessary
                 if isinstance(value, np.ndarray):
-                    node_to_val_map[node] = ndarray.array(value, ctx=self.ctx)
+                    if node in self.input_arr.keys():
+                        self.input_arr[node]._sync_copyfrom(value)
+                        node_to_val_map[node] = self.input_arr[node]
+                    else:
+                        self.icount = self.icount + 1
+                        # print("icount",self.icount)
+                        self.input_arr[node] = ndarray.array(value,ctx=self.ctx)
+                        node_to_val_map[node] = self.input_arr[node]
                 elif isinstance(value, ndarray.NDArray):
                     node_to_val_map[node] = value
                 else:
@@ -534,10 +559,14 @@ class TrainExecutor(object):
             self.feed_shapes = feed_shapes
             # plan memory if using GPU
             if (not use_numpy):
+                self.mcount = self.mcount + 1
+                # print("mcount",self.mcount)
                 self.memory_plan(feed_shapes,g_map,node_to_val_map)
-
+                # print("end")
+        # print("run_1")
         # Traverse graph in topo order and compute values for all nodes.
         for node in self.topo_order:
+
             if node in node_to_val_map:
                 # Skip placeholder nodes. Values already provided by feed_dict.
                 continue
@@ -547,12 +576,12 @@ class TrainExecutor(object):
             else:
                 node_val = self.node_to_arr_map[node]
             # node_val is modified in-place whether np.ndarray or NDArray
-
-            node.op.compute(node, input_vals, node_val, use_numpy)
+            node.op.compute(node, input_vals, node_val, self.cudnnHandle, self.cublasHandle, self.cudaStream, use_numpy)
             # print(node.name,":  ",node_val.asnumpy())
             # 打印计算流程
             node_to_val_map[node] = node_val
 
+        # print("run_end")
         # Collect node values.
         if not use_numpy and convert_to_numpy_ret_vals:
             return [node_to_val_map[n].asnumpy() for n in self.eval_node_list]

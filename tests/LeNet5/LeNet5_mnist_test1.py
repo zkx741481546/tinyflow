@@ -10,7 +10,7 @@ from pycode.tinyflow import gpu_op
 from pycode.tinyflow import ndarray
 from pycode.tinyflow import TrainExecute
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 # np.set_printoptions(threshold=np.inf)
 
 def load_mnist_data(dataset):
@@ -101,10 +101,8 @@ def LeNet5(num_step = 10, print_loss_val_each_epoch = False):
     #fc4
     fc4 = ad.dense(act3, W4, b4)
     bn4 = ad.fullybn_forward_op(fc4, "NCHW")
-    loss = ad.softmaxcrossentropy_op(bn4, y_)
-
     act4 = ad.fullyactivation_forward_op(bn4, "NCHW", "softmax")
-
+    loss = ad.crossEntropy_loss(act4, y_, False)
 
 
 
@@ -151,7 +149,7 @@ def LeNet5(num_step = 10, print_loss_val_each_epoch = False):
 
     isrun = 0
 
-    aph = 0.001
+    aph = 1
     t = TrainExecute.TrainExecutor(loss, aph, ctx = ndarray.gpu(0))
     t.init_Variable({W1: W1_val,
                      W2: W2_val,
@@ -175,9 +173,6 @@ def LeNet5(num_step = 10, print_loss_val_each_epoch = False):
 
             t.run({X: X_val, y_: y_val})
 
-            if isrun == 0:
-                tt = TrainExecute.getExecutetoComputeAccuracy(t,act4)
-                isrun = 1
 
             if i % 100 == 0:
             #     # print(t.get_loss().asnumpy())
@@ -199,8 +194,8 @@ def LeNet5(num_step = 10, print_loss_val_each_epoch = False):
 
                     feed_dict = {X: valid_X_val, y_: valid_y_val}
 
-
-                    valid_y_predicted = tt.run(feed_dict)[0].asnumpy()
+                    valid_y_predicted = t.run(feed_dict, act4)
+                    valid_y_predicted = valid_y_predicted[len(valid_y_predicted)-1].asnumpy()
 
 
 

@@ -170,7 +170,7 @@ def Placeholder(name):
     """
     placeholder_node = placeholder_op()
     placeholder_node.name = name
-    placeholder_node.isw = 0
+    placeholder_node.isw = 2
     return placeholder_node
 
 
@@ -240,7 +240,7 @@ class AddOp(Op):
     def __call__(self, node_A, node_B):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "(%s+%s)" % (node_A.name, node_B.name)
+        new_node.name = "+"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -290,7 +290,7 @@ class AddByConstOp(Op):
         new_node = Op.__call__(self)
         new_node.const_attr = const_val
         new_node.inputs = [node_A]
-        new_node.name = "(%s+%s)" % (node_A.name, str(const_val))
+        new_node.name = "+"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -314,7 +314,7 @@ class MulOp(Op):
     def __call__(self, node_A, node_B):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "(%s*%s)" % (node_A.name, node_B.name)
+        new_node.name = "*"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -355,7 +355,7 @@ class MulByConstOp(Op):
         new_node = Op.__call__(self)
         new_node.const_attr = const_val
         new_node.inputs = [node_A]
-        new_node.name = "(%s*%s)" % (node_A.name, str(const_val))
+        new_node.name = "*"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -381,8 +381,7 @@ class MatMulOp(Op):
         new_node.matmul_attr_trans_A = trans_A
         new_node.matmul_attr_trans_B = trans_B
         new_node.inputs = [node_A, node_B]
-        new_node.name = "MatMul(%s,%s,%s,%s)" % (
-            node_A.name, node_B.name, str(trans_A), str(trans_B))
+        new_node.name = "MatMul"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -477,7 +476,7 @@ class ZerosLikeOp(Op):
         """Creates a node that represents np.zeros(node_A.shape)."""
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "Zeroslike(%s)" % node_A.name
+        new_node.name = "Zeroslike"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -502,7 +501,7 @@ class OnesLikeOp(Op):
         """Creates a node that represents np.ones(node_A.shape)."""
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "Oneslike(%s)" % node_A.name
+        new_node.name = "Oneslike"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -529,7 +528,7 @@ class ReduceSumAxisZeroOp(Op):
         """
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "ReduceSumAxisZero(%s)" % (node_A.name)
+        new_node.name = "ReduceSumAxisZero"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -565,7 +564,7 @@ class BroadcastToOp(Op):
         """
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "BroadcastTo(%s,%s.shape)" % (node_A.name, node_B.name)
+        new_node.name = "BroadcastTo"
         new_node.type = type
         return new_node
 
@@ -588,7 +587,7 @@ class BroadcastToGradientOp(Op):
         # A: outgrad (2,5,3,4), B: (3,4)
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "BroadcastToGradient(%s,%s.shape)" % (node_A.name, node_B.name)
+        new_node.name = "BroadcastToGradient"
         new_node.type = type
         new_node.cudnnlist = [0]
         return new_node
@@ -597,6 +596,8 @@ class BroadcastToGradientOp(Op):
         # gpu_op.broadcast_to_backward(input_vals[0], output_val, node.type)
 
         # tic = time.time()
+
+
         memorytoSaving = gpu_op.reduce_sum_new(input_vals[0], output_val, node.cudnnlist[0], cudnnHandle, cudaStream)
 
         return memorytoSaving
@@ -627,7 +628,7 @@ class SoftmaxCrossEntropyOp(Op):
     def __call__(self, node_A, node_B):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "SoftmaxXEntropy(%s,%s)" % (node_A.name, node_B.name)
+        new_node.name = "SoftmaxXEntropy"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -657,7 +658,7 @@ class SoftmaxOp(Op):
     def __call__(self, node_A):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "Softmax(%s)" % (node_A.name)
+        new_node.name = "Softmax"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -682,7 +683,7 @@ class ReluOp(Op):
     def __call__(self, node_A):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "Relu(%s)" % (node_A.name)
+        new_node.name = "Relu"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -706,7 +707,7 @@ class ReluGradientOp(Op):
         """node_B is output_grad"""
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "ReluGradient(%s)" % (node_A.name)
+        new_node.name = "ReluGradient"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -730,7 +731,7 @@ class ExpOp(Op):
     def __call__(self, node_A):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "Exp(%s)" % (node_A.name)
+        new_node.name = "Exp"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -752,14 +753,14 @@ class LogOp(Op):
     def __call__(self, node_A):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "Log(%s)" % (node_A.name)
+        new_node.name = "Log"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
         assert use_numpy == False
         assert len(input_vals) == 1
 
-        gpu_op.matrix_log(input_vals[0], output_val)
+        gpu_op.matrix_log(input_vals[0], output_val, cudaStream)
 
         return 0
 
@@ -774,7 +775,7 @@ class ReverseOp(Op):
     def __call__(self, node_A):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "Reverse(%s)" % (node_A.name)
+        new_node.name = "Reverse"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -786,7 +787,7 @@ class ReverseOp(Op):
         return 0
 
     def gradient(self, node, output_grad):
-        return [output_grad * (-1) * pow_op(node, 2)]
+        return [output_grad * (-1) * reverse_op(pow_op(node, 2))]
 
     def infer_shape(self, node, input_shapes, cudnnHandle):
         return input_shapes[0]
@@ -796,7 +797,7 @@ class PowOp(Op):
     def __call__(self, node_A, val):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "Pow(%s)" % (node_A.name)
+        new_node.name = "Pow"
         new_node.val = val
         return new_node
 
@@ -819,7 +820,7 @@ class Convolution1DForwardOp(Op):
     def __call__(self, node_A, node_B, dataformat, padding, v):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "Convolution1DForward(%s)withfilter(%s)" % (node_A.name, node_B.name)
+        new_node.name = "Convolution1DForward"
         new_node.dataformat = dataformat
         new_node.padding = padding
         new_node.v = v
@@ -848,8 +849,7 @@ class Convolution1DBackwardOp(Op):
     def __call__(self, node_A, node_B, node_C, type, cudnnlist):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B, node_C]
-        new_node.name = "Convolution1DBackward(%s)withfilter(%s)withdoutput(%s)withtype(%s)" % (
-            node_A.name, node_B.name, node_C.name, type)
+        new_node.name = "Convolution1DBackward"
         # 0 is dinput, 1 is dfilter
         new_node.type = type
         new_node.cudnnlist = cudnnlist
@@ -883,7 +883,7 @@ class Convolution2DForwardOp(Op):
     def __call__(self, node_A, node_B, dataformat, padding, u, v):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "Convolution2DForward(%s)withfilter(%s)" % (node_A.name, node_B.name)
+        new_node.name = "Convolution2DForward"
         new_node.dataformat = dataformat
         new_node.padding = padding
         new_node.u = u
@@ -915,8 +915,7 @@ class Convolution2DBackwardOp(Op):
     def __call__(self, node_A, node_B, node_C, type, cudnnlist):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B, node_C]
-        new_node.name = "Convolution2DBackward(%s)withfilter(%s)withdoutput(%s)withtype(%s)" % (
-            node_A.name, node_B.name, node_C.name, type)
+        new_node.name = "Convolution2DBackward"
         # 0 is dinput, 1 is dfilter
         new_node.type = type
 
@@ -953,7 +952,7 @@ class Convolution3DForwardOp(Op):
     def __call__(self, node_A, node_B, dataformat, padding, s1, s2, s3):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "Convolution3DForward(%s)withfilter(%s)" % (node_A.name, node_B.name)
+        new_node.name = "Convolution3DForward"
         new_node.dataformat = dataformat
         new_node.padding = padding
         new_node.s1 = s1
@@ -984,8 +983,7 @@ class Convolution3DBackwardOp(Op):
     def __call__(self, node_A, node_B, node_C, type, cache, cudnnlist):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B, node_C]
-        new_node.name = "Convolution3DBackward(%s)withfilter(%s)withdoutput(%s)withtype(%s)" % (
-            node_A.name, node_B.name, node_C.name, type)
+        new_node.name = "Convolution3DBackward"
         # 0 is dinput, 1 is dfilter
         new_node.type = type
         new_node.cudnnlist = cudnnlist
@@ -1020,7 +1018,7 @@ class FlattenOp(Op):
     def __call__(self, node_A):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "Flatten(%s)" % (node_A.name)
+        new_node.name = "Flatten"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -1044,7 +1042,7 @@ class FlattenGradientOp(Op):
     def __call__(self, node_A, node_B):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "FlattenGradient(%s)withdoutput(%s)" % (node_A.name, node_B.name)
+        new_node.name = "FlattenGradient"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -1063,7 +1061,7 @@ class ActivationForwardOp(Op):
     def __call__(self, node_A, dataformat, activationMode):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "ActivationForward(%s)" % (node_A.name)
+        new_node.name = "ActivationForward"
         new_node.dataformat = dataformat
         new_node.activationMode = activationMode
         new_node.cudnnlist = [0]
@@ -1071,8 +1069,7 @@ class ActivationForwardOp(Op):
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
         assert use_numpy == False
-        gpu_op.activation_forward(input_vals[0], output_val, node.activationMode, node.cudnnlist[0], cudnnHandle,
-                                  cudaStream)
+        gpu_op.activation_forward(input_vals[0], output_val, node.activationMode, node.cudnnlist[0], cudnnHandle, cudaStream)
 
         return 0
 
@@ -1088,8 +1085,7 @@ class ActivationBackwardOp(Op):
     def __call__(self, node_A, node_B, node_C, activationMode, cudnnlist):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B, node_C]
-        new_node.name = "ActivationBackwardwithinput(%s)withdoutput(%s)withoutput(%s)" % (
-            node_A.name, node_B.name, node_C.name)
+        new_node.name = "ActivationBackward"
         new_node.activationMode = activationMode
         new_node.cudnnlist = cudnnlist
         return new_node
@@ -1112,7 +1108,7 @@ class Pooling1DForwardOp(Op):
     def __call__(self, node_A, dataformat, poolingMode, pad_w, v, filter_w):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "Pooling1DForward(%s)" % (node_A.name)
+        new_node.name = "Pooling1DForward"
         new_node.dataformat = dataformat
         new_node.poolingMode = poolingMode
         new_node.pad_w = pad_w
@@ -1142,8 +1138,7 @@ class Pooling1DBackwardOp(Op):
     def __call__(self, node_A, node_B, node_C, cudnnlist):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B, node_C]
-        new_node.name = "Pooling1DBackwardwithinput(%s)withdoutput(%s)withoutput(%s)" % (
-            node_A.name, node_B.name, node_C.name)
+        new_node.name = "Pooling1DBackward"
         new_node.cudnnlist = cudnnlist
         return new_node
 
@@ -1165,7 +1160,7 @@ class Pooling2DForwardOp(Op):
     def __call__(self, node_A, dataformat, poolingMode, pad_h, pad_w, u, v, filter_h, filter_w):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "Pooling2DForward(%s)" % (node_A.name)
+        new_node.name = "Pooling2DForward"
         new_node.dataformat = dataformat
         new_node.poolingMode = poolingMode
         new_node.pad_h = pad_h
@@ -1200,8 +1195,7 @@ class Pooling2DBackwardOp(Op):
     def __call__(self, node_A, node_B, node_C, cudnnlist):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B, node_C]
-        new_node.name = "Pooling2DBackwardwithinput(%s)withdoutput(%s)withoutput(%s)" % (
-            node_A.name, node_B.name, node_C.name)
+        new_node.name = "Pooling2DBackward"
         new_node.cudnnlist = cudnnlist
         return new_node
 
@@ -1222,7 +1216,7 @@ class Pooling3DForwardOp(Op):
     def __call__(self, node_A, dataformat, poolingMode, pad1, pad2, pad3, s1, s2, s3, filter1, filter2, filter3):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "Pooling3DForward(%s)" % (node_A.name)
+        new_node.name = "Pooling3DForward"
         new_node.dataformat = dataformat
         new_node.poolingMode = poolingMode
         new_node.pad1 = pad1
@@ -1259,8 +1253,7 @@ class Pooling3DBackwardOp(Op):
     def __call__(self, node_A, node_B, node_C, cudnnlist):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B, node_C]
-        new_node.name = "Pooling3DBackwardwithinput(%s)withdoutput(%s)withoutput(%s)" % (
-            node_A.name, node_B.name, node_C.name)
+        new_node.name = "Pooling3DBackward"
         new_node.cudnnlist = cudnnlist
         return new_node
 
@@ -1281,7 +1274,7 @@ class DropoutForwardOp(Op):
     def __call__(self, node_A, dataformat, dropout):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "DropoutForward(%s)" % (node_A.name)
+        new_node.name = "DropoutForward"
         new_node.dataformat = dataformat
         new_node.dropout = dropout
         new_node.seed = [0]
@@ -1297,8 +1290,7 @@ class DropoutForwardOp(Op):
         node.reserveSpace_p[0], node.cudnnlist[0], memorytoSaving = gpu_op.dropout_forward(input_vals[0], output_val,
                                                                                            node.dataformat,
                                                                                            node.dropout, node.seed[0],
-                                                                                           node.inputd[0], cudnnHandle,
-                                                                                           cudaStream)
+                                                                                           node.inputd[0], cudnnHandle, cudaStream)
         return memorytoSaving
 
     def gradient(self, node, output_grad):
@@ -1313,15 +1305,14 @@ class DropoutBackwardOp(Op):
     def __call__(self, node_A, reserveSpace_p, cudnnlist):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "DropoutBackwardwithdoutput(%s)" % (node_A.name)
+        new_node.name = "DropoutBackward"
         new_node.reserveSpace_p = reserveSpace_p
         new_node.cudnnlist = cudnnlist
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
         assert use_numpy == False
-        gpu_op.dropout_backward(input_vals[0], output_val, node.reserveSpace_p[0], node.cudnnlist[0], cudnnHandle,
-                                cudaStream)
+        gpu_op.dropout_backward(input_vals[0], output_val, node.reserveSpace_p[0], node.cudnnlist[0], cudnnHandle, cudaStream)
         return 0
 
     def gradient(self, node, output_grad):
@@ -1335,7 +1326,7 @@ class FullyDropoutForwardOp(Op):
     def __call__(self, node_A, dataformat, dropout):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "FullyDropoutForward(%s)" % (node_A.name)
+        new_node.name = "FullyDropoutForward"
         new_node.dataformat = dataformat
         new_node.dropout = dropout
         new_node.seed = [0]
@@ -1354,8 +1345,7 @@ class FullyDropoutForwardOp(Op):
         node.reserveSpace_p[0], node.cudnnlist[0], memorytoSaving = gpu_op.dropout_forward(input, output_val,
                                                                                            node.dataformat,
                                                                                            node.dropout, node.seed[0],
-                                                                                           node.inputd[0], cudnnHandle,
-                                                                                           cudaStream)
+                                                                                           node.inputd[0], cudnnHandle, cudaStream)
         return memorytoSaving
 
     def gradient(self, node, output_grad):
@@ -1371,7 +1361,7 @@ class FullyDropoutBackwardOp(Op):
     def __call__(self, node_A, reserveSpace_p, cudnnlist):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "FullyDropoutBackwardwithdoutput(%s)" % (node_A.name)
+        new_node.name = "FullyDropoutBackward"
         new_node.reserveSpace_p = reserveSpace_p
         new_node.cudnnlist = cudnnlist
         return new_node
@@ -1379,8 +1369,7 @@ class FullyDropoutBackwardOp(Op):
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
         assert use_numpy == False
 
-        gpu_op.dropout_backward(input_vals[0], output_val, node.reserveSpace_p[0], node.cudnnlist[0], cudnnHandle,
-                                cudaStream)
+        gpu_op.dropout_backward(input_vals[0], output_val, node.reserveSpace_p[0], node.cudnnlist[0], cudnnHandle, cudaStream)
         return 0
 
     def gradient(self, node, output_grad):
@@ -1394,7 +1383,7 @@ class FullyActivationForwardOp(Op):
     def __call__(self, node_A, dataformat, activationMode):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "FullyActivationForward(%s)" % (node_A.name)
+        new_node.name = "FullyActivationForward"
         new_node.dataformat = dataformat
         new_node.activationMode = activationMode
         new_node.cudnnlist = [0]
@@ -1404,8 +1393,8 @@ class FullyActivationForwardOp(Op):
         # print("fullyactivation_start")
         assert use_numpy == False
 
-        gpu_op.activation_forward(input_vals[0], output_val, node.activationMode, node.cudnnlist[0], cudnnHandle,
-                                  cudaStream)
+        gpu_op.activation_forward(input_vals[0], output_val, node.activationMode, node.cudnnlist[0], cudnnHandle, cudaStream)
+
 
         # print("fullyactivation_end")
         return 0
@@ -1424,8 +1413,7 @@ class FullyActivationBackwardOp(Op):
     def __call__(self, node_A, node_B, node_C, activationMode, cudnnlist):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B, node_C]
-        new_node.name = "FullyActivationBackwardwithinput(%s)withdoutput(%s)withoutput(%s)" % (
-            node_A.name, node_B.name, node_C.name)
+        new_node.name = "FullyActivationBackward"
         new_node.activationMode = activationMode
         new_node.cudnnlist = cudnnlist
         return new_node
@@ -1434,8 +1422,10 @@ class FullyActivationBackwardOp(Op):
         # print("FullyActivationBackwardOp_start")
         assert use_numpy == False
 
+
         gpu_op.activation_backward(input_vals[0], output_val, input_vals[2], input_vals[1], node.activationMode,
                                    node.cudnnlist[0], cudnnHandle, cudaStream)
+
         # print("FullyActivationBackwardOp_end")
         return 0
 
@@ -1447,34 +1437,42 @@ class FullyActivationBackwardOp(Op):
 
 
 class ReduceSumOp(Op):
-    def __call__(self, node_A, axis=-1):
+    def __call__(self, node_A):
+        # A:  (3,4)
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "ReduceSum(%s)with(%s)" % (node_A.name, axis)
-        new_node.axis = axis
-        new_node.inputshape = [0]
+        new_node.name = "ReduceSumOp"
+        new_node.type = "NHWC"
+        new_node.cudnnlist = [0]
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
-        assert use_numpy == False
-        assert len(input_vals) == 1
-        gpu_op.reduce_sum(input_vals[0], output_val, node.axis)
+        # gpu_op.broadcast_to_backward(input_vals[0], output_val, node.type)
 
-        return 0
+        # tic = time.time()
+        memorytoSaving = gpu_op.reduce_sum_new(input_vals[0], output_val, node.cudnnlist[0], cudnnHandle, cudaStream)
+
+        return memorytoSaving
+
+        # toc = time.time()
+        # print("use time1: " + str(toc - tic))
 
     def gradient(self, node, output_grad):
-        return [reduce_sum_backward_op(output_grad, node.inputshape, node.axis)]
+        return [broadcastto_op(output_grad, node.inputs[0])]
 
     def infer_shape(self, node, input_shapes, cudnnHandle):
-        node.inputshape[0] = input_shapes[0]
-        return gpu_op.reduce_sum_get_outshape(input_shapes[0], node.axis)
+        inputshape, outputshape = gpu_op.reduce_sum_get_real_shape(input_shapes[0], (1,), node.type)
+
+        node.cudnnlist[0] = gpu_op.reduce_sum_get_cudnnlist(inputshape, outputshape, node.type, cudnnHandle)
+
+        return (1,)
 
 
 class ReduceSumBackwardOp(Op):
     def __call__(self, node_A, inputshape, axis):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "ReduceSumBackward(%s)withinputshape(%s)withaxis(%s)" % (node_A.name, inputshape[0], axis)
+        new_node.name = "ReduceSumBackward"
         new_node.axis = axis
         new_node.inputshape = inputshape
         return new_node
@@ -1494,43 +1492,45 @@ class ReduceSumBackwardOp(Op):
 
 
 class ReduceMeanOp(Op):
-    def __call__(self, node_A, axis=-1):
+    def __call__(self, node_A):
+        # A:  (3,4)
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "ReduceMean(%s)with(%s)" % (node_A.name, axis)
-        new_node.axis = axis
-        new_node.inputshape = [0, 0]
+        new_node.name = "ReduceSumOp"
+        new_node.type = "NHWC"
+        new_node.cudnnlist = [0]
+        new_node.meanfloat = [1.]
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
-        assert use_numpy == False
-        assert len(input_vals) == 1
-        val = 1
-        if node.axis == -1:
-            val = gpu_op.get_shape_size(node.inputshape[0])
-        else:
-            val = node.inputshape[0][node.axis]
-        node.inputshape[1] = val
-        ctx = ndarray.gpu(0)
-        outtmp = ndarray.empty(output_val.shape, ctx)
-        gpu_op.reduce_sum(input_vals[0], outtmp, node.axis)
-        gpu_op.matrix_elementwise_multiply_by_const(outtmp, 1. / val, output_val, cudaStream)
+        # gpu_op.broadcast_to_backward(input_vals[0], output_val, node.type)
 
-        return 0
+        # tic = time.time()
+
+        memorytoSaving = gpu_op.reduce_sum_new(input_vals[0], output_val, node.cudnnlist[0], cudnnHandle, cudaStream)
+        gpu_op.matrix_elementwise_multiply_by_const(output_val, node.meanfloat[0], output_val, cudaStream)
+        return memorytoSaving
+
+        # toc = time.time()
+        # print("use time1: " + str(toc - tic))
 
     def gradient(self, node, output_grad):
-        return [reduce_mean_backward_op(output_grad, node.inputshape, node.axis)]
+        return [broadcastto_op(output_grad, node.inputs[0]) * node.meanfloat[0]]
 
     def infer_shape(self, node, input_shapes, cudnnHandle):
-        node.inputshape[0] = input_shapes[0]
-        return gpu_op.reduce_sum_get_outshape(input_shapes[0], node.axis)
+        node.meanfloat[0] = 1. / gpu_op.get_shape_size(input_shapes[0])
+        inputshape, outputshape = gpu_op.reduce_sum_get_real_shape(input_shapes[0], (1,), node.type)
+
+        node.cudnnlist[0] = gpu_op.reduce_sum_get_cudnnlist(inputshape, outputshape, node.type, cudnnHandle)
+
+        return (1,)
 
 
 class ReduceMeanBackwardOp(Op):
     def __call__(self, node_A, inputshape, axis):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "ReduceMeanBackward(%s)withinputshape(%s)withaxis(%s)" % (node_A.name, inputshape[0], axis)
+        new_node.name = "ReduceMeanBackward"
         new_node.axis = axis
         new_node.inputshape = inputshape
         return new_node
@@ -1555,7 +1555,7 @@ class CrossEntropyOp(Op):
     def __call__(self, node_A, node_B):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "CrossEntropy(%s,%s)" % (node_A.name, node_B.name)
+        new_node.name = "CrossEntropy"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, use_numpy=True):
@@ -1592,7 +1592,7 @@ class L1lossOp(Op):
     def __call__(self, node_A, node_B):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "L1loss(%s,%s)" % (node_A.name, node_B.name)
+        new_node.name = "L1loss"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -1617,7 +1617,7 @@ class L1lossgradientOp(Op):
     def __call__(self, node_A, node_B, node_C):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B, node_C]
-        new_node.name = "L1lossgradient(%s,%s,%s)" % (node_A.name, node_B.name, node_C.name)
+        new_node.name = "L1lossgradient"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -1634,7 +1634,7 @@ class L2lossOp(Op):
     def __call__(self, node_A, node_B):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "L2loss(%s,%s)" % (node_A.name, node_B.name)
+        new_node.name = "L2loss"
         new_node.inputshape = [0]
         return new_node
 
@@ -1660,7 +1660,7 @@ class L2lossgradientOp(Op):
     def __call__(self, node_A, node_B, node_C):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B, node_C]
-        new_node.name = "L2lossgradient(%s,%s,%s) " % (node_A.name, node_B.name, node_C.name)
+        new_node.name = "L2lossgradient"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -1677,7 +1677,7 @@ class L1regularOp(Op):
     def __call__(self, node_A):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "L1regular(%s)" % (node_A.name)
+        new_node.name = "L1regular"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -1700,7 +1700,7 @@ class L1regulargradientOp(Op):
     def __call__(self, node_A, node_B):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "L1regulargradient(%s,%s)" % (node_A.name, node_B.name)
+        new_node.name = "L1regulargradient"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -1717,7 +1717,7 @@ class L2regularOp(Op):
     def __call__(self, node_A):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "L2regular(%s)" % (node_A.name)
+        new_node.name = "L2regular"
         new_node.inputshape = [0]
         return new_node
 
@@ -1741,7 +1741,7 @@ class L2regulargradientOp(Op):
     def __call__(self, node_A, node_B):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "L2regulargradient(%s,%s)" % (node_A.name, node_B.name)
+        new_node.name = "L2regulargradient"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -1758,7 +1758,7 @@ class BNForwardOp(Op):
     def __call__(self, node_A, dataformat, batchNormMode):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "BNForward(%s)" % (node_A.name)
+        new_node.name = "BNForward"
         new_node.dataformat = dataformat
         new_node.batchNormMode = batchNormMode
         new_node.Save_p = [0, 0]
@@ -1790,7 +1790,7 @@ class BNBackwardOp(Op):
     def __call__(self, node_A, node_B, batchNormMode, Save_p, cudnnlist):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "BNBackward(%s)withdoutput(%s)" % (node_A.name, node_B.name)
+        new_node.name = "BNBackward"
         new_node.Save_p = Save_p
         new_node.batchNormMode = batchNormMode
         new_node.cudnnlist = cudnnlist
@@ -1815,7 +1815,7 @@ class FullyBNForwardOp(Op):
     def __call__(self, node_A, dataformat):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "FullyBNForward(%s)" % (node_A.name)
+        new_node.name = "FullyBNForward"
         new_node.dataformat = dataformat
         new_node.batchNormMode = "pre_activation"
         new_node.Save_p = [0, 0]
@@ -1847,7 +1847,7 @@ class FullyBNBackwardOp(Op):
     def __call__(self, node_A, node_B, batchNormMode, Save_p, cudnnlist):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "FullyBNBackward(%s)withdoutput(%s)" % (node_A.name, node_B.name)
+        new_node.name = "FullyBNBackward"
         new_node.Save_p = Save_p
         new_node.batchNormMode = batchNormMode
         new_node.cudnnlist = cudnnlist
@@ -1872,7 +1872,7 @@ class ConcatForwardOp(Op):
     def __call__(self, node_A, node_B):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "ConcatForward(%s,%s)" % (node_A.name, node_B.name)
+        new_node.name = "ConcatForward"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -1896,7 +1896,7 @@ class ConcatBackwardOp(Op):
     def __call__(self, node_A, node_B, node_C, type):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B, node_C]
-        new_node.name = "Concatbackward(%s,%s,%s)withtype(%s)" % (node_A.name, node_B.name, node_C.name, type)
+        new_node.name = "Concatbackward"
         new_node.type = type
         return new_node
 
@@ -1924,7 +1924,7 @@ class SqueezeOp(Op):
     def __call__(self, node_A):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "Squeeze(%s)" % (node_A.name)
+        new_node.name = "Squeeze"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -1946,7 +1946,7 @@ class SqueezeGradientOp(Op):
     def __call__(self, node_A, node_B):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "SqueezeGradient(%s)withdoutput(%s)" % (node_A.name, node_B.name)
+        new_node.name = "SqueezeGradient"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -1965,13 +1965,15 @@ class SgdOp(Op):
     def __call__(self, node_A, node_B, learning_rate):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "SgdOp(%s,%s)" % (node_A.name, node_B.name)
+        new_node.name = "SgdOp"
         new_node.learning_rate = learning_rate
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
         assert use_numpy == False
+
         gpu_op.sgd_update(input_vals[0], input_vals[1], node.learning_rate, cudaStream)
+
         return 0
 
     def gradient(self, node, output_grad):
@@ -1979,6 +1981,84 @@ class SgdOp(Op):
 
     def infer_shape(self, node, input_shapes, cudnnHandle):
         return input_shapes[0]
+
+
+class AdamOp(Op):
+    def __call__(self, node_A, node_B, node_C, node_D, b1, b2, b1t, b2t, e, learning_rate):
+        new_node = Op.__call__(self)
+        new_node.inputs = [node_A, node_B, node_C, node_D]
+        new_node.name = "AdamOp"
+        new_node.b1 = b1
+        new_node.b2 = b2
+        new_node.b1t = b1t #list
+        new_node.b2t = b2t #list
+        new_node.e = e
+        new_node.learning_rate = learning_rate
+        return new_node
+
+    def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
+        assert use_numpy == False
+
+        gpu_op.adam_mv(input_vals[1], input_vals[2], input_vals[3], node.b1, node.b2, cudaStream)
+        gpu_op.adam_compute(input_vals[0], input_vals[1], input_vals[2], node.b1t[0],
+                            node.b2t[0], node.e, node.learning_rate, cudaStream)
+
+        return 0
+
+    def gradient(self, node, output_grad):
+        raise NotImplementedError
+
+    def infer_shape(self, node, input_shapes, cudnnHandle):
+        return input_shapes[0]
+
+class CrossOp(Op):
+    def __call__(self, node_A, node_B, ismean):
+        new_node = Op.__call__(self)
+        new_node.inputs = [node_A, node_B]
+        new_node.name = "CrossOp"
+        new_node.ismean = ismean
+        new_node.meanfloat = [1.]
+        return new_node
+
+    def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
+        assert use_numpy == False
+        gpu_op.cross(input_vals[0], input_vals[1], output_val, node.meanfloat[0], cudaStream)
+
+        return 0
+
+    def gradient(self, node, output_grad):
+        grad_A = cross_backward_op(node.inputs[0], node.inputs[1], output_grad, node.meanfloat)
+        grad_B = zeroslike_op(node.inputs[1])
+        return [grad_A,grad_B]
+
+    def infer_shape(self, node, input_shapes, cudnnHandle):
+        if node.ismean:
+            node.meanfloat[0] = 1. / gpu_op.get_shape_size(input_shapes[0])
+        return input_shapes[0]
+
+class CrossBackwardOp(Op):
+    def __call__(self, node_A, node_B, node_C, meanfloat):
+        new_node = Op.__call__(self)
+        new_node.inputs = [node_A, node_B, node_C]
+        new_node.name = "CrossBackwardOp"
+        new_node.meanfloat = meanfloat
+        return new_node
+
+    def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
+        assert use_numpy == False
+        gpu_op.cross_backward(input_vals[0], input_vals[1], input_vals[2], output_val, node.meanfloat[0], cudaStream)
+
+        return 0
+
+    def gradient(self, node, output_grad):
+        raise NotImplementedError
+
+    def infer_shape(self, node, input_shapes, cudnnHandle):
+        return input_shapes[0]
+
+
+
+
 
 
 def dense(X, W, b):
@@ -2007,9 +2087,20 @@ def conv3withbias(input, filter, bias, dataformat, padding, stride1, stride2, st
     cb = c + b
     return cb
 
-    # Create global singletons of operators.
+def crossEntropy_loss(input,y_,ismean=True):
+
+    new_node = cross_op(input,y_,ismean)
+
+    return reduce_sum_op(new_node)
+    #return reduce_mean_op(new_node)
 
 
+
+
+# Create global singletons of operators.
+adam_op = AdamOp()
+cross_op = CrossOp()
+cross_backward_op = CrossBackwardOp()
 add_op = AddOp()
 mul_op = MulOp()
 add_byconst_op = AddByConstOp()
