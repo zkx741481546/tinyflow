@@ -2399,6 +2399,7 @@ class Executor(object):
 
         # Traverse graph in topo order and compute values for all nodes.
         for node in self.topo_order:
+
             if have_got_global_message:
                 print(node.index)
 
@@ -2407,6 +2408,7 @@ class Executor(object):
                 # 找出feed_dict中已经包含的ndarray
                 node.array_status = 1
                 continue
+
 
             input_vals = []
 
@@ -2431,6 +2433,33 @@ class Executor(object):
                     index_to_gpu_map[n.index] = node_ndarray_new
                     n.array_status = 1
                 input_vals.append(index_to_gpu_map[n.index])
+
+            if node.issgd:
+                # todo 对于sgd op 的特殊处理
+                t1 = datetime.datetime.now()
+                node.op.compute(node, input_vals, self.cudnnHandle, self.cublasHandle, self.cudaStream, False)
+                t2 = datetime.datetime.now()
+                node.runtime = (t2 - t1).microseconds / 1000
+
+                for control_message in node.control_message_out:
+                    wait_time = control_message[0]
+                    node_id = control_message[1]
+                    move_to_gpu = control_message[2]
+                    if move_to_gpu:
+                        self.control_queue.put((wait_time, node_id, move_to_gpu))
+                    else:
+                        self.control_queue.put((wait_time, node_id, move_to_gpu))
+
+                    # # todo 仅用于测试
+                    # self.have_done_queue.get(block=True)
+                    # print("swap end")
+
+                for release_message in node.release_list:
+                    index_to_gpu_map[release_message] = None
+                    self.topo_order[release_message].array_status = 0
+
+                continue
+
 
             # input_vals = [node_to_gpu_map[n] for n in node.inputs]
             node_val = ndarray.empty(self.node_to_shape_map[node], self.ctx_gpu)
