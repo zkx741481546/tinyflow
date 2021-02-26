@@ -7,20 +7,24 @@
 #include <cassert>
 #include <cuda_runtime.h>
 #include <iostream>
+#include <cstdio>
 
-#define CUDA_CALL(func)                                                        \
-  {                                                                            \
-    cudaError_t e = (func);                                                              \
+#define CUDA_CALL(func)                                                     \
+  {                                                                         \
+    cudaError_t e = (func);                                                 \
     assert((e == cudaSuccess) || (e == cudaErrorCudartUnloading));             \
   }
 
 namespace tinyflow {
 namespace runtime {
 
+
 static void GPUCopy(const void *from, void *to, size_t size,
                     cudaMemcpyKind kind, cudaStream_t stream) {
   if (stream != 0) {
     CUDA_CALL(cudaMemcpyAsync(to, from, size, kind, stream));
+//    printf("\nerror code:%d\n", e);
+//    CUDA_CALL(cudaMemcpyAsync(to, from, size, kind, stream));
   } else {
     CUDA_CALL(cudaMemcpy(to, from, size, kind));
   }
@@ -75,6 +79,8 @@ void CUDADeviceAPI::StreamSync(DLContext ctx, DLStreamHandle stream) {
   CUDA_CALL(cudaSetDevice(ctx.device_id));
   CUDA_CALL(cudaStreamSynchronize(static_cast<cudaStream_t>(stream)));
 }
+
+
 
 } // namespace runtime
 } // namespace tinyflow
