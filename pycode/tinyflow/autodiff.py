@@ -2177,7 +2177,7 @@ def nodelist_to_name(nodelist):
 class Executor(object):
     """Executor computes values for given set of nodes in computation graph."""
 
-    def __init__(self, eval_node_list, ctx, top_control_queue, top_message_queue):
+    def __init__(self, targetloss, y, learning_rate, top_control_queue, top_message_queue):
         """
         Parameters
         ----------
@@ -2188,8 +2188,43 @@ class Executor(object):
         node_to_arr_map: dict from node to ndarray.NDArray allocated for node
         feed_shapes: shapes of feed_dict from last run(...)
         """
-        self.eval_node_list = eval_node_list
+        self.b1 = 0.9
+        self.b2 = 0.999
+        self.e = 0.00000001
+        self.b1t = [0.9]
+        self.b2t = [0.999]
+        self.targetloss = targetloss
+        self.y = y
+        self.learning_rate = learning_rate
+        self.Variable_node_list = get_Variable_node_list(self.targetloss)
+
+        self.Variable_node_list.reverse()
+        self.Variable_node_grad_list = gradients(self.targetloss, self.Variable_node_list)  # 反向node
+        # 这个eval_node_list全是adamop不是变量
+        self.eval_node_list, self.mv, self.Variable_node_to_mv = getcomputelist(self.Variable_node_list,
+                                                                                self.Variable_node_grad_list, self.b1,
+                                                                                self.b2, self.b1t, self.b2t, self.e,
+                                                                                self.learning_rate)  # 其内存还是Variable，但是换了个点
+
+        # 根据这个topo_order算
         self.topo_order = find_topo_sort(self.eval_node_list)
+        self.topo_order = swapadam(self.topo_order)
+        #按网络顺序
+        self.Variable_node_list.reverse()
+        self.eval_node_list = []
+        self.eval_node_list.append(targetloss)
+        order_var = []
+        order_m = []
+        order_v = []
+        for node in self.Variable_node_list:
+            order_var.append(node)
+            order_m.append(self.Variable_node_to_mv[node][0])
+            order_v.append(self.Variable_node_to_mv[node][1])
+
+        #平时要返回的nodelist
+        #[loss, 变量按网络顺序, 变量对应的m，变量对应的v,结果y]
+        self.eval_node_list = self.eval_node_list + order_var +order_m +order_v
+        self.eval_node_list.append(self.y)
         self.node_to_shape_map = None
         self.feed_shapes = None
         self.top_control_queue = top_control_queue
@@ -2203,14 +2238,14 @@ class Executor(object):
         self.cudaStream = gpu_op.create_cudaStream()
         self.cudnnHandle = gpu_op.create_cudnnHandle(self.cudaStream)
         self.cublasHandle = gpu_op.create_cublasHandle(self.cudaStream)
-
         # 按照拓扑排序设定index
         for i in range(len(self.topo_order)):
             self.topo_order[i].index = i
 
         print("最后输出index：")
-        for node in eval_node_list:
+        for node in self.eval_node_list:
             print(node.index)
+
 
         # todo 此处hard code，后续需要修改
         self.ctx_cpu = ndarray.cpu(0)
@@ -2399,7 +2434,6 @@ class Executor(object):
 
         # Traverse graph in topo order and compute values for all nodes.
         for node in self.topo_order:
-
             if have_got_global_message:
                 print(node.index)
 
@@ -2408,7 +2442,6 @@ class Executor(object):
                 # 找出feed_dict中已经包含的ndarray
                 node.array_status = 1
                 continue
-
 
             input_vals = []
 
@@ -2437,7 +2470,7 @@ class Executor(object):
             if node.issgd:
                 # todo 对于sgd op 的特殊处理
                 t1 = datetime.datetime.now()
-                node.op.compute(node, input_vals, self.cudnnHandle, self.cublasHandle, self.cudaStream, False)
+                node.op.compute(node, input_vals, [], self.cudnnHandle, self.cublasHandle, self.cudaStream, False)
                 t2 = datetime.datetime.now()
                 node.runtime = (t2 - t1).microseconds / 1000
 
@@ -2459,7 +2492,6 @@ class Executor(object):
                     self.topo_order[release_message].array_status = 0
 
                 continue
-
 
             # input_vals = [node_to_gpu_map[n] for n in node.inputs]
             node_val = ndarray.empty(self.node_to_shape_map[node], self.ctx_gpu)
@@ -2503,11 +2535,16 @@ class Executor(object):
                 index_to_gpu_map[release_message] = None
                 self.topo_order[release_message].array_status = 0
 
+        # adam更新参数
+        self.b1t[0] = self.b1t[0] * self.b1
+        self.b2t[0] = self.b2t[0] * self.b2
         # Collect node values.
         # print("success one batch")
         for n in self.eval_node_list:
             if index_to_gpu_map[n.index] is None:
                 assert False, "node " + str(n.index) + "is not on gpu"
+
+
         return [index_to_gpu_map[n.index] for n in self.eval_node_list]
 
 
@@ -2578,6 +2615,73 @@ def topo_sort_dfs(node, visited, topo_order):
     for n in node.inputs:
         topo_sort_dfs(n, visited, topo_order)
     topo_order.append(node)
+
+def get_Variable_node_list(node):
+
+    visited = set()
+    Variable_order = []
+    Variable_sort_dfs(node, visited, Variable_order)
+    return Variable_order
+
+
+
+def Variable_sort_dfs(node, visited, Variable_order):
+    """Post-order DFS"""
+    #
+    # if isinstance(node, list):
+    #     print(node[0])
+    if node in visited:
+        return
+    visited.add(node)
+    for n in node.inputs:
+        Variable_sort_dfs(n, visited, Variable_order)
+
+    if node.isw == 1:
+        Variable_order.append(node)
+
+
+
+def getcomputelist(Variable_node_list, Variable_node_grad_list, b1, b2, b1t, b2t, e,learning_rate):
+
+    computelist = []
+    mv = []
+    Variable_node_to_mv = {}
+    for i in range(len(Variable_node_list)):
+        m = Variable(Variable_node_list[i].name+'m')
+        v = Variable(Variable_node_list[i].name+'v')
+        mv.append(m)
+        mv.append(v)
+        Variable_node_to_mv[Variable_node_list[i]] = (m,v)
+        adamnode = adam_op(Variable_node_list[i],m,v,Variable_node_grad_list[i], b1, b2, b1t, b2t, e, learning_rate)
+        adamnode.issgd = 1#代表不用为这个点加内存
+        computelist.append(adamnode)
+
+    return computelist,mv,Variable_node_to_mv
+
+
+
+
+def swapadam(topoorder):
+    for i in range(len(topoorder)):
+        if topoorder[i].issgd == 1 and topoorder[i].isw == 0:
+            topoorder[i].isw = 3
+            filter = topoorder[i].inputs[0]
+            j = len(topoorder) - 1
+            while j > i:
+                if topoorder[j].issgd == 1:
+                    j = j - 1
+                    continue
+                if filter in topoorder[j].inputs:
+
+                    break
+                j = j - 1
+
+            tmp = topoorder[i]
+            topoorder.remove(tmp)
+            topoorder.insert(j,tmp)
+    for i in range(len(topoorder)):
+        print(i,topoorder[i])
+    return topoorder
 
 
 def sum_node_list(node_list):
