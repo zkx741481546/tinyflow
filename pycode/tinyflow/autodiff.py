@@ -2441,6 +2441,7 @@ class Executor(object):
                 # Skip placeholder nodes. Values already provided by feed_dict.
                 # 找出feed_dict中已经包含的ndarray
                 node.array_status = 1
+                assert not node.inputs
                 continue
 
             input_vals = []
@@ -2470,7 +2471,7 @@ class Executor(object):
             if node.issgd:
                 # todo 对于sgd op 的特殊处理
                 t1 = datetime.datetime.now()
-                node.op.compute(node, input_vals, [], self.cudnnHandle, self.cublasHandle, self.cudaStream, False)
+                node.op.compute(node, input_vals, None, self.cudnnHandle, self.cublasHandle, self.cudaStream, False)
                 t2 = datetime.datetime.now()
                 node.runtime = (t2 - t1).microseconds / 1000
 
@@ -2544,7 +2545,14 @@ class Executor(object):
             if index_to_gpu_map[n.index] is None:
                 assert False, "node " + str(n.index) + "is not on gpu"
 
-
+        # #todo only for test:
+        # for n in self.topo_order:
+        #     print("calculating node " + str(n.index) + " using ")
+        #     for i in n.inputs:
+        #         print(str(i.index))
+        for n in self.topo_order:
+            if n.index in index_to_gpu_map:
+                print(index_to_gpu_map[n.index].asnumpy())
         return [index_to_gpu_map[n.index] for n in self.eval_node_list]
 
 

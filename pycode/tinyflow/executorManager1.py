@@ -209,6 +209,8 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
                         executor.Variable_node_to_mv[b1][1]: b1_val_v,
                         executor.Variable_node_to_mv[b2][1]: b2_val_v,
                         executor.Variable_node_to_mv[b3][1]: b3_val_v})
+            print(loss_val.asnumpy())
+
 
 
             # todo 更新sgd_update_gpu_on_cpu
