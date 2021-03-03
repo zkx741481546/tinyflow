@@ -9,7 +9,7 @@ import os
 import queue
 import multiprocessing
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '7'
 
 def load_mnist_data(dataset):
     # 加载mnist数据集
@@ -206,7 +206,7 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
                         executor.Variable_node_to_mv[b1][1]: b1_val_v,
                         executor.Variable_node_to_mv[b2][1]: b2_val_v,
                         executor.Variable_node_to_mv[b3][1]: b3_val_v})
-            print(loss_val.asnumpy())
+            # print(loss_val.asnumpy())
 
 
 
@@ -286,7 +286,7 @@ if __name__ == '__main__':
     top_message_queue_list = []
     executor_ctx = ndarray.gpu(0)
     num_epochs = 20
-    print_loss_val_each_epoch = True
+    print_loss_val_each_epoch = False
     top_control_queue = multiprocessing.Queue()
     top_control_queue_list.append(top_control_queue)
     top_message_queue = multiprocessing.Queue()

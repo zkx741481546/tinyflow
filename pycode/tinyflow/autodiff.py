@@ -2557,9 +2557,9 @@ class Executor(object):
         #     for i in n.inputs:
         #         print(str(i.index))
 
-        for n in self.topo_order:
-            if n.index in index_to_gpu_map:
-                print(index_to_gpu_map[n.index].asnumpy())
+        # for n in self.topo_order:
+        #     if n.index in index_to_gpu_map:
+        #         print(index_to_gpu_map[n.index].asnumpy())
 
         return [index_to_gpu_map[n.index] for n in self.eval_node_list]
 
