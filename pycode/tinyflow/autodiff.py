@@ -2536,6 +2536,10 @@ class Executor(object):
                 index_to_gpu_map[release_message] = None
                 self.topo_order[release_message].array_status = 0
 
+            for n in self.topo_order:
+                if n.index in index_to_gpu_map:
+                    print(index_to_gpu_map[n.index].asnumpy())
+
         # adam更新参数
         self.b1t[0] = self.b1t[0] * self.b1
         self.b2t[0] = self.b2t[0] * self.b2
@@ -2550,9 +2554,7 @@ class Executor(object):
         #     print("calculating node " + str(n.index) + " using ")
         #     for i in n.inputs:
         #         print(str(i.index))
-        for n in self.topo_order:
-            if n.index in index_to_gpu_map:
-                print(index_to_gpu_map[n.index].asnumpy())
+
         return [index_to_gpu_map[n.index] for n in self.eval_node_list]
 
 

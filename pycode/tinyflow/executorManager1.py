@@ -89,18 +89,15 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
     # 下面是三层网络的激活函数，两个relu和一个softmax
 
     # relu(X W1+b1)
-    z1 = ad.matmul_op(X, W1)
-    z2 = z1 + ad.broadcastto_op(b1, z1)
-    z3 = ad.relu_op(z2)
+    z2 = ad.dense(X, W1, b1)
+    z3 = ad.fullyactivation_forward_op(z2, "NCHW", "relu")
 
     # relu(z3 W2+b2)
-    z4 = ad.matmul_op(z3, W2)
-    z5 = z4 + ad.broadcastto_op(b2, z4)
-    z6 = ad.relu_op(z5)
+    z5 = ad.dense(z3, W2, b2)
+    z6 = ad.fullyactivation_forward_op(z5, "NCHW", "relu")
 
     # softmax(z5 W2+b2)
-    z7 = ad.matmul_op(z6, W3)
-    z8 = z7 + ad.broadcastto_op(b3, z7)
+    z8 = ad.dense(z6, W3, b3)
     y = ad.fullyactivation_forward_op(z8, "NCHW", "softmax")
     loss = ad.crossEntropy_loss(y, y_)
 
