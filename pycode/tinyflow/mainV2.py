@@ -684,7 +684,6 @@ def generate_scheduling_plan(logged_times, gpu: int):
 
 
 def multiprocess_init(global_message_queue: multiprocessing.Queue, global_control_queue: multiprocessing.Queue):
-    pass
     logged_times = []
     log_repeat = 0
     while True:

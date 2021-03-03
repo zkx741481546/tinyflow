@@ -2353,7 +2353,8 @@ class Executor(object):
                 operation_name = node.name
                 is_input = 0
                 if node.index in index_to_gpu_map:
-                    is_input = 1
+                    if node.name != "X" and node.name != "y_":
+                        is_input = 1
                 return_element = [node.index, node_inputs, node_size, operation_name, is_input]
                 return_list.append(return_element)
             self.top_message_queue.put([0, return_list])
