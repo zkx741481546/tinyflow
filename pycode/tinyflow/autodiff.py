@@ -2350,8 +2350,11 @@ class Executor(object):
                 #     node_size = self.node_to_shape_map[node][0] * 4
                 # else:
                 #     node_size = self.node_to_shape_map[node][0] * self.node_to_shape_map[node][1] * 4
-                operation_name = node.op
-                return_element = [node.index, node_inputs, node_size, operation_name]
+                operation_name = node.name
+                is_input = 0
+                if node.index in index_to_gpu_map:
+                    is_input = 1
+                return_element = [node.index, node_inputs, node_size, operation_name, is_input]
                 return_list.append(return_element)
             self.top_message_queue.put([0, return_list])
         else:
@@ -2536,9 +2539,7 @@ class Executor(object):
                 index_to_gpu_map[release_message] = None
                 self.topo_order[release_message].array_status = 0
 
-            for n in self.topo_order:
-                if n.index in index_to_gpu_map:
-                    print(index_to_gpu_map[n.index].asnumpy())
+
 
         # adam更新参数
         self.b1t[0] = self.b1t[0] * self.b1
@@ -2554,6 +2555,10 @@ class Executor(object):
         #     print("calculating node " + str(n.index) + " using ")
         #     for i in n.inputs:
         #         print(str(i.index))
+
+        for n in self.topo_order:
+            if n.index in index_to_gpu_map:
+                print(index_to_gpu_map[n.index].asnumpy())
 
         return [index_to_gpu_map[n.index] for n in self.eval_node_list]
 

@@ -685,45 +685,45 @@ def generate_scheduling_plan(logged_times, gpu: int):
 
 def multiprocess_init(global_message_queue: multiprocessing.Queue, global_control_queue: multiprocessing.Queue):
     pass
-    # logged_times = []
-    # log_repeat = 0
-    # while True:
-    #     if not global_message_queue.empty():
-    #         global_message = global_message_queue.get()
-    #         job_id = global_message[0]
-    #         message_type = global_message[1][0]
-    #         message_graph = global_message[1][1]
-    #
-    #         if message_type == 0:
-    #             # todo add to add_job
-    #             global job_num
-    #             job_num += 1
-    #             logged_times.append([])
-    #             global_graphs.append(message_graph)
-    #             tensor_num = len(message_graph)
-    #             for i in range(tensor_num):
-    #                 logged_times[job_id].append([50])
-    #             # logged_times[job_id] = [[50, 0.01], [50, 0.01], [50, 351], [50, 0.01], [50, 87], [50, 136], [50, 98], [50, 0.01], [50, 77], [50, 0.01], [50, 23], [50, 85], [50, 33], [50, 0.01], [50, 63], [50, 0.01], [50, 23],
-    #             #      [50, 71], [50, 0.01], [50, 80], [50, 65], [50, 56], [50, 69], [50, 56], [50, 203], [50, 28], [50, 66], [50, 60], [50, 66], [50, 29], [50, 75], [50, 62], [50, 32], [50, 24], [50, 81],
-    #             #      [50, 114], [50, 50], [50, 42], [50, 707], [50, 554], [50, 121]]
-    #             s = time.time()
-    #             release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
-    #             print(f'time:{time.time()-s}')
-    #             control_messages = []
-    #             for i in range(job_num):
-    #                 control_message = [swap_order[i], release_order[i], recomputation_order[i]]
-    #                 control_messages.append(control_message)
-    #                 # global_control_queue.put(control_messages)
-    #         else:
-    #             for node_message in message_graph:
-    #                 logged_times[job_id][node_message[0]].append(node_message[1])
-    #             log_repeat += 1
-    #             if log_repeat == 10:
-    #                 release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
-    #                 control_messages = []
-    #                 for i in range(job_num):
-    #                     print(swap_order)
-    #                     control_message = [swap_order[i], release_order[i], recomputation_order[i]]
-    #                     control_messages.append(control_message)
-    #                 # global_control_queue.put(control_messages)
-    #             # print(logged_times[0])
+    logged_times = []
+    log_repeat = 0
+    while True:
+        if not global_message_queue.empty():
+            global_message = global_message_queue.get()
+            job_id = global_message[0]
+            message_type = global_message[1][0]
+            message_graph = global_message[1][1]
+
+            if message_type == 0:
+                # todo add to add_job
+                global job_num
+                job_num += 1
+                logged_times.append([])
+                global_graphs.append(message_graph)
+                tensor_num = len(message_graph)
+                for i in range(tensor_num):
+                    logged_times[job_id].append([50])
+                # logged_times[job_id] = [[50, 0.01], [50, 0.01], [50, 351], [50, 0.01], [50, 87], [50, 136], [50, 98], [50, 0.01], [50, 77], [50, 0.01], [50, 23], [50, 85], [50, 33], [50, 0.01], [50, 63], [50, 0.01], [50, 23],
+                #      [50, 71], [50, 0.01], [50, 80], [50, 65], [50, 56], [50, 69], [50, 56], [50, 203], [50, 28], [50, 66], [50, 60], [50, 66], [50, 29], [50, 75], [50, 62], [50, 32], [50, 24], [50, 81],
+                #      [50, 114], [50, 50], [50, 42], [50, 707], [50, 554], [50, 121]]
+                s = time.time()
+                release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
+                print(f'time:{time.time()-s}')
+                control_messages = []
+                for i in range(job_num):
+                    control_message = [swap_order[i], release_order[i], recomputation_order[i]]
+                    control_messages.append(control_message)
+                    # global_control_queue.put(control_messages)
+            else:
+                for node_message in message_graph:
+                    logged_times[job_id][node_message[0]].append(node_message[1])
+                log_repeat += 1
+                if log_repeat == 10:
+                    release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
+                    control_messages = []
+                    for i in range(job_num):
+                        print(swap_order)
+                        control_message = [swap_order[i], release_order[i], recomputation_order[i]]
+                        control_messages.append(control_message)
+                    # global_control_queue.put(control_messages)
+                # print(logged_times[0])
