@@ -1302,7 +1302,7 @@ int DLGpuMatrixExp(const DLArrayHandle input, DLArrayHandle output) {
 }
 
 
-int DLGpuMatrixLog(const DLArrayHandle input, DLArrayHandle output) {
+int DLGpuMatrixLog(const DLArrayHandle input, DLArrayHandle output, void **cudaStream) {
     assert(input->ndim == output->ndim);
     int count = 1;
     for (int i = 0; i < input->ndim; ++i) {
@@ -1311,9 +1311,9 @@ int DLGpuMatrixLog(const DLArrayHandle input, DLArrayHandle output) {
     }
     float* inputArr = (float*) input->data;
     float* outputArr = (float*) output->data;
-    matrix_log_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM>>>(
+    matrix_log_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM, 0, (cudaStream_t)*cudaStream>>>(
     inputArr, outputArr, count);
-    cudaDeviceSynchronize();
+    cudaStreamSynchronize((cudaStream_t)*cudaStream);
     return 0;
 }
 
@@ -4335,7 +4335,8 @@ int DLGpuBatchNormalizationForward(const DLArrayHandle input,
         *Variance_p));
 
 
-
+    free(bnScalec);
+    free(bnBiasc);
 
 
     cudaFree(bnScale);
@@ -4441,7 +4442,7 @@ int DLGpuBatchNormalizationBackward(const DLArrayHandle input,
         0.00001,
         *mean_p,
         *Variance_p));
-
+    free(bnScalec);
     cudaFree(bnScale);
     cudaFree(resultBnBiasDiff);
     cudaFree(resultBnScaleDiff);
@@ -4469,7 +4470,7 @@ __global__ void adam_kernel(float* outputArr, float* mArr, float* vArr,
 
 int DLGpuAdam(DLArrayHandle output,
               const DLArrayHandle m, const DLArrayHandle v,
-              float b1t,float b2t,float e,float learning_rate) {
+              float b1t,float b2t,float e,float learning_rate, void **cudaStream) {
     assert(m->ndim == output->ndim);
     assert(v->ndim == output->ndim);
     int count = 1;
@@ -4479,11 +4480,11 @@ int DLGpuAdam(DLArrayHandle output,
     float* mData = (float*) m->data;
     float* vData = (float*) v->data;
     float* outputData = (float*) output->data;
-    adam_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM>>>(
+    adam_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM, 0, (cudaStream_t)*cudaStream>>>(
         outputData, mData, vData,  
         b1t, b2t, e, learning_rate,
         count);
-    cudaDeviceSynchronize();
+    cudaStreamSynchronize((cudaStream_t)*cudaStream);
     return 0;
 }
 
@@ -4511,7 +4512,7 @@ int DLGpuAdam_mv(DLArrayHandle m,
                 DLArrayHandle v,
                 const DLArrayHandle g,
                 float b1,
-                float b2) {
+                float b2, void **cudaStream) {
     assert(v->ndim == g->ndim);
     assert(m->ndim == g->ndim);
     int count = 1;
@@ -4522,17 +4523,78 @@ int DLGpuAdam_mv(DLArrayHandle m,
     float* mData = (float*) m->data;
     float* vData = (float*) v->data;
     float* gData = (float*) g->data;
-    adam_mv_kernel<<<BLOCK_NUM(count*2), MAX_THREADS_NUM>>>(
+    adam_mv_kernel<<<BLOCK_NUM(count*2), MAX_THREADS_NUM, 0, (cudaStream_t)*cudaStream>>>(
     mData, vData, gData,
     b1,b2,
     count*2,
     count);
-    cudaDeviceSynchronize();
+    cudaStreamSynchronize((cudaStream_t)*cudaStream);
     return 0;
 }
 
 
 
+
+__global__ void cross_kernel(float* xArr, float* yArr, float* outputArr,
+                                    float b, int count) {
+    CUDA_1D_KERNEL_LOOP(index, count) {
+    outputArr[index] = log(xArr[index])  * yArr[index] * (-1) * b;
+    }
+}
+
+
+int DLGpuCross(const DLArrayHandle x,
+                    const DLArrayHandle y,
+                    DLArrayHandle output,
+                    float b, void **cudaStream) {
+    assert(x->ndim == output->ndim);
+    assert(x->ndim == y->ndim);
+    int count = 1;
+    for (int i = 0; i < output->ndim; ++i) {
+        count *= output->shape[i];
+    }
+    float* xData = (float*) x->data;
+    float* yData = (float*) y->data;
+    float* outputData = (float*) output->data;
+    cross_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM, 0, (cudaStream_t)*cudaStream>>>(
+    xData, yData, outputData,
+    b,
+    count);
+    cudaStreamSynchronize((cudaStream_t)*cudaStream);
+    return 0;
+}
+
+
+__global__ void cross_backward_kernel(float* xArr, float* yArr, float* doutputArr, float* outputArr,
+                                    float b, int count) {
+    CUDA_1D_KERNEL_LOOP(index, count) {
+    outputArr[index] =  yArr[index] * (-1) * b * (1.0 / xArr[index]) * doutputArr[index];
+    }
+}
+
+
+int DLGpuCrossBackward(const DLArrayHandle x,
+                    const DLArrayHandle y,
+                    const DLArrayHandle doutput,
+                    DLArrayHandle output,
+                    float b, void **cudaStream) {
+    assert(x->ndim == output->ndim);
+    assert(x->ndim == y->ndim);
+    int count = 1;
+    for (int i = 0; i < output->ndim; ++i) {
+        count *= output->shape[i];
+    }
+    float* xData = (float*) x->data;
+    float* yData = (float*) y->data;
+    float* doutputData = (float*) doutput->data;
+    float* outputData = (float*) output->data;
+    cross_backward_kernel<<<BLOCK_NUM(count), MAX_THREADS_NUM, 0, (cudaStream_t)*cudaStream>>>(
+    xData, yData, doutputData, outputData,
+    b,
+    count);
+    cudaStreamSynchronize((cudaStream_t)*cudaStream);
+    return 0;
+}
 
 
 __global__ void sgd_update_kernel(float* outputArr, float* mArr, 
@@ -4833,6 +4895,113 @@ int DLGpuAdam_o(void **** n4list,
 
 int getInt(int *intp){
     return *intp;
+}
+
+#include <assert.h>
+// Convenience function for checking CUDA runtime API results
+// can be wrapped around any runtime API call. No-op in release builds.
+inline
+cudaError_t checkCuda(cudaError_t result)
+{
+#if defined(DEBUG) || defined(_DEBUG)
+  if (result != cudaSuccess) {
+    fprintf(stderr, "CUDA Runtime Error: %s\n", cudaGetErrorString(result));
+    assert(result == cudaSuccess);
+  }
+#endif
+  return result;
+}
+
+void profileCopies(float        *h_a,
+                   float        *h_b,
+                   float        *d,
+                   unsigned int  n,
+                   char         *desc)
+{
+  printf("\n%s transfers\n", desc);
+
+  unsigned int bytes = n * sizeof(float);
+
+  // events for timing
+  cudaEvent_t startEvent, stopEvent;
+
+  checkCuda( cudaEventCreate(&startEvent) );
+  checkCuda( cudaEventCreate(&stopEvent) );
+
+  checkCuda( cudaEventRecord(startEvent, 0) );
+  checkCuda( cudaMemcpy(d, h_a, bytes, cudaMemcpyHostToDevice) );
+  checkCuda( cudaEventRecord(stopEvent, 0) );
+  checkCuda( cudaEventSynchronize(stopEvent) );
+
+  float time;
+  checkCuda( cudaEventElapsedTime(&time, startEvent, stopEvent) );
+  printf("  Host to Device bandwidth (GB/s): %f\n", bytes * 1e-6 / time);
+
+  checkCuda( cudaEventRecord(startEvent, 0) );
+  checkCuda( cudaMemcpy(h_b, d, bytes, cudaMemcpyDeviceToHost) );
+  checkCuda( cudaEventRecord(stopEvent, 0) );
+  checkCuda( cudaEventSynchronize(stopEvent) );
+
+  checkCuda( cudaEventElapsedTime(&time, startEvent, stopEvent) );
+  printf("  Device to Host bandwidth (GB/s): %f\n", bytes * 1e-6 / time);
+
+  for (int i = 0; i < n; ++i) {
+    if (h_a[i] != h_b[i]) {
+      printf("*** %s transfers failed ***", desc);
+      break;
+    }
+  }
+
+  // clean up events
+  checkCuda( cudaEventDestroy(startEvent) );
+  checkCuda( cudaEventDestroy(stopEvent) );
+}
+
+int testPcie()
+{
+  unsigned int nElements = 4*1024*1024;
+  const unsigned int bytes = nElements * sizeof(float);
+
+  // host arrays
+  float *h_aPageable, *h_bPageable;
+  float *h_aPinned, *h_bPinned;
+
+  // device array
+  float *d_a;
+
+  // allocate and initialize
+  h_aPageable = (float*)malloc(bytes);                    // host pageable
+  h_bPageable = (float*)malloc(bytes);                    // host pageable
+  checkCuda( cudaMallocHost((void**)&h_aPinned, bytes) ); // host pinned
+  checkCuda( cudaMallocHost((void**)&h_bPinned, bytes) ); // host pinned
+  checkCuda( cudaMalloc((void**)&d_a, bytes) );           // device
+
+  for (int i = 0; i < nElements; ++i) h_aPageable[i] = i;
+  memcpy(h_aPinned, h_aPageable, bytes);
+  memset(h_bPageable, 0, bytes);
+  memset(h_bPinned, 0, bytes);
+
+  // output device info and transfer size
+  cudaDeviceProp prop;
+  checkCuda( cudaGetDeviceProperties(&prop, 0) );
+
+  printf("\nDevice: %s\n", prop.name);
+  printf("Transfer size (MB): %d\n", bytes / (1024 * 1024));
+
+  // perform copies and report bandwidth
+  profileCopies(h_aPageable, h_bPageable, d_a, nElements, "Pageable");
+  profileCopies(h_aPinned, h_bPinned, d_a, nElements, "Pinned");
+
+  printf("\n");
+
+  // cleanup
+  cudaFree(d_a);
+  cudaFreeHost(h_aPinned);
+  cudaFreeHost(h_bPinned);
+  free(h_aPageable);
+  free(h_bPageable);
+
+  return 0;
 }
 
 

@@ -135,6 +135,8 @@ int DLArrayCopyFromTo(DLArrayHandle from, DLArrayHandle to,
   assert(from_size == to_size);
   DLContext ctx = from->ctx;
 
+
+
   if (ctx.device_type == kCPU) {
     ctx = to->ctx;
   } else {
@@ -143,13 +145,20 @@ int DLArrayCopyFromTo(DLArrayHandle from, DLArrayHandle to,
            (to->ctx.device_type == from->ctx.device_type));
   }
 
-  DeviceAPIManager::Get(ctx)->CopyDataFromTo(from->data, to->data, from_size,
+  if (stream == NULL) {
+    DeviceAPIManager::Get(ctx)->CopyDataFromTo(from->data, to->data, from_size,
                                              from->ctx, to->ctx, stream);
-  if (from->ctx.device_type == kGPU) {
-    DeviceAPIManager::Get(ctx)->StreamSync(from->ctx, stream);
   } else {
-    DeviceAPIManager::Get(ctx)->StreamSync(to->ctx, stream);
+        DeviceAPIManager::Get(ctx)->CopyDataFromTo(from->data, to->data, from_size,
+                                                     from->ctx, to->ctx, *(cudaStream_t*)stream);
+        if (from->ctx.device_type == kGPU) {
+            DeviceAPIManager::Get(ctx)->StreamSync(from->ctx, *(cudaStream_t*)stream);
+        } else {
+            DeviceAPIManager::Get(ctx)->StreamSync(to->ctx, *(cudaStream_t*)stream);
+        }
   }
+
+
 
   API_END();
 }

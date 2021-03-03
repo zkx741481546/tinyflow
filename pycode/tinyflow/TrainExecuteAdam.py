@@ -7,7 +7,7 @@ import queue
 from . import autodiff as ad
 import os
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "4"
 
 
 
@@ -16,8 +16,13 @@ class TrainExecutor(object):
     """Executor computes values for given set of nodes in computation graph."""
 
 
-    def __init__(self, targetloss, learning_rate, ctx=ndarray.gpu(0)):
+    def __init__(self, targetloss, learning_rate=0.001, ctx=ndarray.gpu(0)):
 
+        self.b1 = 0.9
+        self.b2 = 0.999
+        self.e = 0.00000001
+        self.b1t = [0.9]
+        self.b2t = [0.999]
         self.targetloss = targetloss
         self.learning_rate = learning_rate
         self.Variable_node_list = get_Variable_node_list(self.targetloss)
@@ -25,12 +30,12 @@ class TrainExecutor(object):
         self.Variable_node_list.reverse()
         self.Variable_node_grad_list = ad.gradients(self.targetloss, self.Variable_node_list)#反向node
 
-        self.eval_node_list = getcomputelist(self.Variable_node_list,self.Variable_node_grad_list,self.learning_rate)#其内存还是Variable，但是换了个点
+        self.eval_node_list,self.mv,self.Variable_node_to_mv = getcomputelist(self.Variable_node_list,self.Variable_node_grad_list, self.b1, self.b2, self.b1t, self.b2t, self.e, self.learning_rate)#其内存还是Variable，但是换了个点
         self.ctx = ctx
         # 根据这个topo_order算
         self.topo_order = ad.find_topo_sort(self.eval_node_list)
+        self.topo_order = swapadam(self.topo_order)
 
-        self.topo_order = swapsgd(self.topo_order)
 
         #存node的shape
         self.node_to_shape_map = None
@@ -49,6 +54,7 @@ class TrainExecutor(object):
         #是否是第一次run
         self.isfirstrun = 0
         self.isc = 0
+
 
 
 
@@ -75,6 +81,13 @@ class TrainExecutor(object):
     #放出变量的np字典
     def init_Variable(self, feed_dict):
         self.Variable_node_np_value = feed_dict
+        for node in self.Variable_node_list:
+            nodem = self.Variable_node_to_mv[node][0]
+            nodev = self.Variable_node_to_mv[node][1]
+            self.Variable_node_np_value[nodem] = np.zeros(feed_dict[node].shape)
+            self.Variable_node_np_value[nodev] = np.zeros(feed_dict[node].shape)
+
+
 
     #feed_dict为np数组
     def run(self, feed_dict, Accuracy_node = None ,convert_to_numpy_ret_vals=False):
@@ -120,6 +133,7 @@ class TrainExecutor(object):
                     self.node_to_arr_map[node] = ret
                     node_computed.add(node)
                     continue
+
 
                 #不是SgdOp,申请内存
                 if node.issgd == 0:
@@ -179,6 +193,11 @@ class TrainExecutor(object):
             #结果，计算正确率
             if Accuracy_node !=None:
                 result_output.append(self.node_to_arr_map[Accuracy_node])
+
+            #adam更新参数
+            self.b1t[0] = self.b1t[0] * self.b1
+            self.b2t[0] = self.b2t[0] * self.b2
+
             return result_output
 
 
@@ -220,6 +239,9 @@ class TrainExecutor(object):
 
                 # 如果node是变量，不用管
                 if node in self.Variable_node_list:
+                    continue
+                # 如果node是adam要用的变量，不用管
+                if node in self.mv:
                     continue
 
                 #不是sgdop的中间点
@@ -277,6 +299,10 @@ class TrainExecutor(object):
             # 结果，计算正确率
             if Accuracy_node != None:
                 result_output.append(self.node_to_arr_map[Accuracy_node])
+
+            # adam更新参数
+            self.b1t[0] = self.b1t[0] * self.b1
+            self.b2t[0] = self.b2t[0] * self.b2
             return result_output
 
 
@@ -314,21 +340,27 @@ def Variable_sort_dfs(node, visited, Variable_order):
 
 
 
-def getcomputelist(Variable_node_list, Variable_node_grad_list,learning_rate):
+def getcomputelist(Variable_node_list, Variable_node_grad_list, b1, b2, b1t, b2t, e,learning_rate):
 
     computelist = []
-
+    mv = []
+    Variable_node_to_mv = {}
     for i in range(len(Variable_node_list)):
-        sgdnode = ad.sgd_op(Variable_node_list[i],Variable_node_grad_list[i],learning_rate)
-        sgdnode.issgd = 1#代表不用为这个点加内存
-        computelist.append(sgdnode)
+        m = ad.Variable(Variable_node_list[i].name+'m')
+        v = ad.Variable(Variable_node_list[i].name+'v')
+        mv.append(m)
+        mv.append(v)
+        Variable_node_to_mv[Variable_node_list[i]] = (m,v)
+        adamnode = ad.adam_op(Variable_node_list[i],m,v,Variable_node_grad_list[i], b1, b2, b1t, b2t, e, learning_rate)
+        adamnode.issgd = 1#代表不用为这个点加内存
+        computelist.append(adamnode)
 
-    return computelist
+    return computelist,mv,Variable_node_to_mv
 
 
 
 
-def swapsgd(topoorder):
+def swapadam(topoorder):
     for i in range(len(topoorder)):
         if topoorder[i].issgd == 1 and topoorder[i].isw == 0:
             topoorder[i].isw = 3

@@ -8,7 +8,8 @@ import numpy as np
 import os
 import queue
 import multiprocessing
-os.environ['CUDA_VISIBLE_DEVICES'] = '3'
+
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 def load_mnist_data(dataset):
     # 加载mnist数据集
@@ -82,38 +83,28 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
     b1 = ad.Variable(name="b1")
     b2 = ad.Variable(name="b2")
     b3 = ad.Variable(name="b3")
-    X = ad.Variable(name="X")
-    y_ = ad.Variable(name="y_")
+    X = ad.Placeholder(name="X")
+    y_ = ad.Placeholder(name="y_")
 
     # 下面是三层网络的激活函数，两个relu和一个softmax
 
     # relu(X W1+b1)
-    z1 = ad.matmul_op(X, W1)
-    z2 = z1 + ad.broadcastto_op(b1, z1)
-    z3 = ad.relu_op(z2)
+    z2 = ad.dense(X, W1, b1)
+    z3 = ad.fullyactivation_forward_op(z2, "NCHW", "relu")
 
     # relu(z3 W2+b2)
-    z4 = ad.matmul_op(z3, W2)
-    z5 = z4 + ad.broadcastto_op(b2, z4)
-    z6 = ad.relu_op(z5)
+    z5 = ad.dense(z3, W2, b2)
+    z6 = ad.fullyactivation_forward_op(z5, "NCHW", "relu")
 
     # softmax(z5 W2+b2)
-    z7 = ad.matmul_op(z6, W3)
-    y = z7 + ad.broadcastto_op(b3, z7)
-
-    loss = ad.softmaxcrossentropy_op(y, y_)
-
-    grad_W1, grad_W2, grad_W3, grad_b1, grad_b2, grad_b3 = ad.gradients(
-        loss, [W1, W2, W3, b1, b2, b3])
+    z8 = ad.dense(z6, W3, b3)
+    y = ad.fullyactivation_forward_op(z8, "NCHW", "softmax")
+    loss = ad.crossEntropy_loss(y, y_)
 
 
     # 此处向前为符号定义
-
-
     # 只声明，不操作
-    executor = ad.Executor(
-        [loss, grad_W1, grad_W2, grad_W3, grad_b1, grad_b2, grad_b3, y],
-        ctx=executor_ctx, top_control_queue=top_control_queue, top_message_queue=top_message_queue)
+    executor = ad.Executor(loss,y,0.001, top_control_queue=top_control_queue, top_message_queue=top_message_queue)
 
     # Read input data
     datasets = load_mnist_data("mnist.pkl.gz")
@@ -138,6 +129,18 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
     b1_val = rand.normal(scale=0.1, size=(256))
     b2_val = rand.normal(scale=0.1, size=(100))
     b3_val = rand.normal(scale=0.1, size=(10))
+    W1_val_m = np.empty(shape=(784, 256), dtype=np.float32)
+    W2_val_m = np.empty(shape=(256, 100), dtype=np.float32)
+    W3_val_m = np.empty(shape=(100, 10), dtype=np.float32)
+    b1_val_m = np.empty(shape=(256), dtype=np.float32)
+    b2_val_m = np.empty(shape=(100), dtype=np.float32)
+    b3_val_m = np.empty(shape=(10), dtype=np.float32)
+    W1_val_v = np.empty(shape=(784, 256), dtype=np.float32)
+    W2_val_v = np.empty(shape=(256, 100), dtype=np.float32)
+    W3_val_v = np.empty(shape=(100, 10), dtype=np.float32)
+    b1_val_v = np.empty(shape=(256), dtype=np.float32)
+    b2_val_v = np.empty(shape=(100), dtype=np.float32)
+    b3_val_v = np.empty(shape=(10), dtype=np.float32)
     X_val = np.empty(shape=(batch_size, 784), dtype=np.float32)
     y_val = np.empty(shape=(batch_size, 10), dtype=np.float32)
     valid_X_val = np.empty(shape=(batch_size, 784), dtype=np.float32)
@@ -150,6 +153,18 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
     b1_val = ndarray.array(b1_val, ctx=executor_ctx)
     b2_val = ndarray.array(b2_val, ctx=executor_ctx)
     b3_val = ndarray.array(b3_val, ctx=executor_ctx)
+    W1_val_m = ndarray.array(W1_val_m, ctx=executor_ctx)
+    W2_val_m = ndarray.array(W2_val_m, ctx=executor_ctx)
+    W3_val_m = ndarray.array(W3_val_m, ctx=executor_ctx)
+    b1_val_m = ndarray.array(b1_val_m, ctx=executor_ctx)
+    b2_val_m = ndarray.array(b2_val_m, ctx=executor_ctx)
+    b3_val_m = ndarray.array(b3_val_m, ctx=executor_ctx)
+    W1_val_v = ndarray.array(W1_val_v, ctx=executor_ctx)
+    W2_val_v = ndarray.array(W2_val_v, ctx=executor_ctx)
+    W3_val_v = ndarray.array(W3_val_v, ctx=executor_ctx)
+    b1_val_v = ndarray.array(b1_val_v, ctx=executor_ctx)
+    b2_val_v = ndarray.array(b2_val_v, ctx=executor_ctx)
+    b3_val_v = ndarray.array(b3_val_v, ctx=executor_ctx)
     X_val = ndarray.array(X_val, ctx=executor_ctx)
     y_val = ndarray.array(y_val, ctx=executor_ctx)
 
@@ -169,8 +184,7 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
 
 
             # 计算单步的梯度
-            loss_val, grad_W1_val, grad_W2_val, grad_W3_val, \
-                grad_b1_val, grad_b2_val, grad_b3_val, _ = executor.run(
+            loss_val, _, _, _, _, _, _,_, _, _, _, _, _,_, _, _, _, _, _,_ = executor.run(
                     feed_dict={
                         X: X_val,
                         y_: y_val,
@@ -179,7 +193,21 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
                         W3: W3_val,
                         b1: b1_val,
                         b2: b2_val,
-                        b3: b3_val})
+                        b3: b3_val,
+                        executor.Variable_node_to_mv[W1][0]:W1_val_m,
+                        executor.Variable_node_to_mv[W2][0]:W2_val_m,
+                        executor.Variable_node_to_mv[W3][0]:W3_val_m,
+                        executor.Variable_node_to_mv[b1][0]:b1_val_m,
+                        executor.Variable_node_to_mv[b2][0]:b2_val_m,
+                        executor.Variable_node_to_mv[b3][0]:b3_val_m,
+                        executor.Variable_node_to_mv[W1][1]: W1_val_v,
+                        executor.Variable_node_to_mv[W2][1]: W2_val_v,
+                        executor.Variable_node_to_mv[W3][1]: W3_val_v,
+                        executor.Variable_node_to_mv[b1][1]: b1_val_v,
+                        executor.Variable_node_to_mv[b2][1]: b2_val_v,
+                        executor.Variable_node_to_mv[b3][1]: b3_val_v})
+            print(loss_val.asnumpy())
+
 
 
             # todo 更新sgd_update_gpu_on_cpu
@@ -199,12 +227,6 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
             # sgd_update_cpu(b2_val, grad_b2_val, lr)
             # sgd_update_cpu(b3_val, grad_b3_val, lr)
 
-            sgd_update_gpu(W1_val, grad_W1_val, lr, cuda_stream)
-            sgd_update_gpu(W2_val, grad_W2_val, lr, cuda_stream)
-            sgd_update_gpu(W3_val, grad_W3_val, lr, cuda_stream)
-            sgd_update_gpu(b1_val, grad_b1_val, lr, cuda_stream)
-            sgd_update_gpu(b2_val, grad_b2_val, lr, cuda_stream)
-            sgd_update_gpu(b3_val, grad_b3_val, lr, cuda_stream)
             # print(loss_val.asnumpy())
         if print_loss_val_each_epoch:
             if isinstance(loss_val, ndarray.NDArray):
@@ -222,7 +244,7 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
         valid_X_val[:] = valid_set_x[minibatch_start:minibatch_end]
         valid_y_val[:] = convert_to_one_hot(
             valid_set_y[minibatch_start:minibatch_end])
-        _, _, _, _, _, _, _, valid_y_predicted = executor.run(
+        _, _, _, _, _, _, _,_, _, _, _, _, _,_, _, _, _, _, _, valid_y_predicted = executor.run(
             feed_dict={
                 X: valid_X_val,
                 y_: valid_y_val,
@@ -231,7 +253,19 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
                 W3: W3_val,
                 b1: b1_val,
                 b2: b2_val,
-                b3: b3_val},
+                b3: b3_val,
+                executor.Variable_node_to_mv[W1][0]: W1_val_m,
+                executor.Variable_node_to_mv[W2][0]: W2_val_m,
+                executor.Variable_node_to_mv[W3][0]: W3_val_m,
+                executor.Variable_node_to_mv[b1][0]: b1_val_m,
+                executor.Variable_node_to_mv[b2][0]: b2_val_m,
+                executor.Variable_node_to_mv[b3][0]: b3_val_m,
+                executor.Variable_node_to_mv[W1][1]: W1_val_v,
+                executor.Variable_node_to_mv[W2][1]: W2_val_v,
+                executor.Variable_node_to_mv[W3][1]: W3_val_v,
+                executor.Variable_node_to_mv[b1][1]: b1_val_v,
+                executor.Variable_node_to_mv[b2][1]: b2_val_v,
+                executor.Variable_node_to_mv[b3][1]: b3_val_v},
             convert_to_numpy_ret_vals=True)
         correct_prediction = np.equal(
             np.argmax(valid_y_val, 1),

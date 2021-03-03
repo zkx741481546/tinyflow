@@ -1,11 +1,90 @@
 """ library to take autodiff and execute a computation graph """
 from __future__ import absolute_import
+
+import threading
 import time
 import numpy as np
-from . import ndarray, gpu_op, memoryManager, memoryManagerController
+from . import ndarray, gpu_op
 import random
 import queue
 import datetime
+
+index_to_cpu_map = {}
+index_to_cpu_flag = {}
+index_to_gpu_map = {}
+
+
+class MemoryManagerController(threading.Thread):
+    def __init__(self, control_queue: queue.Queue, have_done_queue: queue.Queue):
+        threading.Thread.__init__(self)
+        self.will_do_queue = queue.Queue()
+        self.have_done_queue = have_done_queue
+        self.control_queue = control_queue
+        # todo hard code with device id again, may need to change
+        self.cpu_ctx = ndarray.cpu(0)
+        self.gpu_ctx = ndarray.gpu(0)
+        self.memoryManager = MemoryManager(self.will_do_queue, self.have_done_queue)
+        self.memoryManager.start()
+
+    def run(self):
+        while True:
+            # todo 接口内容：wait_time: 距离上一次swap的间隔时间，node_index和node_ndarray同Manager中的定义
+            # todo 在此处检查当前移动是否需要，即检查是否已经在对应的ctx中，加入变量move_to_gpu
+            # (wait_time, node_index, node_ndarray, move_to_gpu)
+            control_message = self.control_queue.get(block=True)
+            wait_time = control_message[0]
+            node_index = control_message[1]
+            move_to_gpu = control_message[2]
+            # print(node_index, move_to_gpu)
+            time.sleep(wait_time / 1000.0)
+            self.will_do_queue.put((node_index, move_to_gpu))
+
+
+class MemoryManager(threading.Thread):
+    def __init__(self, will_do_queue: queue.Queue, have_done_queue: queue.Queue):
+        threading.Thread.__init__(self)
+        self.will_do_queue = will_do_queue
+        self.have_done_queue = have_done_queue
+        # todo hard code with device id again, may need to change
+        self.cpu_ctx = ndarray.cpu(0)
+        self.gpu_ctx = ndarray.gpu(0)
+        self.cudaSwapStream = gpu_op.create_cudaStream()
+
+    def run(self):
+        while (True):
+            node = self.will_do_queue.get(block=True)
+            node_index = node[0]
+            move_to_gpu = node[1]
+            node_ndarray_new = None
+
+
+            global index_to_cpu_map
+            global index_to_gpu_map
+
+
+            if move_to_gpu == 0:
+                node_ndarray = index_to_gpu_map[node_index]
+                node_ndarray.copyto(index_to_cpu_map[node_index], self.cudaSwapStream)
+                index_to_cpu_flag[node_index] = True
+                index_to_gpu_map[node_index] = None
+                # print("swap finish: node " + str(node_index) + " to " + str(move_to_gpu))
+
+            else:
+                node_ndarray = index_to_cpu_map[node_index]
+                # time1 = datetime.datetime.now()
+
+                node_ndarray_new = ndarray.empty(node_ndarray.shape, self.gpu_ctx)
+                # time2 = datetime.datetime.now()
+
+                node_ndarray.copyto(node_ndarray_new, self.cudaSwapStream)
+                if index_to_gpu_map[node_index] is None:
+                    index_to_gpu_map[node_index] = node_ndarray_new
+                else:
+                    print("swap in 和 passive import 重合")
+                # print("swap finish: node " + str(node_index) + " to " + str(move_to_gpu))
+                # print((time2 - time1).microseconds)
+
+
 
 
 class Node(object):
@@ -84,13 +163,14 @@ def Variable(name):
 
     # 数据用
 
+
 def Placeholder(name):
     """User defined variables in an expression.
         e.g. x = Variable(name = "x")
     """
     placeholder_node = placeholder_op()
     placeholder_node.name = name
-    placeholder_node.isw = 0
+    placeholder_node.isw = 2
     return placeholder_node
 
 
@@ -160,7 +240,7 @@ class AddOp(Op):
     def __call__(self, node_A, node_B):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "(%s+%s)" % (node_A.name, node_B.name)
+        new_node.name = "+"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -210,7 +290,7 @@ class AddByConstOp(Op):
         new_node = Op.__call__(self)
         new_node.const_attr = const_val
         new_node.inputs = [node_A]
-        new_node.name = "(%s+%s)" % (node_A.name, str(const_val))
+        new_node.name = "+"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -234,7 +314,7 @@ class MulOp(Op):
     def __call__(self, node_A, node_B):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "(%s*%s)" % (node_A.name, node_B.name)
+        new_node.name = "*"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -275,7 +355,7 @@ class MulByConstOp(Op):
         new_node = Op.__call__(self)
         new_node.const_attr = const_val
         new_node.inputs = [node_A]
-        new_node.name = "(%s*%s)" % (node_A.name, str(const_val))
+        new_node.name = "*"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -301,8 +381,7 @@ class MatMulOp(Op):
         new_node.matmul_attr_trans_A = trans_A
         new_node.matmul_attr_trans_B = trans_B
         new_node.inputs = [node_A, node_B]
-        new_node.name = "MatMul(%s,%s,%s,%s)" % (
-            node_A.name, node_B.name, str(trans_A), str(trans_B))
+        new_node.name = "MatMul"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -397,7 +476,7 @@ class ZerosLikeOp(Op):
         """Creates a node that represents np.zeros(node_A.shape)."""
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "Zeroslike(%s)" % node_A.name
+        new_node.name = "Zeroslike"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -422,7 +501,7 @@ class OnesLikeOp(Op):
         """Creates a node that represents np.ones(node_A.shape)."""
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "Oneslike(%s)" % node_A.name
+        new_node.name = "Oneslike"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -449,7 +528,7 @@ class ReduceSumAxisZeroOp(Op):
         """
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "ReduceSumAxisZero(%s)" % (node_A.name)
+        new_node.name = "ReduceSumAxisZero"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -485,7 +564,7 @@ class BroadcastToOp(Op):
         """
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "BroadcastTo(%s,%s.shape)" % (node_A.name, node_B.name)
+        new_node.name = "BroadcastTo"
         new_node.type = type
         return new_node
 
@@ -508,7 +587,7 @@ class BroadcastToGradientOp(Op):
         # A: outgrad (2,5,3,4), B: (3,4)
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "BroadcastToGradient(%s,%s.shape)" % (node_A.name, node_B.name)
+        new_node.name = "BroadcastToGradient"
         new_node.type = type
         new_node.cudnnlist = [0]
         return new_node
@@ -517,6 +596,8 @@ class BroadcastToGradientOp(Op):
         # gpu_op.broadcast_to_backward(input_vals[0], output_val, node.type)
 
         # tic = time.time()
+
+
         memorytoSaving = gpu_op.reduce_sum_new(input_vals[0], output_val, node.cudnnlist[0], cudnnHandle, cudaStream)
 
         return memorytoSaving
@@ -547,7 +628,7 @@ class SoftmaxCrossEntropyOp(Op):
     def __call__(self, node_A, node_B):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "SoftmaxXEntropy(%s,%s)" % (node_A.name, node_B.name)
+        new_node.name = "SoftmaxXEntropy"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -577,7 +658,7 @@ class SoftmaxOp(Op):
     def __call__(self, node_A):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "Softmax(%s)" % (node_A.name)
+        new_node.name = "Softmax"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -602,7 +683,7 @@ class ReluOp(Op):
     def __call__(self, node_A):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "Relu(%s)" % (node_A.name)
+        new_node.name = "Relu"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -626,7 +707,7 @@ class ReluGradientOp(Op):
         """node_B is output_grad"""
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "ReluGradient(%s)" % (node_A.name)
+        new_node.name = "ReluGradient"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -650,7 +731,7 @@ class ExpOp(Op):
     def __call__(self, node_A):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "Exp(%s)" % (node_A.name)
+        new_node.name = "Exp"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -672,14 +753,14 @@ class LogOp(Op):
     def __call__(self, node_A):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "Log(%s)" % (node_A.name)
+        new_node.name = "Log"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
         assert use_numpy == False
         assert len(input_vals) == 1
 
-        gpu_op.matrix_log(input_vals[0], output_val)
+        gpu_op.matrix_log(input_vals[0], output_val, cudaStream)
 
         return 0
 
@@ -694,7 +775,7 @@ class ReverseOp(Op):
     def __call__(self, node_A):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "Reverse(%s)" % (node_A.name)
+        new_node.name = "Reverse"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -706,7 +787,7 @@ class ReverseOp(Op):
         return 0
 
     def gradient(self, node, output_grad):
-        return [output_grad * (-1) * pow_op(node, 2)]
+        return [output_grad * (-1) * reverse_op(pow_op(node, 2))]
 
     def infer_shape(self, node, input_shapes, cudnnHandle):
         return input_shapes[0]
@@ -716,7 +797,7 @@ class PowOp(Op):
     def __call__(self, node_A, val):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "Pow(%s)" % (node_A.name)
+        new_node.name = "Pow"
         new_node.val = val
         return new_node
 
@@ -739,7 +820,7 @@ class Convolution1DForwardOp(Op):
     def __call__(self, node_A, node_B, dataformat, padding, v):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "Convolution1DForward(%s)withfilter(%s)" % (node_A.name, node_B.name)
+        new_node.name = "Convolution1DForward"
         new_node.dataformat = dataformat
         new_node.padding = padding
         new_node.v = v
@@ -768,8 +849,7 @@ class Convolution1DBackwardOp(Op):
     def __call__(self, node_A, node_B, node_C, type, cudnnlist):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B, node_C]
-        new_node.name = "Convolution1DBackward(%s)withfilter(%s)withdoutput(%s)withtype(%s)" % (
-        node_A.name, node_B.name, node_C.name, type)
+        new_node.name = "Convolution1DBackward"
         # 0 is dinput, 1 is dfilter
         new_node.type = type
         new_node.cudnnlist = cudnnlist
@@ -803,7 +883,7 @@ class Convolution2DForwardOp(Op):
     def __call__(self, node_A, node_B, dataformat, padding, u, v):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "Convolution2DForward(%s)withfilter(%s)" % (node_A.name, node_B.name)
+        new_node.name = "Convolution2DForward"
         new_node.dataformat = dataformat
         new_node.padding = padding
         new_node.u = u
@@ -835,8 +915,7 @@ class Convolution2DBackwardOp(Op):
     def __call__(self, node_A, node_B, node_C, type, cudnnlist):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B, node_C]
-        new_node.name = "Convolution2DBackward(%s)withfilter(%s)withdoutput(%s)withtype(%s)" % (
-        node_A.name, node_B.name, node_C.name, type)
+        new_node.name = "Convolution2DBackward"
         # 0 is dinput, 1 is dfilter
         new_node.type = type
 
@@ -873,7 +952,7 @@ class Convolution3DForwardOp(Op):
     def __call__(self, node_A, node_B, dataformat, padding, s1, s2, s3):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "Convolution3DForward(%s)withfilter(%s)" % (node_A.name, node_B.name)
+        new_node.name = "Convolution3DForward"
         new_node.dataformat = dataformat
         new_node.padding = padding
         new_node.s1 = s1
@@ -904,8 +983,7 @@ class Convolution3DBackwardOp(Op):
     def __call__(self, node_A, node_B, node_C, type, cache, cudnnlist):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B, node_C]
-        new_node.name = "Convolution3DBackward(%s)withfilter(%s)withdoutput(%s)withtype(%s)" % (
-        node_A.name, node_B.name, node_C.name, type)
+        new_node.name = "Convolution3DBackward"
         # 0 is dinput, 1 is dfilter
         new_node.type = type
         new_node.cudnnlist = cudnnlist
@@ -940,7 +1018,7 @@ class FlattenOp(Op):
     def __call__(self, node_A):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "Flatten(%s)" % (node_A.name)
+        new_node.name = "Flatten"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -964,7 +1042,7 @@ class FlattenGradientOp(Op):
     def __call__(self, node_A, node_B):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "FlattenGradient(%s)withdoutput(%s)" % (node_A.name, node_B.name)
+        new_node.name = "FlattenGradient"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -983,7 +1061,7 @@ class ActivationForwardOp(Op):
     def __call__(self, node_A, dataformat, activationMode):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "ActivationForward(%s)" % (node_A.name)
+        new_node.name = "ActivationForward"
         new_node.dataformat = dataformat
         new_node.activationMode = activationMode
         new_node.cudnnlist = [0]
@@ -1007,7 +1085,7 @@ class ActivationBackwardOp(Op):
     def __call__(self, node_A, node_B, node_C, activationMode, cudnnlist):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B, node_C]
-        new_node.name = "ActivationBackwardwithinput(%s)withdoutput(%s)withoutput(%s)" % (node_A.name, node_B.name, node_C.name)
+        new_node.name = "ActivationBackward"
         new_node.activationMode = activationMode
         new_node.cudnnlist = cudnnlist
         return new_node
@@ -1030,7 +1108,7 @@ class Pooling1DForwardOp(Op):
     def __call__(self, node_A, dataformat, poolingMode, pad_w, v, filter_w):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "Pooling1DForward(%s)" % (node_A.name)
+        new_node.name = "Pooling1DForward"
         new_node.dataformat = dataformat
         new_node.poolingMode = poolingMode
         new_node.pad_w = pad_w
@@ -1060,7 +1138,7 @@ class Pooling1DBackwardOp(Op):
     def __call__(self, node_A, node_B, node_C, cudnnlist):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B, node_C]
-        new_node.name = "Pooling1DBackwardwithinput(%s)withdoutput(%s)withoutput(%s)" % (node_A.name, node_B.name, node_C.name)
+        new_node.name = "Pooling1DBackward"
         new_node.cudnnlist = cudnnlist
         return new_node
 
@@ -1082,7 +1160,7 @@ class Pooling2DForwardOp(Op):
     def __call__(self, node_A, dataformat, poolingMode, pad_h, pad_w, u, v, filter_h, filter_w):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "Pooling2DForward(%s)" % (node_A.name)
+        new_node.name = "Pooling2DForward"
         new_node.dataformat = dataformat
         new_node.poolingMode = poolingMode
         new_node.pad_h = pad_h
@@ -1117,7 +1195,7 @@ class Pooling2DBackwardOp(Op):
     def __call__(self, node_A, node_B, node_C, cudnnlist):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B, node_C]
-        new_node.name = "Pooling2DBackwardwithinput(%s)withdoutput(%s)withoutput(%s)" % (node_A.name, node_B.name, node_C.name)
+        new_node.name = "Pooling2DBackward"
         new_node.cudnnlist = cudnnlist
         return new_node
 
@@ -1138,7 +1216,7 @@ class Pooling3DForwardOp(Op):
     def __call__(self, node_A, dataformat, poolingMode, pad1, pad2, pad3, s1, s2, s3, filter1, filter2, filter3):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "Pooling3DForward(%s)" % (node_A.name)
+        new_node.name = "Pooling3DForward"
         new_node.dataformat = dataformat
         new_node.poolingMode = poolingMode
         new_node.pad1 = pad1
@@ -1175,7 +1253,7 @@ class Pooling3DBackwardOp(Op):
     def __call__(self, node_A, node_B, node_C, cudnnlist):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B, node_C]
-        new_node.name = "Pooling3DBackwardwithinput(%s)withdoutput(%s)withoutput(%s)" % (node_A.name, node_B.name, node_C.name)
+        new_node.name = "Pooling3DBackward"
         new_node.cudnnlist = cudnnlist
         return new_node
 
@@ -1196,7 +1274,7 @@ class DropoutForwardOp(Op):
     def __call__(self, node_A, dataformat, dropout):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "DropoutForward(%s)" % (node_A.name)
+        new_node.name = "DropoutForward"
         new_node.dataformat = dataformat
         new_node.dropout = dropout
         new_node.seed = [0]
@@ -1227,7 +1305,7 @@ class DropoutBackwardOp(Op):
     def __call__(self, node_A, reserveSpace_p, cudnnlist):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "DropoutBackwardwithdoutput(%s)" % (node_A.name)
+        new_node.name = "DropoutBackward"
         new_node.reserveSpace_p = reserveSpace_p
         new_node.cudnnlist = cudnnlist
         return new_node
@@ -1248,7 +1326,7 @@ class FullyDropoutForwardOp(Op):
     def __call__(self, node_A, dataformat, dropout):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "FullyDropoutForward(%s)" % (node_A.name)
+        new_node.name = "FullyDropoutForward"
         new_node.dataformat = dataformat
         new_node.dropout = dropout
         new_node.seed = [0]
@@ -1283,7 +1361,7 @@ class FullyDropoutBackwardOp(Op):
     def __call__(self, node_A, reserveSpace_p, cudnnlist):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "FullyDropoutBackwardwithdoutput(%s)" % (node_A.name)
+        new_node.name = "FullyDropoutBackward"
         new_node.reserveSpace_p = reserveSpace_p
         new_node.cudnnlist = cudnnlist
         return new_node
@@ -1305,7 +1383,7 @@ class FullyActivationForwardOp(Op):
     def __call__(self, node_A, dataformat, activationMode):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "FullyActivationForward(%s)" % (node_A.name)
+        new_node.name = "FullyActivationForward"
         new_node.dataformat = dataformat
         new_node.activationMode = activationMode
         new_node.cudnnlist = [0]
@@ -1335,7 +1413,7 @@ class FullyActivationBackwardOp(Op):
     def __call__(self, node_A, node_B, node_C, activationMode, cudnnlist):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B, node_C]
-        new_node.name = "FullyActivationBackwardwithinput(%s)withdoutput(%s)withoutput(%s)" % (node_A.name, node_B.name, node_C.name)
+        new_node.name = "FullyActivationBackward"
         new_node.activationMode = activationMode
         new_node.cudnnlist = cudnnlist
         return new_node
@@ -1347,6 +1425,7 @@ class FullyActivationBackwardOp(Op):
 
         gpu_op.activation_backward(input_vals[0], output_val, input_vals[2], input_vals[1], node.activationMode,
                                    node.cudnnlist[0], cudnnHandle, cudaStream)
+
         # print("FullyActivationBackwardOp_end")
         return 0
 
@@ -1358,34 +1437,42 @@ class FullyActivationBackwardOp(Op):
 
 
 class ReduceSumOp(Op):
-    def __call__(self, node_A, axis=-1):
+    def __call__(self, node_A):
+        # A:  (3,4)
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "ReduceSum(%s)with(%s)" % (node_A.name, axis)
-        new_node.axis = axis
-        new_node.inputshape = [0]
+        new_node.name = "ReduceSumOp"
+        new_node.type = "NHWC"
+        new_node.cudnnlist = [0]
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
-        assert use_numpy == False
-        assert len(input_vals) == 1
-        gpu_op.reduce_sum(input_vals[0], output_val, node.axis)
+        # gpu_op.broadcast_to_backward(input_vals[0], output_val, node.type)
 
-        return 0
+        # tic = time.time()
+        memorytoSaving = gpu_op.reduce_sum_new(input_vals[0], output_val, node.cudnnlist[0], cudnnHandle, cudaStream)
+
+        return memorytoSaving
+
+        # toc = time.time()
+        # print("use time1: " + str(toc - tic))
 
     def gradient(self, node, output_grad):
-        return [reduce_sum_backward_op(output_grad, node.inputshape, node.axis)]
+        return [broadcastto_op(output_grad, node.inputs[0])]
 
     def infer_shape(self, node, input_shapes, cudnnHandle):
-        node.inputshape[0] = input_shapes[0]
-        return gpu_op.reduce_sum_get_outshape(input_shapes[0], node.axis)
+        inputshape, outputshape = gpu_op.reduce_sum_get_real_shape(input_shapes[0], (1,), node.type)
+
+        node.cudnnlist[0] = gpu_op.reduce_sum_get_cudnnlist(inputshape, outputshape, node.type, cudnnHandle)
+
+        return (1,)
 
 
 class ReduceSumBackwardOp(Op):
     def __call__(self, node_A, inputshape, axis):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "ReduceSumBackward(%s)withinputshape(%s)withaxis(%s)" % (node_A.name, inputshape[0], axis)
+        new_node.name = "ReduceSumBackward"
         new_node.axis = axis
         new_node.inputshape = inputshape
         return new_node
@@ -1405,43 +1492,45 @@ class ReduceSumBackwardOp(Op):
 
 
 class ReduceMeanOp(Op):
-    def __call__(self, node_A, axis=-1):
+    def __call__(self, node_A):
+        # A:  (3,4)
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "ReduceMean(%s)with(%s)" % (node_A.name, axis)
-        new_node.axis = axis
-        new_node.inputshape = [0, 0]
+        new_node.name = "ReduceSumOp"
+        new_node.type = "NHWC"
+        new_node.cudnnlist = [0]
+        new_node.meanfloat = [1.]
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
-        assert use_numpy == False
-        assert len(input_vals) == 1
-        val = 1
-        if node.axis == -1:
-            val = gpu_op.get_shape_size(node.inputshape[0])
-        else:
-            val = node.inputshape[0][node.axis]
-        node.inputshape[1] = val
-        ctx = ndarray.gpu(0)
-        outtmp = ndarray.empty(output_val.shape, ctx)
-        gpu_op.reduce_sum(input_vals[0], outtmp, node.axis)
-        gpu_op.matrix_elementwise_multiply_by_const(outtmp, 1. / val, output_val, cudaStream)
+        # gpu_op.broadcast_to_backward(input_vals[0], output_val, node.type)
 
-        return 0
+        # tic = time.time()
+
+        memorytoSaving = gpu_op.reduce_sum_new(input_vals[0], output_val, node.cudnnlist[0], cudnnHandle, cudaStream)
+        gpu_op.matrix_elementwise_multiply_by_const(output_val, node.meanfloat[0], output_val, cudaStream)
+        return memorytoSaving
+
+        # toc = time.time()
+        # print("use time1: " + str(toc - tic))
 
     def gradient(self, node, output_grad):
-        return [reduce_mean_backward_op(output_grad, node.inputshape, node.axis)]
+        return [broadcastto_op(output_grad, node.inputs[0]) * node.meanfloat[0]]
 
     def infer_shape(self, node, input_shapes, cudnnHandle):
-        node.inputshape[0] = input_shapes[0]
-        return gpu_op.reduce_sum_get_outshape(input_shapes[0], node.axis)
+        node.meanfloat[0] = 1. / gpu_op.get_shape_size(input_shapes[0])
+        inputshape, outputshape = gpu_op.reduce_sum_get_real_shape(input_shapes[0], (1,), node.type)
+
+        node.cudnnlist[0] = gpu_op.reduce_sum_get_cudnnlist(inputshape, outputshape, node.type, cudnnHandle)
+
+        return (1,)
 
 
 class ReduceMeanBackwardOp(Op):
     def __call__(self, node_A, inputshape, axis):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "ReduceMeanBackward(%s)withinputshape(%s)withaxis(%s)" % (node_A.name, inputshape[0], axis)
+        new_node.name = "ReduceMeanBackward"
         new_node.axis = axis
         new_node.inputshape = inputshape
         return new_node
@@ -1466,7 +1555,7 @@ class CrossEntropyOp(Op):
     def __call__(self, node_A, node_B):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "CrossEntropy(%s,%s)" % (node_A.name, node_B.name)
+        new_node.name = "CrossEntropy"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, use_numpy=True):
@@ -1503,7 +1592,7 @@ class L1lossOp(Op):
     def __call__(self, node_A, node_B):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "L1loss(%s,%s)" % (node_A.name, node_B.name)
+        new_node.name = "L1loss"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -1528,7 +1617,7 @@ class L1lossgradientOp(Op):
     def __call__(self, node_A, node_B, node_C):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B, node_C]
-        new_node.name = "L1lossgradient(%s,%s,%s)" % (node_A.name, node_B.name, node_C.name)
+        new_node.name = "L1lossgradient"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -1545,7 +1634,7 @@ class L2lossOp(Op):
     def __call__(self, node_A, node_B):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "L2loss(%s,%s)" % (node_A.name, node_B.name)
+        new_node.name = "L2loss"
         new_node.inputshape = [0]
         return new_node
 
@@ -1571,7 +1660,7 @@ class L2lossgradientOp(Op):
     def __call__(self, node_A, node_B, node_C):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B, node_C]
-        new_node.name = "L2lossgradient(%s,%s,%s) " % (node_A.name, node_B.name, node_C.name)
+        new_node.name = "L2lossgradient"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -1588,7 +1677,7 @@ class L1regularOp(Op):
     def __call__(self, node_A):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "L1regular(%s)" % (node_A.name)
+        new_node.name = "L1regular"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -1611,7 +1700,7 @@ class L1regulargradientOp(Op):
     def __call__(self, node_A, node_B):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "L1regulargradient(%s,%s)" % (node_A.name, node_B.name)
+        new_node.name = "L1regulargradient"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -1628,7 +1717,7 @@ class L2regularOp(Op):
     def __call__(self, node_A):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "L2regular(%s)" % (node_A.name)
+        new_node.name = "L2regular"
         new_node.inputshape = [0]
         return new_node
 
@@ -1652,7 +1741,7 @@ class L2regulargradientOp(Op):
     def __call__(self, node_A, node_B):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "L2regulargradient(%s,%s)" % (node_A.name, node_B.name)
+        new_node.name = "L2regulargradient"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -1669,7 +1758,7 @@ class BNForwardOp(Op):
     def __call__(self, node_A, dataformat, batchNormMode):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "BNForward(%s)" % (node_A.name)
+        new_node.name = "BNForward"
         new_node.dataformat = dataformat
         new_node.batchNormMode = batchNormMode
         new_node.Save_p = [0, 0]
@@ -1701,7 +1790,7 @@ class BNBackwardOp(Op):
     def __call__(self, node_A, node_B, batchNormMode, Save_p, cudnnlist):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "BNBackward(%s)withdoutput(%s)" % (node_A.name, node_B.name)
+        new_node.name = "BNBackward"
         new_node.Save_p = Save_p
         new_node.batchNormMode = batchNormMode
         new_node.cudnnlist = cudnnlist
@@ -1726,7 +1815,7 @@ class FullyBNForwardOp(Op):
     def __call__(self, node_A, dataformat):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "FullyBNForward(%s)" % (node_A.name)
+        new_node.name = "FullyBNForward"
         new_node.dataformat = dataformat
         new_node.batchNormMode = "pre_activation"
         new_node.Save_p = [0, 0]
@@ -1758,7 +1847,7 @@ class FullyBNBackwardOp(Op):
     def __call__(self, node_A, node_B, batchNormMode, Save_p, cudnnlist):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "FullyBNBackward(%s)withdoutput(%s)" % (node_A.name, node_B.name)
+        new_node.name = "FullyBNBackward"
         new_node.Save_p = Save_p
         new_node.batchNormMode = batchNormMode
         new_node.cudnnlist = cudnnlist
@@ -1783,7 +1872,7 @@ class ConcatForwardOp(Op):
     def __call__(self, node_A, node_B):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "ConcatForward(%s,%s)" % (node_A.name, node_B.name)
+        new_node.name = "ConcatForward"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -1807,7 +1896,7 @@ class ConcatBackwardOp(Op):
     def __call__(self, node_A, node_B, node_C, type):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B, node_C]
-        new_node.name = "Concatbackward(%s,%s,%s)withtype(%s)" % (node_A.name, node_B.name, node_C.name, type)
+        new_node.name = "Concatbackward"
         new_node.type = type
         return new_node
 
@@ -1835,7 +1924,7 @@ class SqueezeOp(Op):
     def __call__(self, node_A):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
-        new_node.name = "Squeeze(%s)" % (node_A.name)
+        new_node.name = "Squeeze"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -1857,7 +1946,7 @@ class SqueezeGradientOp(Op):
     def __call__(self, node_A, node_B):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "SqueezeGradient(%s)withdoutput(%s)" % (node_A.name, node_B.name)
+        new_node.name = "SqueezeGradient"
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
@@ -1876,13 +1965,15 @@ class SgdOp(Op):
     def __call__(self, node_A, node_B, learning_rate):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B]
-        new_node.name = "SgdOp(%s,%s)" % (node_A.name, node_B.name)
+        new_node.name = "SgdOp"
         new_node.learning_rate = learning_rate
         return new_node
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
         assert use_numpy == False
+
         gpu_op.sgd_update(input_vals[0], input_vals[1], node.learning_rate, cudaStream)
+
         return 0
 
     def gradient(self, node, output_grad):
@@ -1890,6 +1981,84 @@ class SgdOp(Op):
 
     def infer_shape(self, node, input_shapes, cudnnHandle):
         return input_shapes[0]
+
+
+class AdamOp(Op):
+    def __call__(self, node_A, node_B, node_C, node_D, b1, b2, b1t, b2t, e, learning_rate):
+        new_node = Op.__call__(self)
+        new_node.inputs = [node_A, node_B, node_C, node_D]
+        new_node.name = "AdamOp"
+        new_node.b1 = b1
+        new_node.b2 = b2
+        new_node.b1t = b1t #list
+        new_node.b2t = b2t #list
+        new_node.e = e
+        new_node.learning_rate = learning_rate
+        return new_node
+
+    def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
+        assert use_numpy == False
+
+        gpu_op.adam_mv(input_vals[1], input_vals[2], input_vals[3], node.b1, node.b2, cudaStream)
+        gpu_op.adam_compute(input_vals[0], input_vals[1], input_vals[2], node.b1t[0],
+                            node.b2t[0], node.e, node.learning_rate, cudaStream)
+
+        return 0
+
+    def gradient(self, node, output_grad):
+        raise NotImplementedError
+
+    def infer_shape(self, node, input_shapes, cudnnHandle):
+        return input_shapes[0]
+
+class CrossOp(Op):
+    def __call__(self, node_A, node_B, ismean):
+        new_node = Op.__call__(self)
+        new_node.inputs = [node_A, node_B]
+        new_node.name = "CrossOp"
+        new_node.ismean = ismean
+        new_node.meanfloat = [1.]
+        return new_node
+
+    def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
+        assert use_numpy == False
+        gpu_op.cross(input_vals[0], input_vals[1], output_val, node.meanfloat[0], cudaStream)
+
+        return 0
+
+    def gradient(self, node, output_grad):
+        grad_A = cross_backward_op(node.inputs[0], node.inputs[1], output_grad, node.meanfloat)
+        grad_B = zeroslike_op(node.inputs[1])
+        return [grad_A,grad_B]
+
+    def infer_shape(self, node, input_shapes, cudnnHandle):
+        if node.ismean:
+            node.meanfloat[0] = 1. / gpu_op.get_shape_size(input_shapes[0])
+        return input_shapes[0]
+
+class CrossBackwardOp(Op):
+    def __call__(self, node_A, node_B, node_C, meanfloat):
+        new_node = Op.__call__(self)
+        new_node.inputs = [node_A, node_B, node_C]
+        new_node.name = "CrossBackwardOp"
+        new_node.meanfloat = meanfloat
+        return new_node
+
+    def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
+        assert use_numpy == False
+        gpu_op.cross_backward(input_vals[0], input_vals[1], input_vals[2], output_val, node.meanfloat[0], cudaStream)
+
+        return 0
+
+    def gradient(self, node, output_grad):
+        raise NotImplementedError
+
+    def infer_shape(self, node, input_shapes, cudnnHandle):
+        return input_shapes[0]
+
+
+
+
 
 
 def dense(X, W, b):
@@ -1918,9 +2087,20 @@ def conv3withbias(input, filter, bias, dataformat, padding, stride1, stride2, st
     cb = c + b
     return cb
 
-    # Create global singletons of operators.
+def crossEntropy_loss(input,y_,ismean=True):
+
+    new_node = cross_op(input,y_,ismean)
+
+    return reduce_sum_op(new_node)
+    #return reduce_mean_op(new_node)
 
 
+
+
+# Create global singletons of operators.
+adam_op = AdamOp()
+cross_op = CrossOp()
+cross_backward_op = CrossBackwardOp()
 add_op = AddOp()
 mul_op = MulOp()
 add_byconst_op = AddByConstOp()
@@ -1997,7 +2177,7 @@ def nodelist_to_name(nodelist):
 class Executor(object):
     """Executor computes values for given set of nodes in computation graph."""
 
-    def __init__(self, eval_node_list, ctx, top_control_queue, top_message_queue):
+    def __init__(self, targetloss, y, learning_rate, top_control_queue, top_message_queue):
         """
         Parameters
         ----------
@@ -2008,25 +2188,64 @@ class Executor(object):
         node_to_arr_map: dict from node to ndarray.NDArray allocated for node
         feed_shapes: shapes of feed_dict from last run(...)
         """
-        self.eval_node_list = eval_node_list
+        self.b1 = 0.9
+        self.b2 = 0.999
+        self.e = 0.00000001
+        self.b1t = [0.9]
+        self.b2t = [0.999]
+        self.targetloss = targetloss
+        self.y = y
+        self.learning_rate = learning_rate
+        self.Variable_node_list = get_Variable_node_list(self.targetloss)
+
+        self.Variable_node_list.reverse()
+        self.Variable_node_grad_list = gradients(self.targetloss, self.Variable_node_list)  # 反向node
+        # 这个eval_node_list全是adamop不是变量
+        self.eval_node_list, self.mv, self.Variable_node_to_mv = getcomputelist(self.Variable_node_list,
+                                                                                self.Variable_node_grad_list, self.b1,
+                                                                                self.b2, self.b1t, self.b2t, self.e,
+                                                                                self.learning_rate)  # 其内存还是Variable，但是换了个点
+
+        # 根据这个topo_order算
         self.topo_order = find_topo_sort(self.eval_node_list)
+        self.topo_order = swapadam(self.topo_order)
+        #按网络顺序
+        self.Variable_node_list.reverse()
+        self.eval_node_list = []
+        self.eval_node_list.append(targetloss)
+        order_var = []
+        order_m = []
+        order_v = []
+        for node in self.Variable_node_list:
+            order_var.append(node)
+            order_m.append(self.Variable_node_to_mv[node][0])
+            order_v.append(self.Variable_node_to_mv[node][1])
+
+        #平时要返回的nodelist
+        #[loss, 变量按网络顺序, 变量对应的m，变量对应的v,结果y]
+        self.eval_node_list = self.eval_node_list + order_var +order_m +order_v
+        self.eval_node_list.append(self.y)
         self.node_to_shape_map = None
         self.feed_shapes = None
         self.top_control_queue = top_control_queue
         self.top_message_queue = top_message_queue
         self.control_queue = queue.Queue()
         self.have_done_queue = queue.Queue()
-        self.memoryManagerController = memoryManagerController.MemoryManagerController(self.control_queue,
-                                                                                       self.have_done_queue)
+        self.memoryManagerController = MemoryManagerController(self.control_queue,
+                                                               self.have_done_queue)
         self.memoryManagerController.start()
 
         self.cudaStream = gpu_op.create_cudaStream()
         self.cudnnHandle = gpu_op.create_cudnnHandle(self.cudaStream)
         self.cublasHandle = gpu_op.create_cublasHandle(self.cudaStream)
-
         # 按照拓扑排序设定index
         for i in range(len(self.topo_order)):
             self.topo_order[i].index = i
+
+        print("最后输出index：")
+        for node in self.eval_node_list:
+            print(node.index)
+
 
         # todo 此处hard code，后续需要修改
         self.ctx_cpu = ndarray.cpu(0)
@@ -2094,8 +2313,11 @@ class Executor(object):
             return len(unmatched_item) == 0
 
         # Assume self.ctx is None implies numpy array and numpy ops.
+        global index_to_gpu_map
+        global index_to_cpu_map
+        global index_to_cpu_flag
         index_to_gpu_map = {}
-        index_to_cpu_map = {}
+        index_to_cpu_flag = {}
         for node, value in feed_dict.items():
             # convert values to ndarray.NDArray if necessary
             # 源代码会在此处将所有CPU的内容引入GPU，为了自定义，禁用自动引入的功能，改为手动引入
@@ -2109,24 +2331,31 @@ class Executor(object):
         # collect shapes for all placeholders
         feed_shapes = {}
         for i in index_to_gpu_map:
-            feed_shapes[self.topo_order[i]] = index_to_gpu_map[node.index].shape
+            feed_shapes[self.topo_order[i]] = index_to_gpu_map[self.topo_order[i].index].shape
 
         if self.feed_shapes is None:
             # todo 向上层返回需要的信息
             self.infer_shape(feed_shapes)
             self.feed_shapes = feed_shapes
+            for node in self.node_to_shape_map:
+                index_to_cpu_map[node.index] = ndarray.empty(self.node_to_shape_map[node], self.ctx_cpu)
             return_list = []
             for node in self.topo_order:
                 node_inputs = []
                 for node_input in node.inputs:
                     node_inputs.append(node_input.index)
-                node_size = np.prod(self.node_to_shape_map[node])*4
+                node_size = np.prod(self.node_to_shape_map[node]) * 4
+                print("node" + str(node.index) + " size: " + str(node_size))
                 # if len(self.node_to_shape_map[node]) == 1:
                 #     node_size = self.node_to_shape_map[node][0] * 4
                 # else:
                 #     node_size = self.node_to_shape_map[node][0] * self.node_to_shape_map[node][1] * 4
-                operation_name = node.op
-                return_element = [node.index, node_inputs, node_size, operation_name]
+                operation_name = node.name
+                is_input = 0
+                if node.index in index_to_gpu_map:
+                    if node.name != "X" and node.name != "y_":
+                        is_input = 1
+                return_element = [node.index, node_inputs, node_size, operation_name, is_input]
                 return_list.append(return_element)
             self.top_message_queue.put([0, return_list])
         else:
@@ -2148,7 +2377,6 @@ class Executor(object):
 
         for node in self.topo_order:
             node.array_status = 0
-
 
         # todo 测试用
         have_got_global_message = False
@@ -2217,10 +2445,10 @@ class Executor(object):
                 # Skip placeholder nodes. Values already provided by feed_dict.
                 # 找出feed_dict中已经包含的ndarray
                 node.array_status = 1
+                assert not node.inputs
                 continue
 
             input_vals = []
-
 
             for recompute_index in node.recompute_list:
                 # todo  加入重计算的过程,重计算在被动swap in之前
@@ -2234,13 +2462,41 @@ class Executor(object):
                 index_to_gpu_map[recompute_node.index] = recompute_ndarray
 
             for n in node.inputs:
-                if n.array_status == 0:
+                if index_to_gpu_map[n.index] is None:
+                    print("when computing " + str(node.index) + " passive import " + str(n.index))
                     # todo 考虑如何被动进行swap in
-                    node_ndarray_new = ndarray.empty(node_to_cpu_map[n].shape, self.ctx_gpu)
-                    index_to_cpu_map[n.index].copyto(node_ndarray_new)
-                    index_to_gpu_map[n] = node_ndarray_new
+                    assert index_to_cpu_flag[n.index], "输入tensor不在cpu上"
+                    node_ndarray_new = ndarray.empty(self.node_to_shape_map[n], self.ctx_gpu)
+                    index_to_cpu_map[n.index].copyto(node_ndarray_new, self.cudaStream)
+                    index_to_gpu_map[n.index] = node_ndarray_new
                     n.array_status = 1
                 input_vals.append(index_to_gpu_map[n.index])
+
+            if node.issgd:
+                # todo 对于sgd op 的特殊处理
+                t1 = datetime.datetime.now()
+                node.op.compute(node, input_vals, None, self.cudnnHandle, self.cublasHandle, self.cudaStream, False)
+                t2 = datetime.datetime.now()
+                node.runtime = (t2 - t1).microseconds / 1000
+
+                for control_message in node.control_message_out:
+                    wait_time = control_message[0]
+                    node_id = control_message[1]
+                    move_to_gpu = control_message[2]
+                    if move_to_gpu:
+                        self.control_queue.put((wait_time, node_id, move_to_gpu))
+                    else:
+                        self.control_queue.put((wait_time, node_id, move_to_gpu))
+
+                    # # todo 仅用于测试
+                    # self.have_done_queue.get(block=True)
+                    # print("swap end")
+
+                for release_message in node.release_list:
+                    index_to_gpu_map[release_message] = None
+                    self.topo_order[release_message].array_status = 0
+
+                continue
 
             # input_vals = [node_to_gpu_map[n] for n in node.inputs]
             node_val = ndarray.empty(self.node_to_shape_map[node], self.ctx_gpu)
@@ -2254,41 +2510,57 @@ class Executor(object):
                 node_id = control_message[1]
                 move_to_gpu = control_message[2]
                 if move_to_gpu:
-                    self.control_queue.put((wait_time, node_id, node_to_cpu_map[self.topo_order[node_id]], move_to_gpu))
+                    self.control_queue.put((wait_time, node_id, move_to_gpu))
                 else:
-                    self.control_queue.put((wait_time, node_id, node_to_gpu_map[self.topo_order[node_id]], move_to_gpu))
+                    self.control_queue.put((wait_time, node_id, move_to_gpu))
 
             t1 = datetime.datetime.now()
             node.op.compute(node, input_vals, node_val, self.cudnnHandle, self.cublasHandle, self.cudaStream, False)
             t2 = datetime.datetime.now()
-            node.runtime = (t2 - t1).microseconds
+            node.runtime = (t2 - t1).microseconds / 1000
             # print(node.index)
 
             # print(node.index)
             index_to_gpu_map[node.index] = node_val
-
 
             for control_message in node.control_message_out:
                 wait_time = control_message[0]
                 node_id = control_message[1]
                 move_to_gpu = control_message[2]
                 if move_to_gpu:
-                    self.control_queue.put((wait_time, node_id, node_to_cpu_map[self.topo_order[node_id]], move_to_gpu))
+                    self.control_queue.put((wait_time, node_id, move_to_gpu))
                 else:
-                    self.control_queue.put((wait_time, node_id, node_to_gpu_map[self.topo_order[node_id]], move_to_gpu))
+                    self.control_queue.put((wait_time, node_id, move_to_gpu))
 
                 # # todo 仅用于测试
                 # self.have_done_queue.get(block=True)
                 # print("swap end")
-
 
             for release_message in node.release_list:
                 index_to_gpu_map[release_message] = None
                 self.topo_order[release_message].array_status = 0
 
 
+
+        # adam更新参数
+        self.b1t[0] = self.b1t[0] * self.b1
+        self.b2t[0] = self.b2t[0] * self.b2
         # Collect node values.
         # print("success one batch")
+        for n in self.eval_node_list:
+            if index_to_gpu_map[n.index] is None:
+                assert False, "node " + str(n.index) + "is not on gpu"
+
+        # #todo only for test:
+        # for n in self.topo_order:
+        #     print("calculating node " + str(n.index) + " using ")
+        #     for i in n.inputs:
+        #         print(str(i.index))
+
+        for n in self.topo_order:
+            if n.index in index_to_gpu_map:
+                print(index_to_gpu_map[n.index].asnumpy())
+
         return [index_to_gpu_map[n.index] for n in self.eval_node_list]
 
 
@@ -2359,6 +2631,73 @@ def topo_sort_dfs(node, visited, topo_order):
     for n in node.inputs:
         topo_sort_dfs(n, visited, topo_order)
     topo_order.append(node)
+
+def get_Variable_node_list(node):
+
+    visited = set()
+    Variable_order = []
+    Variable_sort_dfs(node, visited, Variable_order)
+    return Variable_order
+
+
+
+def Variable_sort_dfs(node, visited, Variable_order):
+    """Post-order DFS"""
+    #
+    # if isinstance(node, list):
+    #     print(node[0])
+    if node in visited:
+        return
+    visited.add(node)
+    for n in node.inputs:
+        Variable_sort_dfs(n, visited, Variable_order)
+
+    if node.isw == 1:
+        Variable_order.append(node)
+
+
+
+def getcomputelist(Variable_node_list, Variable_node_grad_list, b1, b2, b1t, b2t, e,learning_rate):
+
+    computelist = []
+    mv = []
+    Variable_node_to_mv = {}
+    for i in range(len(Variable_node_list)):
+        m = Variable(Variable_node_list[i].name+'m')
+        v = Variable(Variable_node_list[i].name+'v')
+        mv.append(m)
+        mv.append(v)
+        Variable_node_to_mv[Variable_node_list[i]] = (m,v)
+        adamnode = adam_op(Variable_node_list[i],m,v,Variable_node_grad_list[i], b1, b2, b1t, b2t, e, learning_rate)
+        adamnode.issgd = 1#代表不用为这个点加内存
+        computelist.append(adamnode)
+
+    return computelist,mv,Variable_node_to_mv
+
+
+
+
+def swapadam(topoorder):
+    for i in range(len(topoorder)):
+        if topoorder[i].issgd == 1 and topoorder[i].isw == 0:
+            topoorder[i].isw = 3
+            filter = topoorder[i].inputs[0]
+            j = len(topoorder) - 1
+            while j > i:
+                if topoorder[j].issgd == 1:
+                    j = j - 1
+                    continue
+                if filter in topoorder[j].inputs:
+
+                    break
+                j = j - 1
+
+            tmp = topoorder[i]
+            topoorder.remove(tmp)
+            topoorder.insert(j,tmp)
+    for i in range(len(topoorder)):
+        print(i,topoorder[i])
+    return topoorder
 
 
 def sum_node_list(node_list):
