@@ -129,22 +129,22 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
     b1_val = rand.normal(scale=0.1, size=(256))
     b2_val = rand.normal(scale=0.1, size=(100))
     b3_val = rand.normal(scale=0.1, size=(10))
-    W1_val_m = np.empty(shape=(784, 256), dtype=np.float32)
-    W2_val_m = np.empty(shape=(256, 100), dtype=np.float32)
-    W3_val_m = np.empty(shape=(100, 10), dtype=np.float32)
-    b1_val_m = np.empty(shape=(256), dtype=np.float32)
-    b2_val_m = np.empty(shape=(100), dtype=np.float32)
-    b3_val_m = np.empty(shape=(10), dtype=np.float32)
-    W1_val_v = np.empty(shape=(784, 256), dtype=np.float32)
-    W2_val_v = np.empty(shape=(256, 100), dtype=np.float32)
-    W3_val_v = np.empty(shape=(100, 10), dtype=np.float32)
-    b1_val_v = np.empty(shape=(256), dtype=np.float32)
-    b2_val_v = np.empty(shape=(100), dtype=np.float32)
-    b3_val_v = np.empty(shape=(10), dtype=np.float32)
-    X_val = np.empty(shape=(batch_size, 784), dtype=np.float32)
-    y_val = np.empty(shape=(batch_size, 10), dtype=np.float32)
-    valid_X_val = np.empty(shape=(batch_size, 784), dtype=np.float32)
-    valid_y_val = np.empty(shape=(batch_size, 10), dtype=np.float32)
+    W1_val_m = np.zeros(shape=(784, 256), dtype=np.float32)
+    W2_val_m = np.zeros(shape=(256, 100), dtype=np.float32)
+    W3_val_m = np.zeros(shape=(100, 10), dtype=np.float32)
+    b1_val_m = np.zeros(shape=(256), dtype=np.float32)
+    b2_val_m = np.zeros(shape=(100), dtype=np.float32)
+    b3_val_m = np.zeros(shape=(10), dtype=np.float32)
+    W1_val_v = np.zeros(shape=(784, 256), dtype=np.float32)
+    W2_val_v = np.zeros(shape=(256, 100), dtype=np.float32)
+    W3_val_v = np.zeros(shape=(100, 10), dtype=np.float32)
+    b1_val_v = np.zeros(shape=(256), dtype=np.float32)
+    b2_val_v = np.zeros(shape=(100), dtype=np.float32)
+    b3_val_v = np.zeros(shape=(10), dtype=np.float32)
+    X_val = np.zeros(shape=(batch_size, 784), dtype=np.float32)
+    y_val = np.zeros(shape=(batch_size, 10), dtype=np.float32)
+    valid_X_val = np.zeros(shape=(batch_size, 784), dtype=np.float32)
+    valid_y_val = np.zeros(shape=(batch_size, 10), dtype=np.float32)
 
     # todo 此处修改回gpu
     W1_val = ndarray.array(W1_val, ctx=executor_ctx)
@@ -206,7 +206,8 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
                         executor.Variable_node_to_mv[b1][1]: b1_val_v,
                         executor.Variable_node_to_mv[b2][1]: b2_val_v,
                         executor.Variable_node_to_mv[b3][1]: b3_val_v})
-            print(loss_val.asnumpy())
+            # print(loss_val.asnumpy())
+            # return
 
 
 
