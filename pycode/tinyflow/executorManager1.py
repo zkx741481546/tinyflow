@@ -8,8 +8,9 @@ import numpy as np
 import os
 import queue
 import multiprocessing
-
-os.environ['CUDA_VISIBLE_DEVICES'] = '7'
+from tools import *
+GPU = load_gpu()
+os.environ['CUDA_VISIBLE_DEVICES'] = f'{GPU}'
 
 def load_mnist_data(dataset):
     # 加载mnist数据集
@@ -80,9 +81,15 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
     W1 = ad.Variable(name="W1")
     W2 = ad.Variable(name="W2")
     W3 = ad.Variable(name="W3")
+    W4 = ad.Variable(name="W4")
+    W5 = ad.Variable(name="W5")
+    W6 = ad.Variable(name="W6")
     b1 = ad.Variable(name="b1")
     b2 = ad.Variable(name="b2")
     b3 = ad.Variable(name="b3")
+    b4 = ad.Variable(name="b4")
+    b5 = ad.Variable(name="b5")
+    b6 = ad.Variable(name="b6")
     X = ad.Placeholder(name="X")
     y_ = ad.Placeholder(name="y_")
 
@@ -95,10 +102,15 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
     # relu(z3 W2+b2)
     z5 = ad.dense(z3, W2, b2)
     z6 = ad.fullyactivation_forward_op(z5, "NCHW", "relu")
-
+    z7 = ad.dense(z6, W3, b3)
+    z8 = ad.fullyactivation_forward_op(z7, "NCHW", "relu")
+    z9 = ad.dense(z8, W4, b4)
+    z10 = ad.fullyactivation_forward_op(z9, "NCHW", "relu")
+    z11 = ad.dense(z10, W5, b5)
+    z12 = ad.fullyactivation_forward_op(z11, "NCHW", "relu")
     # softmax(z5 W2+b2)
-    z8 = ad.dense(z6, W3, b3)
-    y = ad.fullyactivation_forward_op(z8, "NCHW", "softmax")
+    z13 = ad.dense(z12, W6, b6)
+    y = ad.fullyactivation_forward_op(z13, "NCHW", "softmax")
     loss = ad.crossEntropy_loss(y, y_)
 
 
@@ -123,24 +135,43 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
     # Initialize parameters
     # 随机初始化网络中的w和b
     rand = np.random.RandomState(seed=123)
-    W1_val = rand.normal(scale=0.1, size=(784, 256))
-    W2_val = rand.normal(scale=0.1, size=(256, 100))
-    W3_val = rand.normal(scale=0.1, size=(100, 10))
-    b1_val = rand.normal(scale=0.1, size=(256))
-    b2_val = rand.normal(scale=0.1, size=(100))
-    b3_val = rand.normal(scale=0.1, size=(10))
-    W1_val_m = np.empty(shape=(784, 256), dtype=np.float32)
-    W2_val_m = np.empty(shape=(256, 100), dtype=np.float32)
-    W3_val_m = np.empty(shape=(100, 10), dtype=np.float32)
-    b1_val_m = np.empty(shape=(256), dtype=np.float32)
-    b2_val_m = np.empty(shape=(100), dtype=np.float32)
-    b3_val_m = np.empty(shape=(10), dtype=np.float32)
-    W1_val_v = np.empty(shape=(784, 256), dtype=np.float32)
-    W2_val_v = np.empty(shape=(256, 100), dtype=np.float32)
-    W3_val_v = np.empty(shape=(100, 10), dtype=np.float32)
-    b1_val_v = np.empty(shape=(256), dtype=np.float32)
-    b2_val_v = np.empty(shape=(100), dtype=np.float32)
-    b3_val_v = np.empty(shape=(10), dtype=np.float32)
+    W1_val = rand.normal(scale=0.1, size=(784, 4096))
+    W2_val = rand.normal(scale=0.1, size=(4096, 1024))
+    W3_val = rand.normal(scale=0.1, size=(1024, 1024))
+    W4_val = rand.normal(scale=0.1, size=(1024, 1024))
+    W5_val = rand.normal(scale=0.1, size=(1024, 1024))
+    W6_val = rand.normal(scale=0.1, size=(1024, 10))
+
+    b1_val = rand.normal(scale=0.1, size=(4096))
+    b2_val = rand.normal(scale=0.1, size=(1024))
+    b3_val = rand.normal(scale=0.1, size=(1024))
+    b4_val = rand.normal(scale=0.1, size=(1024))
+    b5_val = rand.normal(scale=0.1, size=(1024))
+    b6_val = rand.normal(scale=0.1, size=(10))
+    W1_val_m = np.empty(shape=(784, 4096), dtype=np.float32)
+    W2_val_m = np.empty(shape=(4096, 1024), dtype=np.float32)
+    W3_val_m = np.empty(shape=(1024, 1024), dtype=np.float32)
+    W4_val_m = np.empty(shape=(1024, 1024), dtype=np.float32)
+    W5_val_m = np.empty(shape=(1024, 1024), dtype=np.float32)
+    W6_val_m = np.empty(shape=(1024, 10), dtype=np.float32)
+    b1_val_m = np.empty(shape=(4096), dtype=np.float32)
+    b2_val_m = np.empty(shape=(1024), dtype=np.float32)
+    b3_val_m = np.empty(shape=(1024), dtype=np.float32)
+    b4_val_m = np.empty(shape=(1024), dtype=np.float32)
+    b5_val_m = np.empty(shape=(1024), dtype=np.float32)
+    b6_val_m = np.empty(shape=(10), dtype=np.float32)
+    W1_val_v = np.empty(shape=(784, 4096), dtype=np.float32)
+    W2_val_v = np.empty(shape=(4096, 1024), dtype=np.float32)
+    W3_val_v = np.empty(shape=(1024, 1024), dtype=np.float32)
+    W4_val_v = np.empty(shape=(1024, 1024), dtype=np.float32)
+    W5_val_v = np.empty(shape=(1024, 1024), dtype=np.float32)
+    W6_val_v = np.empty(shape=(1024, 10), dtype=np.float32)
+    b1_val_v = np.empty(shape=(4096), dtype=np.float32)
+    b2_val_v = np.empty(shape=(1024), dtype=np.float32)
+    b3_val_v = np.empty(shape=(1024), dtype=np.float32)
+    b4_val_v = np.empty(shape=(1024), dtype=np.float32)
+    b5_val_v = np.empty(shape=(1024), dtype=np.float32)
+    b6_val_v = np.empty(shape=(10), dtype=np.float32)
     X_val = np.empty(shape=(batch_size, 784), dtype=np.float32)
     y_val = np.empty(shape=(batch_size, 10), dtype=np.float32)
     valid_X_val = np.empty(shape=(batch_size, 784), dtype=np.float32)
@@ -150,21 +181,39 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
     W1_val = ndarray.array(W1_val, ctx=executor_ctx)
     W2_val = ndarray.array(W2_val, ctx=executor_ctx)
     W3_val = ndarray.array(W3_val, ctx=executor_ctx)
+    W4_val = ndarray.array(W4_val, ctx=executor_ctx)
+    W5_val = ndarray.array(W5_val, ctx=executor_ctx)
+    W6_val = ndarray.array(W6_val, ctx=executor_ctx)
     b1_val = ndarray.array(b1_val, ctx=executor_ctx)
     b2_val = ndarray.array(b2_val, ctx=executor_ctx)
     b3_val = ndarray.array(b3_val, ctx=executor_ctx)
+    b4_val = ndarray.array(b4_val, ctx=executor_ctx)
+    b5_val = ndarray.array(b5_val, ctx=executor_ctx)
+    b6_val = ndarray.array(b6_val, ctx=executor_ctx)
     W1_val_m = ndarray.array(W1_val_m, ctx=executor_ctx)
     W2_val_m = ndarray.array(W2_val_m, ctx=executor_ctx)
     W3_val_m = ndarray.array(W3_val_m, ctx=executor_ctx)
+    W4_val_m = ndarray.array(W4_val_m, ctx=executor_ctx)
+    W5_val_m = ndarray.array(W5_val_m, ctx=executor_ctx)
+    W6_val_m = ndarray.array(W6_val_m, ctx=executor_ctx)
     b1_val_m = ndarray.array(b1_val_m, ctx=executor_ctx)
     b2_val_m = ndarray.array(b2_val_m, ctx=executor_ctx)
     b3_val_m = ndarray.array(b3_val_m, ctx=executor_ctx)
+    b4_val_m = ndarray.array(b4_val_m, ctx=executor_ctx)
+    b5_val_m = ndarray.array(b5_val_m, ctx=executor_ctx)
+    b6_val_m = ndarray.array(b6_val_m, ctx=executor_ctx)
     W1_val_v = ndarray.array(W1_val_v, ctx=executor_ctx)
     W2_val_v = ndarray.array(W2_val_v, ctx=executor_ctx)
     W3_val_v = ndarray.array(W3_val_v, ctx=executor_ctx)
+    W4_val_v = ndarray.array(W4_val_v, ctx=executor_ctx)
+    W5_val_v = ndarray.array(W5_val_v, ctx=executor_ctx)
+    W6_val_v = ndarray.array(W6_val_v, ctx=executor_ctx)
     b1_val_v = ndarray.array(b1_val_v, ctx=executor_ctx)
     b2_val_v = ndarray.array(b2_val_v, ctx=executor_ctx)
     b3_val_v = ndarray.array(b3_val_v, ctx=executor_ctx)
+    b4_val_v = ndarray.array(b4_val_v, ctx=executor_ctx)
+    b5_val_v = ndarray.array(b5_val_v, ctx=executor_ctx)
+    b6_val_v = ndarray.array(b6_val_v, ctx=executor_ctx)
     X_val = ndarray.array(X_val, ctx=executor_ctx)
     y_val = ndarray.array(y_val, ctx=executor_ctx)
 
@@ -184,30 +233,48 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
 
 
             # 计算单步的梯度
-            loss_val, _, _, _, _, _, _,_, _, _, _, _, _,_, _, _, _, _, _,_ = executor.run(
+            res = executor.run(
                     feed_dict={
                         X: X_val,
                         y_: y_val,
                         W1: W1_val,
                         W2: W2_val,
                         W3: W3_val,
+                        W4: W4_val,
+                        W5: W5_val,
+                        W6: W6_val,
                         b1: b1_val,
                         b2: b2_val,
                         b3: b3_val,
+                        b4: b4_val,
+                        b5: b5_val,
+                        b6: b6_val,
                         executor.Variable_node_to_mv[W1][0]:W1_val_m,
                         executor.Variable_node_to_mv[W2][0]:W2_val_m,
                         executor.Variable_node_to_mv[W3][0]:W3_val_m,
+                        executor.Variable_node_to_mv[W4][0]: W4_val_m,
+                        executor.Variable_node_to_mv[W5][0]: W5_val_m,
+                        executor.Variable_node_to_mv[W6][0]: W6_val_m,
                         executor.Variable_node_to_mv[b1][0]:b1_val_m,
                         executor.Variable_node_to_mv[b2][0]:b2_val_m,
                         executor.Variable_node_to_mv[b3][0]:b3_val_m,
+                        executor.Variable_node_to_mv[b4][0]: b4_val_m,
+                        executor.Variable_node_to_mv[b5][0]: b5_val_m,
+                        executor.Variable_node_to_mv[b6][0]: b6_val_m,
                         executor.Variable_node_to_mv[W1][1]: W1_val_v,
                         executor.Variable_node_to_mv[W2][1]: W2_val_v,
                         executor.Variable_node_to_mv[W3][1]: W3_val_v,
+                        executor.Variable_node_to_mv[W4][1]: W4_val_v,
+                        executor.Variable_node_to_mv[W5][1]: W5_val_v,
+                        executor.Variable_node_to_mv[W6][1]: W6_val_v,
                         executor.Variable_node_to_mv[b1][1]: b1_val_v,
                         executor.Variable_node_to_mv[b2][1]: b2_val_v,
-                        executor.Variable_node_to_mv[b3][1]: b3_val_v})
+                        executor.Variable_node_to_mv[b3][1]: b3_val_v,
+                        executor.Variable_node_to_mv[b4][1]: b4_val_v,
+                        executor.Variable_node_to_mv[b5][1]: b5_val_v,
+                        executor.Variable_node_to_mv[b6][1]: b6_val_v})
             # print(loss_val.asnumpy())
-
+            loss_val = res[0]
 
 
             # todo 更新sgd_update_gpu_on_cpu
@@ -244,29 +311,48 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
         valid_X_val[:] = valid_set_x[minibatch_start:minibatch_end]
         valid_y_val[:] = convert_to_one_hot(
             valid_set_y[minibatch_start:minibatch_end])
-        _, _, _, _, _, _, _,_, _, _, _, _, _,_, _, _, _, _, _, valid_y_predicted = executor.run(
+        res = executor.run(
             feed_dict={
-                X: valid_X_val,
-                y_: valid_y_val,
+                X: X_val,
+                y_: y_val,
                 W1: W1_val,
                 W2: W2_val,
                 W3: W3_val,
+                W4: W4_val,
+                W5: W5_val,
+                W6: W6_val,
                 b1: b1_val,
                 b2: b2_val,
                 b3: b3_val,
+                b4: b4_val,
+                b5: b5_val,
+                b6: b6_val,
                 executor.Variable_node_to_mv[W1][0]: W1_val_m,
                 executor.Variable_node_to_mv[W2][0]: W2_val_m,
                 executor.Variable_node_to_mv[W3][0]: W3_val_m,
+                executor.Variable_node_to_mv[W4][0]: W4_val_m,
+                executor.Variable_node_to_mv[W5][0]: W5_val_m,
+                executor.Variable_node_to_mv[W6][0]: W6_val_m,
                 executor.Variable_node_to_mv[b1][0]: b1_val_m,
                 executor.Variable_node_to_mv[b2][0]: b2_val_m,
                 executor.Variable_node_to_mv[b3][0]: b3_val_m,
+                executor.Variable_node_to_mv[b4][0]: b4_val_m,
+                executor.Variable_node_to_mv[b5][0]: b5_val_m,
+                executor.Variable_node_to_mv[b6][0]: b6_val_m,
                 executor.Variable_node_to_mv[W1][1]: W1_val_v,
                 executor.Variable_node_to_mv[W2][1]: W2_val_v,
                 executor.Variable_node_to_mv[W3][1]: W3_val_v,
+                executor.Variable_node_to_mv[W4][1]: W4_val_v,
+                executor.Variable_node_to_mv[W5][1]: W5_val_v,
+                executor.Variable_node_to_mv[W6][1]: W6_val_v,
                 executor.Variable_node_to_mv[b1][1]: b1_val_v,
                 executor.Variable_node_to_mv[b2][1]: b2_val_v,
-                executor.Variable_node_to_mv[b3][1]: b3_val_v},
+                executor.Variable_node_to_mv[b3][1]: b3_val_v,
+                executor.Variable_node_to_mv[b4][1]: b4_val_v,
+                executor.Variable_node_to_mv[b5][1]: b5_val_v,
+                executor.Variable_node_to_mv[b6][1]: b6_val_v},
             convert_to_numpy_ret_vals=True)
+        valid_y_predicted = res[-1]
         correct_prediction = np.equal(
             np.argmax(valid_y_val, 1),
             np.argmax(valid_y_predicted, 1)).astype(np.float)
