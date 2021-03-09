@@ -2322,12 +2322,19 @@ class Executor(object):
         for node, value in feed_dict.items():
             # convert values to ndarray.NDArray if necessary
             # 源代码会在此处将所有CPU的内容引入GPU，为了自定义，禁用自动引入的功能，改为手动引入
-            if isinstance(value, np.ndarray):
-                index_to_gpu_map[node.index] = ndarray.array(value, ctx=self.ctx_cpu)
-            elif isinstance(value, ndarray.NDArray):
+            # if isinstance(value, np.ndarray):
+            #     index_to_gpu_map[node.index] = ndarray.array(value, ctx=self.ctx_cpu)
+            # elif isinstance(value, ndarray.NDArray):
+            #
+            #     index_to_gpu_map[node.index] = value
+            # else:
+            #     assert False, "feed_dict value type not supported"
+            if ndarray.is_gpu_ctx(value.ctx):
                 index_to_gpu_map[node.index] = value
             else:
-                assert False, "feed_dict value type not supported"
+                index_to_gpu_map[node.index] = None
+                index_to_cpu_flag[node_index] = True
+                index_to_cpu_map[node.index] = value
 
         # collect shapes for all placeholders
         feed_shapes = {}
@@ -2566,7 +2573,15 @@ class Executor(object):
         #     if n.index in index_to_gpu_map:
         #         print(index_to_gpu_map[n.index].asnumpy())
 
-        return [index_to_gpu_map[n.index] for n in self.eval_node_list]
+        eval_return_list = []
+        for n in self.eval_node_list:
+            if index_to_gpu_map[n.index] is None and index_to_cpu_flag[n.index]:
+                eval_return_list.append(index_to_cpu_map[n.index])
+            else:
+                eval_return_list.append(index_to_gpu_map[n.index])
+
+        return eval_return_list
+        # return [index_to_gpu_map[n.index] for n in self.eval_node_list]
 
 
 def gradients(output_node, node_list):
