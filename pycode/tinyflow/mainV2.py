@@ -197,7 +197,7 @@ def load_all_model():
     os.environ["CUDA_VISIBLE_DEVICES"] = old_gpu
 
 
-def get_predicted_execution_time(op_name, input_tensors, logged_time: list):
+def get_predicted_execution_time(op_name, inputs_of_model, logged_time: list):
     # if len(logged_time) > 1:
     #     return logged_time[1]
     # else:
@@ -206,17 +206,13 @@ def get_predicted_execution_time(op_name, input_tensors, logged_time: list):
     old_gpu = os.environ["CUDA_VISIBLE_DEVICES"]
     os.environ["CUDA_VISIBLE_DEVICES"] = '-1'
     # 使用CPU进行推理
-    input = []
-    for tensor in input_tensors:
-        shape = list(tensor.shape)
-        input = input.extend(shape)
     gpu_usage = nvmlDeviceGetUtilizationRates(handle).gpu
-    input.append(gpu_usage)
+    inputs_of_model.append(gpu_usage)
     scaler, model = models[op_name]
-    assert len(input) == len(scaler)
+    assert len(inputs_of_model) == len(scaler)
     for i, mean, std in enumerate(scaler):
-        input[i] = (input[i] - mean) / std
-    predicted_time = model.predict(input)
+        inputs_of_model[i] = (inputs_of_model[i] - mean) / std
+    predicted_time = model.predict(inputs_of_model)
     if len(logged_time) > 0:
         predicted_time = [predicted_time]
         predicted_time.extend(logged_time)
@@ -466,7 +462,7 @@ def get_framework_info(info, logged_time, job_id):
     global_time = 0
     parameter = []
     #   operation_id
-    for output_tensor_id, input_tensor_id, output_tensor_size, operation_name, is_parameter, is_input_or_output, shape in info:
+    for output_tensor_id, input_tensor_id, output_tensor_size, operation_name, is_parameter, is_input_or_output, shape, inputs_of_model in info:
         # is_parameter: 生成的张量是否为参数
         # 输入的为Byte
         # 转换为MB
@@ -475,7 +471,7 @@ def get_framework_info(info, logged_time, job_id):
         for tensor_id in input_tensor_id:
             input_tensor = tensors[tensor_id]
             input_tensors.append(input_tensor)
-        time_cost = get_predicted_execution_time(operation_name, input_tensors, logged_time[output_tensor_id])
+        time_cost = get_predicted_execution_time(operation_name, inputs_of_model, logged_time[output_tensor_id])
         output_tensor = Tensor(tensor_id=output_tensor_id, job_id=job_id, size=output_tensor_size, source_tensors=input_tensors, recomputation_time=time_cost, is_parameter=is_parameter, shape=shape)
         output_access = TensorAccess(tensor=output_tensor, time=global_time + time_cost, run_time=time_cost, access_type=AccessType.output, operation_id=output_tensor_id, operation_name=operation_name)
         tensor_access_list.append(output_access)
