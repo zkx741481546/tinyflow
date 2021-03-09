@@ -87,6 +87,10 @@ class NDArray(object):
         check_call(_LIB.DLArrayFree(self.handle))
 
 
+    def free_gpu(self):
+        check_call(_LIB.DLArrayFree(self.handle))
+
+
     @property
     def shape(self):
         """Shape of this array"""

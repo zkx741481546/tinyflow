@@ -66,6 +66,7 @@ class MemoryManager(threading.Thread):
                 node_ndarray = index_to_gpu_map[node_index]
                 node_ndarray.copyto(index_to_cpu_map[node_index], self.cudaSwapStream)
                 index_to_cpu_flag[node_index] = True
+                index_to_gpu_map[node_index].free_gpu()
                 index_to_gpu_map[node_index] = None
                 # print("swap finish: node " + str(node_index) + " to " + str(move_to_gpu))
 

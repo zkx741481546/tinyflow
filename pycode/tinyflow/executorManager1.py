@@ -184,28 +184,28 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
 
 
             # 计算单步的梯度
-            loss_val, _, _, _, _, _, _,_, _, _, _, _, _,_, _, _, _, _, _,_ = executor.run(
-                    feed_dict={
-                        X: X_val,
-                        y_: y_val,
-                        W1: W1_val,
-                        W2: W2_val,
-                        W3: W3_val,
-                        b1: b1_val,
-                        b2: b2_val,
-                        b3: b3_val,
-                        executor.Variable_node_to_mv[W1][0]:W1_val_m,
-                        executor.Variable_node_to_mv[W2][0]:W2_val_m,
-                        executor.Variable_node_to_mv[W3][0]:W3_val_m,
-                        executor.Variable_node_to_mv[b1][0]:b1_val_m,
-                        executor.Variable_node_to_mv[b2][0]:b2_val_m,
-                        executor.Variable_node_to_mv[b3][0]:b3_val_m,
-                        executor.Variable_node_to_mv[W1][1]: W1_val_v,
-                        executor.Variable_node_to_mv[W2][1]: W2_val_v,
-                        executor.Variable_node_to_mv[W3][1]: W3_val_v,
-                        executor.Variable_node_to_mv[b1][1]: b1_val_v,
-                        executor.Variable_node_to_mv[b2][1]: b2_val_v,
-                        executor.Variable_node_to_mv[b3][1]: b3_val_v})
+            loss_val, W1_val, b1_val, W2_val, b2_val, W3_val, b3_val, W1_val_m, b1_val_m, W2_val_m, b2_val_m, W3_val_m, b3_val_m, W1_val_v, b1_val_v, W2_val_v, b2_val_v, W3_val_v, b3_val_v, _ = executor.run(
+                feed_dict={
+                    X: X_val,
+                    y_: y_val,
+                    W1: W1_val,
+                    W2: W2_val,
+                    W3: W3_val,
+                    b1: b1_val,
+                    b2: b2_val,
+                    b3: b3_val,
+                    executor.Variable_node_to_mv[W1][0]: W1_val_m,
+                    executor.Variable_node_to_mv[W2][0]: W2_val_m,
+                    executor.Variable_node_to_mv[W3][0]: W3_val_m,
+                    executor.Variable_node_to_mv[b1][0]: b1_val_m,
+                    executor.Variable_node_to_mv[b2][0]: b2_val_m,
+                    executor.Variable_node_to_mv[b3][0]: b3_val_m,
+                    executor.Variable_node_to_mv[W1][1]: W1_val_v,
+                    executor.Variable_node_to_mv[W2][1]: W2_val_v,
+                    executor.Variable_node_to_mv[W3][1]: W3_val_v,
+                    executor.Variable_node_to_mv[b1][1]: b1_val_v,
+                    executor.Variable_node_to_mv[b2][1]: b2_val_v,
+                    executor.Variable_node_to_mv[b3][1]: b3_val_v})
             # print(loss_val.asnumpy())
             # return
 
