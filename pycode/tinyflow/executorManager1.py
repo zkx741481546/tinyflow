@@ -148,34 +148,35 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
     b4_val = rand.normal(scale=0.1, size=(1024))
     b5_val = rand.normal(scale=0.1, size=(1024))
     b6_val = rand.normal(scale=0.1, size=(10))
-    W1_val_m = np.empty(shape=(784, 4096), dtype=np.float32)
-    W2_val_m = np.empty(shape=(4096, 1024), dtype=np.float32)
-    W3_val_m = np.empty(shape=(1024, 1024), dtype=np.float32)
-    W4_val_m = np.empty(shape=(1024, 1024), dtype=np.float32)
-    W5_val_m = np.empty(shape=(1024, 1024), dtype=np.float32)
-    W6_val_m = np.empty(shape=(1024, 10), dtype=np.float32)
-    b1_val_m = np.empty(shape=(4096), dtype=np.float32)
-    b2_val_m = np.empty(shape=(1024), dtype=np.float32)
-    b3_val_m = np.empty(shape=(1024), dtype=np.float32)
-    b4_val_m = np.empty(shape=(1024), dtype=np.float32)
-    b5_val_m = np.empty(shape=(1024), dtype=np.float32)
-    b6_val_m = np.empty(shape=(10), dtype=np.float32)
-    W1_val_v = np.empty(shape=(784, 4096), dtype=np.float32)
-    W2_val_v = np.empty(shape=(4096, 1024), dtype=np.float32)
-    W3_val_v = np.empty(shape=(1024, 1024), dtype=np.float32)
-    W4_val_v = np.empty(shape=(1024, 1024), dtype=np.float32)
-    W5_val_v = np.empty(shape=(1024, 1024), dtype=np.float32)
-    W6_val_v = np.empty(shape=(1024, 10), dtype=np.float32)
-    b1_val_v = np.empty(shape=(4096), dtype=np.float32)
-    b2_val_v = np.empty(shape=(1024), dtype=np.float32)
-    b3_val_v = np.empty(shape=(1024), dtype=np.float32)
-    b4_val_v = np.empty(shape=(1024), dtype=np.float32)
-    b5_val_v = np.empty(shape=(1024), dtype=np.float32)
-    b6_val_v = np.empty(shape=(10), dtype=np.float32)
-    X_val = np.empty(shape=(batch_size, 784), dtype=np.float32)
-    y_val = np.empty(shape=(batch_size, 10), dtype=np.float32)
-    valid_X_val = np.empty(shape=(batch_size, 784), dtype=np.float32)
-    valid_y_val = np.empty(shape=(batch_size, 10), dtype=np.float32)
+    W1_val_m = np.zeros(shape=(784, 4096), dtype=np.float32)
+    W2_val_m = np.zeros(shape=(4096, 1024), dtype=np.float32)
+    W3_val_m = np.zeros(shape=(1024, 1024), dtype=np.float32)
+    W4_val_m = np.zeros(shape=(1024, 1024), dtype=np.float32)
+    W5_val_m = np.zeros(shape=(1024, 1024), dtype=np.float32)
+    W6_val_m = np.zeros(shape=(1024, 10), dtype=np.float32)
+    b1_val_m = np.zeros(shape=(4096), dtype=np.float32)
+    b2_val_m = np.zeros(shape=(1024), dtype=np.float32)
+    b3_val_m = np.zeros(shape=(1024), dtype=np.float32)
+    b4_val_m = np.zeros(shape=(1024), dtype=np.float32)
+    b5_val_m = np.zeros(shape=(1024), dtype=np.float32)
+    b6_val_m = np.zeros(shape=(10), dtype=np.float32)
+    W1_val_v = np.zeros(shape=(784, 4096), dtype=np.float32)
+    W2_val_v = np.zeros(shape=(4096, 1024), dtype=np.float32)
+    W3_val_v = np.zeros(shape=(1024, 1024), dtype=np.float32)
+    W4_val_v = np.zeros(shape=(1024, 1024), dtype=np.float32)
+    W5_val_v = np.zeros(shape=(1024, 1024), dtype=np.float32)
+    W6_val_v = np.zeros(shape=(1024, 10), dtype=np.float32)
+    b1_val_v = np.zeros(shape=(4096), dtype=np.float32)
+    b2_val_v = np.zeros(shape=(1024), dtype=np.float32)
+    b3_val_v = np.zeros(shape=(1024), dtype=np.float32)
+    b4_val_v = np.zeros(shape=(1024), dtype=np.float32)
+    b5_val_v = np.zeros(shape=(1024), dtype=np.float32)
+    b6_val_v = np.zeros(shape=(10), dtype=np.float32)
+    X_val = np.zeros(shape=(batch_size, 784), dtype=np.float32)
+    y_val = np.zeros(shape=(batch_size, 10), dtype=np.float32)
+    valid_X_val = np.zeros(shape=(batch_size, 784), dtype=np.float32)
+    valid_y_val = np.zeros(shape=(batch_size, 10), dtype=np.float32)
+
 
     # todo 此处修改回gpu
     W1_val = ndarray.array(W1_val, ctx=executor_ctx)
@@ -219,6 +220,43 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
 
     # 此处以上将数据分别转化为cpu和gpu两种格式
 
+    feed_dict = {
+        W1: W1_val,
+        W2: W2_val,
+        W3: W3_val,
+        W4: W4_val,
+        W5: W5_val,
+        W6: W6_val,
+        b1: b1_val,
+        b2: b2_val,
+        b3: b3_val,
+        b4: b4_val,
+        b5: b5_val,
+        b6: b6_val,
+        executor.Variable_node_to_mv[W1][0]: W1_val_m,
+        executor.Variable_node_to_mv[W2][0]: W2_val_m,
+        executor.Variable_node_to_mv[W3][0]: W3_val_m,
+        executor.Variable_node_to_mv[W4][0]: W4_val_m,
+        executor.Variable_node_to_mv[W5][0]: W5_val_m,
+        executor.Variable_node_to_mv[W6][0]: W6_val_m,
+        executor.Variable_node_to_mv[b1][0]: b1_val_m,
+        executor.Variable_node_to_mv[b2][0]: b2_val_m,
+        executor.Variable_node_to_mv[b3][0]: b3_val_m,
+        executor.Variable_node_to_mv[b4][0]: b4_val_m,
+        executor.Variable_node_to_mv[b5][0]: b5_val_m,
+        executor.Variable_node_to_mv[b6][0]: b6_val_m,
+        executor.Variable_node_to_mv[W1][1]: W1_val_v,
+        executor.Variable_node_to_mv[W2][1]: W2_val_v,
+        executor.Variable_node_to_mv[W3][1]: W3_val_v,
+        executor.Variable_node_to_mv[W4][1]: W4_val_v,
+        executor.Variable_node_to_mv[W5][1]: W5_val_v,
+        executor.Variable_node_to_mv[W6][1]: W6_val_v,
+        executor.Variable_node_to_mv[b1][1]: b1_val_v,
+        executor.Variable_node_to_mv[b2][1]: b2_val_v,
+        executor.Variable_node_to_mv[b3][1]: b3_val_v,
+        executor.Variable_node_to_mv[b4][1]: b4_val_v,
+        executor.Variable_node_to_mv[b5][1]: b5_val_v,
+        executor.Variable_node_to_mv[b6][1]: b6_val_v}
 
 
     lr = 1.0e-3
@@ -231,52 +269,17 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
             y_val[:] = convert_to_one_hot(
                 train_set_y[minibatch_start:minibatch_end])
 
+            feed_dict[X] = X_val
+            feed_dict[y_] = y_val
+
 
             # 计算单步的梯度
-            res = executor.run(
-                    feed_dict={
-                        X: X_val,
-                        y_: y_val,
-                        W1: W1_val,
-                        W2: W2_val,
-                        W3: W3_val,
-                        W4: W4_val,
-                        W5: W5_val,
-                        W6: W6_val,
-                        b1: b1_val,
-                        b2: b2_val,
-                        b3: b3_val,
-                        b4: b4_val,
-                        b5: b5_val,
-                        b6: b6_val,
-                        executor.Variable_node_to_mv[W1][0]:W1_val_m,
-                        executor.Variable_node_to_mv[W2][0]:W2_val_m,
-                        executor.Variable_node_to_mv[W3][0]:W3_val_m,
-                        executor.Variable_node_to_mv[W4][0]: W4_val_m,
-                        executor.Variable_node_to_mv[W5][0]: W5_val_m,
-                        executor.Variable_node_to_mv[W6][0]: W6_val_m,
-                        executor.Variable_node_to_mv[b1][0]:b1_val_m,
-                        executor.Variable_node_to_mv[b2][0]:b2_val_m,
-                        executor.Variable_node_to_mv[b3][0]:b3_val_m,
-                        executor.Variable_node_to_mv[b4][0]: b4_val_m,
-                        executor.Variable_node_to_mv[b5][0]: b5_val_m,
-                        executor.Variable_node_to_mv[b6][0]: b6_val_m,
-                        executor.Variable_node_to_mv[W1][1]: W1_val_v,
-                        executor.Variable_node_to_mv[W2][1]: W2_val_v,
-                        executor.Variable_node_to_mv[W3][1]: W3_val_v,
-                        executor.Variable_node_to_mv[W4][1]: W4_val_v,
-                        executor.Variable_node_to_mv[W5][1]: W5_val_v,
-                        executor.Variable_node_to_mv[W6][1]: W6_val_v,
-                        executor.Variable_node_to_mv[b1][1]: b1_val_v,
-                        executor.Variable_node_to_mv[b2][1]: b2_val_v,
-                        executor.Variable_node_to_mv[b3][1]: b3_val_v,
-                        executor.Variable_node_to_mv[b4][1]: b4_val_v,
-                        executor.Variable_node_to_mv[b5][1]: b5_val_v,
-                        executor.Variable_node_to_mv[b6][1]: b6_val_v})
+            res = executor.run(feed_dict=feed_dict)
             # print(loss_val.asnumpy())
             loss_val = res[0]
-            # print(loss_val.asnumpy())
-            # return
+            feed_dict = res[1]
+            print(loss_val.asnumpy())
+            return
 
 
 

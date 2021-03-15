@@ -2319,6 +2319,8 @@ class Executor(object):
         global index_to_cpu_flag
         index_to_gpu_map = {}
         index_to_cpu_flag = {}
+        feed_shapes = {}
+
         for node, value in feed_dict.items():
             # convert values to ndarray.NDArray if necessary
             # 源代码会在此处将所有CPU的内容引入GPU，为了自定义，禁用自动引入的功能，改为手动引入
@@ -2331,15 +2333,17 @@ class Executor(object):
             #     assert False, "feed_dict value type not supported"
             if ndarray.is_gpu_ctx(value.ctx):
                 index_to_gpu_map[node.index] = value
+                feed_shapes[node] = value.shape
             else:
                 index_to_gpu_map[node.index] = None
-                index_to_cpu_flag[node_index] = True
+                index_to_cpu_flag[node.index] = True
                 index_to_cpu_map[node.index] = value
+                feed_shapes[node] = value.shape
+
 
         # collect shapes for all placeholders
-        feed_shapes = {}
-        for i in index_to_gpu_map:
-            feed_shapes[self.topo_order[i]] = index_to_gpu_map[self.topo_order[i].index].shape
+        # for i in index_to_gpu_map.keys():
+        #     feed_shapes[self.topo_order[i]] = index_to_gpu_map[i].shape
 
         if self.feed_shapes is None:
             # todo 向上层返回需要的信息
@@ -2574,11 +2578,23 @@ class Executor(object):
         #         print(index_to_gpu_map[n.index].asnumpy())
 
         eval_return_list = []
-        for n in self.eval_node_list:
+        return_feed_dict = {}
+
+
+        n = self.eval_node_list[0]
+        if index_to_gpu_map[n.index] is None and index_to_cpu_flag[n.index]:
+            eval_return_list.append(index_to_cpu_map[self.eval_node_list[0].index])
+        else:
+            eval_return_list.append(index_to_gpu_map[self.eval_node_list[0].index])
+
+
+        for n in feed_dict:
             if index_to_gpu_map[n.index] is None and index_to_cpu_flag[n.index]:
-                eval_return_list.append(index_to_cpu_map[n.index])
+                return_feed_dict[n] = index_to_cpu_map[n.index]
             else:
-                eval_return_list.append(index_to_gpu_map[n.index])
+                return_feed_dict[n] = index_to_gpu_map[n.index]
+
+        eval_return_list.append(return_feed_dict)
 
         return eval_return_list
         # return [index_to_gpu_map[n.index] for n in self.eval_node_list]
