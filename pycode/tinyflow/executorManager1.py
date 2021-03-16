@@ -110,7 +110,8 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
     z12 = ad.fullyactivation_forward_op(z11, "NCHW", "relu")
     # softmax(z5 W2+b2)
     z13 = ad.dense(z12, W6, b6)
-    y = ad.fullyactivation_forward_op(z13, "NCHW", "softmax")
+    bn1 = ad.fullybn_forward_op(z13, "NCHW")
+    y = ad.fullyactivation_forward_op(bn1, "NCHW", "softmax")
     loss = ad.crossEntropy_loss(y, y_)
 
 
@@ -278,8 +279,8 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
             # print(loss_val.asnumpy())
             loss_val = res[0]
             feed_dict = res[1]
-            print(loss_val.asnumpy())
-            return
+            # print(loss_val.asnumpy())
+            # return
 
 
 
@@ -378,7 +379,7 @@ if __name__ == '__main__':
     top_message_queue_list = []
     executor_ctx = ndarray.gpu(0)
     num_epochs = 20
-    print_loss_val_each_epoch = False
+    print_loss_val_each_epoch = True
     top_control_queue = multiprocessing.Queue()
     top_control_queue_list.append(top_control_queue)
     top_message_queue = multiprocessing.Queue()

@@ -2552,7 +2552,7 @@ class Executor(object):
                 index_to_gpu_map[release_message] = None
                 self.topo_order[release_message].array_status = 0
 
-            print(node.index, " : ", index_to_gpu_map[node.index].asnumpy())
+            # print(node.index, " : ", index_to_gpu_map[node.index].asnumpy())
 
             # # todo 用于测试
             # print("node: " + str(node.index) + "computing")
