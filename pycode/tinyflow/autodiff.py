@@ -2367,7 +2367,9 @@ class Executor(object):
                 if node.index in index_to_gpu_map:
                     if node.name != "X" and node.name != "y_":
                         is_input = 1
-                return_element = [node.index, node_inputs, node_size, operation_name, is_input]
+            # 新的返回信息
+            # output_tensor_id, input_tensor_id, output_tensor_size, operation_name, is_parameter, is_input_or_output, shape, inputs_of_model
+                return_element = [node.index, node_inputs, node_size, operation_name, is_input, self.node_to_shape_map[node], []]
                 return_list.append(return_element)
             self.top_message_queue.put([0, return_list])
         else:

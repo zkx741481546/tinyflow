@@ -84,10 +84,12 @@ class NDArray(object):
         self.handle = handle
 
     def __del__(self):
+        print("ndarray已经被释放")
         check_call(_LIB.DLArrayFree(self.handle))
 
 
     def free_gpu(self):
+        print("ndarray已经被手动释放")
         check_call(_LIB.DLArrayFree(self.handle))
 
 

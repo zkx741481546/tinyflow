@@ -280,7 +280,7 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
             loss_val = res[0]
             feed_dict = res[1]
             # print(loss_val.asnumpy())
-            # return
+            return
 
 
 
