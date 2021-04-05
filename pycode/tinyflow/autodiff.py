@@ -2350,8 +2350,11 @@ class Executor(object):
             # todo 向上层返回需要的信息
             self.infer_shape(feed_shapes)
             self.feed_shapes = feed_shapes
+
+            # 在此处开cpu上的空间
             for node in self.node_to_shape_map:
                 index_to_cpu_map[node.index] = ndarray.empty(self.node_to_shape_map[node], self.ctx_cpu)
+
             return_list = []
             for node in self.topo_order:
                 node_inputs = []
