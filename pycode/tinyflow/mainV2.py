@@ -829,6 +829,7 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
             else:
                 for node_message in message_graph:
                     logged_times[job_id][node_message[0]].append(node_message[1])
+                # todo 此处控制了在一定轮数之后才进行决策
                 log_repeat += 1
                 if log_repeat == 10:
                     release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)

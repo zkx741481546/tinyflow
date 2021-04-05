@@ -81,7 +81,8 @@ class MemoryManager(threading.Thread):
                 if index_to_gpu_map[node_index] is None:
                     index_to_gpu_map[node_index] = node_ndarray_new
                 else:
-                    print("swap in 和 passive import 重合")
+                    pass
+                    # print("swap in 和 passive import 重合")
                 # print("swap finish: node " + str(node_index) + " to " + str(move_to_gpu))
                 # print((time2 - time1).microseconds)
 
@@ -2358,6 +2359,7 @@ class Executor(object):
                     node_inputs.append(node_input.index)
                 node_size = np.prod(self.node_to_shape_map[node]) * 4
                 print("node" + str(node.index) + " size: " + str(node_size))
+
                 # if len(self.node_to_shape_map[node]) == 1:
                 #     node_size = self.node_to_shape_map[node][0] * 4
                 # else:
@@ -2367,6 +2369,10 @@ class Executor(object):
                 if node.index in index_to_gpu_map:
                     if node.name != "X" and node.name != "y_":
                         is_input = 1
+                if node == self.eval_node_list[0]:
+                    is_input = 1
+                print("node" + str(node.index) + " is_input: " + str(is_input))
+
             # 新的返回信息
             # output_tensor_id, input_tensor_id, output_tensor_size, operation_name, is_parameter, is_input_or_output, shape, inputs_of_model
                 return_element = [node.index, node_inputs, node_size, operation_name, is_input, self.node_to_shape_map[node], []]
@@ -2477,7 +2483,7 @@ class Executor(object):
 
             for n in node.inputs:
                 if index_to_gpu_map[n.index] is None:
-                    print("when computing " + str(node.index) + " passive import " + str(n.index))
+                    # print("when computing " + str(node.index) + " passive import " + str(n.index))
                     # todo 考虑如何被动进行swap in
                     assert index_to_cpu_flag[n.index], "输入tensor不在cpu上"
                     node_ndarray_new = ndarray.empty(self.node_to_shape_map[n], self.ctx_gpu)
@@ -2568,9 +2574,6 @@ class Executor(object):
         self.b2t[0] = self.b2t[0] * self.b2
         # Collect node values.
         # print("success one batch")
-        for n in self.eval_node_list:
-            if index_to_gpu_map[n.index] is None:
-                assert False, "node " + str(n.index) + "is not on gpu"
 
         # #todo only for test:
         # for n in self.topo_order:
@@ -2587,6 +2590,7 @@ class Executor(object):
 
 
         n = self.eval_node_list[0]
+        assert not index_to_gpu_map[n.index] is None
         if index_to_gpu_map[n.index] is None and index_to_cpu_flag[n.index]:
             eval_return_list.append(index_to_cpu_map[self.eval_node_list[0].index])
         else:
@@ -2594,6 +2598,8 @@ class Executor(object):
 
 
         for n in feed_dict:
+            if n.name == "X" or n.name == "y_":
+                continue
             if index_to_gpu_map[n.index] is None and index_to_cpu_flag[n.index]:
                 return_feed_dict[n] = index_to_cpu_map[n.index]
             else:
