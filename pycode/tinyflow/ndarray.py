@@ -71,7 +71,8 @@ class NDArray(object):
     Strictly this is only an Array Container(a buffer object)
     No arthimetic operations are defined.
     """
-    __slots__ = ["handle"]
+    __slots__ = ["handle", "is_freed"]
+
 
     # pylint: disable=no-member
     def __init__(self, handle):
@@ -82,21 +83,25 @@ class NDArray(object):
             the handle to the underlying C++ DLArray
         """
         self.handle = handle
+        self.is_freed = False
 
     def __del__(self):
         # pass
         # todo 内存泄露风险
 
-        if is_gpu_ctx(self.ctx):
-            print("ndarray已经被释放")
+        # if is_gpu_ctx(self.ctx):
+        #     print("ndarray已经被释放")
+        if self.is_freed:
+            return
         check_call(_LIB.DLArrayFree(self.handle))
 
 
     def free_gpu(self):
-        pass
+        # pass
         # todo 内存泄露考虑
         # print("ndarray已经被手动释放")
-        # check_call(_LIB.DLArrayFree(self.handle))
+        self.is_freed = True
+        check_call(_LIB.DLArrayFree(self.handle))
 
 
     @property

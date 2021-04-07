@@ -1,6 +1,7 @@
 """ library to take autodiff and execute a computation graph """
 from __future__ import absolute_import
 
+import sys
 import threading
 import time
 import numpy as np
@@ -49,6 +50,7 @@ class MemoryManager(threading.Thread):
         self.cpu_ctx = ndarray.cpu(0)
         self.gpu_ctx = ndarray.gpu(0)
         self.cudaSwapStream = gpu_op.create_cudaStream()
+        # self.lock = threading.Lock()
 
     def run(self):
         while (True):
@@ -65,9 +67,15 @@ class MemoryManager(threading.Thread):
             if move_to_gpu == 0:
                 node_ndarray = index_to_gpu_map[node_index]
                 node_ndarray.copyto(index_to_cpu_map[node_index], self.cudaSwapStream)
+                # 暂时使用锁保证原子性
+                # self.lock.acquire()
                 index_to_cpu_flag[node_index] = True
                 index_to_gpu_map[node_index].free_gpu()
+
+                # print("当前变量计数器为" + str(sys.getrefcount(index_to_gpu_map[node_index]) - 2))
+
                 index_to_gpu_map[node_index] = None
+                # self.lock.release()
                 # print("swap finish: node " + str(node_index) + " to " + str(move_to_gpu))
 
             else:
@@ -2486,7 +2494,7 @@ class Executor(object):
 
             for n in node.inputs:
                 if index_to_gpu_map[n.index] is None:
-                    # print("when computing " + str(node.index) + " passive import " + str(n.index))
+                    print("when computing " + str(node.index) + " passive import " + str(n.index))
                     # todo 考虑如何被动进行swap in
                     assert index_to_cpu_flag[n.index], "输入tensor不在cpu上"
                     node_ndarray_new = ndarray.empty(self.node_to_shape_map[n], self.ctx_gpu)
