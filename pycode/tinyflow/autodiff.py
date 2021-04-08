@@ -75,7 +75,7 @@ class MemoryManager(threading.Thread):
                 # print("当前变量计数器为" + str(sys.getrefcount(index_to_gpu_map[node_index]) - 2))
 
                 index_to_gpu_map[node_index] = None
-                print("swaping node " + str(node_index) + " to cpu")
+                # print("swaping node " + str(node_index) + " to cpu")
                 # self.lock.release()
                 # print("swap finish: node " + str(node_index) + " to " + str(move_to_gpu))
 
@@ -92,7 +92,7 @@ class MemoryManager(threading.Thread):
                 else:
                     pass
 
-                print("swaping node " + str(node_index) + " to gpu")
+                # print("swaping node " + str(node_index) + " to gpu")
 
                     # print("swap in 和 passive import 重合")
                 # print("swap finish: node " + str(node_index) + " to " + str(move_to_gpu))
@@ -2515,7 +2515,7 @@ class Executor(object):
 
             for n in node.inputs:
                 if index_to_gpu_map[n.index] is None:
-                    print("when computing " + str(node.index) + " passive import " + str(n.index))
+                    # print("when computing " + str(node.index) + " passive import " + str(n.index))
                     # todo 考虑如何被动进行swap in
                     assert index_to_cpu_flag[n.index], "输入tensor不在cpu上"
                     node_ndarray_new = ndarray.empty(self.node_to_shape_map[n], self.ctx_gpu)

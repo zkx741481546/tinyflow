@@ -304,12 +304,18 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
         for minibatch_index in range(n_train_batches):
             minibatch_start = minibatch_index * batch_size
             minibatch_end = (minibatch_index + 1) * batch_size
-            X_val[:] = train_set_x[minibatch_start:minibatch_end]
-            y_val[:] = convert_to_one_hot(
+
+            # 修改引入数据的方式为手动引入
+            x_numpy_val = train_set_x[minibatch_start:minibatch_end]
+            y_numpy_val = convert_to_one_hot(
                 train_set_y[minibatch_start:minibatch_end])
 
-            feed_dict[X] = X_val
-            feed_dict[y_] = y_val
+            # X_val[:] = train_set_x[minibatch_start:minibatch_end]
+            # y_val[:] = convert_to_one_hot(
+            #     train_set_y[minibatch_start:minibatch_end])
+
+            feed_dict[X] = ndarray.array(x_numpy_val, ctx=executor_ctx)
+            feed_dict[y_] = ndarray.array(y_numpy_val, ctx=executor_ctx)
 
 
             # 计算单步的梯度
