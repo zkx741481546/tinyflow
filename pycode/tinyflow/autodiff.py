@@ -75,6 +75,7 @@ class MemoryManager(threading.Thread):
                 # print("当前变量计数器为" + str(sys.getrefcount(index_to_gpu_map[node_index]) - 2))
 
                 index_to_gpu_map[node_index] = None
+                print("swaping node " + str(node_index) + " to cpu")
                 # self.lock.release()
                 # print("swap finish: node " + str(node_index) + " to " + str(move_to_gpu))
 
@@ -90,6 +91,9 @@ class MemoryManager(threading.Thread):
                     index_to_gpu_map[node_index] = node_ndarray_new
                 else:
                     pass
+
+                print("swaping node " + str(node_index) + " to gpu")
+
                     # print("swap in 和 passive import 重合")
                 # print("swap finish: node " + str(node_index) + " to " + str(move_to_gpu))
                 # print((time2 - time1).microseconds)
@@ -125,7 +129,7 @@ class Node(object):
         self.control_message_out_time = 0
         self.recompute_list = []
         self.release_list = []
-        self.runtime = 0.01
+        self.runtime = 0.00001
 
         # 是不是参数
         self.issgd = 0
@@ -2475,6 +2479,23 @@ class Executor(object):
             if node.index in index_to_gpu_map:
                 # Skip placeholder nodes. Values already provided by feed_dict.
                 # 找出feed_dict中已经包含的ndarray
+                for control_message in node.control_message_out:
+                    wait_time = control_message[0]
+                    node_id = control_message[1]
+                    move_to_gpu = control_message[2]
+                    if move_to_gpu:
+                        self.control_queue.put((wait_time, node_id, move_to_gpu))
+                    else:
+                        self.control_queue.put((wait_time, node_id, move_to_gpu))
+
+                    # # todo 仅用于测试
+                    # self.have_done_queue.get(block=True)
+                    # print("swap end")
+
+                for release_message in node.release_list:
+                    index_to_gpu_map[release_message] = None
+                    self.topo_order[release_message].array_status = 0
+
                 node.array_status = 1
                 assert not node.inputs
                 continue
