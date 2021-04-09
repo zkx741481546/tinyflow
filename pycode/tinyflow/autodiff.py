@@ -2493,6 +2493,7 @@ class Executor(object):
                     # print("swap end")
 
                 for release_message in node.release_list:
+                    index_to_gpu_map[release_message].free_gpu()
                     index_to_gpu_map[release_message] = None
                     self.topo_order[release_message].array_status = 0
 
@@ -2589,6 +2590,7 @@ class Executor(object):
                 # print("swap end")
 
             for release_message in node.release_list:
+                index_to_gpu_map[release_message].free_gpu()
                 index_to_gpu_map[release_message] = None
                 self.topo_order[release_message].array_status = 0
 
