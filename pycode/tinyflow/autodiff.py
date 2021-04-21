@@ -2265,6 +2265,8 @@ class Executor(object):
         self.ctx_cpu = ndarray.cpu(0)
         self.ctx_gpu = ndarray.gpu(0)
 
+        self.f = open("./log/hit_rate.txt")
+
     def infer_shape(self, feed_shapes):
         """Given shapes of feed_dict nodes, infer shape for all nodes in graph.
 
@@ -2471,6 +2473,9 @@ class Executor(object):
                 print(node.release_list)
             print("update control message")
 
+        total_swap_in = 0
+        passive_swap_in = 0
+
         # Traverse graph in topo order and compute values for all nodes.
         for node in self.topo_order:
             if have_got_global_message:
@@ -2519,6 +2524,7 @@ class Executor(object):
                     # print("when computing " + str(node.index) + " passive import " + str(n.index))
                     # todo 考虑如何被动进行swap in
                     assert index_to_cpu_flag[n.index], "输入tensor不在cpu上"
+                    passive_swap_in += 1
                     node_ndarray_new = ndarray.empty(self.node_to_shape_map[n], self.ctx_gpu)
                     index_to_cpu_map[n.index].copyto(node_ndarray_new, self.cudaStream)
                     index_to_gpu_map[n.index] = node_ndarray_new
@@ -2537,6 +2543,7 @@ class Executor(object):
                     node_id = control_message[1]
                     move_to_gpu = control_message[2]
                     if move_to_gpu:
+                        total_swap_in += 1
                         self.control_queue.put((wait_time, node_id, move_to_gpu))
                     else:
                         self.control_queue.put((wait_time, node_id, move_to_gpu))
@@ -2563,6 +2570,7 @@ class Executor(object):
                 node_id = control_message[1]
                 move_to_gpu = control_message[2]
                 if move_to_gpu:
+                    total_swap_in += 1
                     self.control_queue.put((wait_time, node_id, move_to_gpu))
                 else:
                     self.control_queue.put((wait_time, node_id, move_to_gpu))
@@ -2581,8 +2589,10 @@ class Executor(object):
                 node_id = control_message[1]
                 move_to_gpu = control_message[2]
                 if move_to_gpu:
+                    total_swap_in += 1
                     self.control_queue.put((wait_time, node_id, move_to_gpu))
                 else:
+
                     self.control_queue.put((wait_time, node_id, move_to_gpu))
 
                 # # todo 仅用于测试
@@ -2640,6 +2650,9 @@ class Executor(object):
                 return_feed_dict[n] = index_to_gpu_map[n.index]
 
         eval_return_list.append(return_feed_dict)
+
+        if total_swap_in != 0:
+            print("passive swap所占的比例为" + str(passive_swap_in / total_swap_in))
 
         return eval_return_list
         # return [index_to_gpu_map[n.index] for n in self.eval_node_list]

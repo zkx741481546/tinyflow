@@ -1,4 +1,8 @@
+import datetime
 from multiprocessing import Process
+
+import pynvml
+
 from pycode.tinyflow import ndarray, gpu_op
 from pycode.tinyflow import autodiff as ad
 from pycode.tinyflow import mainV2 as mp
@@ -8,6 +12,9 @@ import numpy as np
 import os
 import queue
 import multiprocessing
+import threading
+import time
+
 from tools import *
 GPU = load_gpu()
 os.environ['CUDA_VISIBLE_DEVICES'] = f'{GPU}'
@@ -413,9 +420,32 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
     print("validation set accuracy=%f" % accuracy)
 
 
+class GPURecord(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+        pynvml.nvmlInit()
+        self.handle = pynvml.nvmlDeviceGetHandleByIndex(GPU)
+        self.f = open("./log/gpu_record.txt", "w+")
+        # todo 临时用作释放的计数器
+        self.times = 0
+
+    def run(self):
+        while True:
+            if self.times == 30:
+                self.f.close()
+                break
+            self.times += 1
+            time.sleep(1)
+            meminfo = pynvml.nvmlDeviceGetMemoryInfo(self.handle)
+            print("time", datetime.datetime.now(),
+                  "\tmemory", meminfo.used / 1024 ** 2, file = self.f)  # 已用显存大小
+
+    def stop(self):
+        self.f.close()
+
+
 if __name__ == '__main__':
-
-
+    gpu_record = GPURecord()
     global_message_queue = multiprocessing.Queue()
     global_control_queue = multiprocessing.Queue()
 
@@ -438,7 +468,7 @@ if __name__ == '__main__':
     scheduler.start()
     # scheduler.join()
 
-
+    gpu_record.start()
     while True:
         for i in range(job_number):
             if not top_message_queue_list[i].empty():
@@ -447,6 +477,10 @@ if __name__ == '__main__':
             global_control = global_control_queue.get()
             for i in range(job_number):
                 top_control_queue.put(global_control[i])
+
+
+
+
 
 
     # todo 算法传入系统的信息规则
