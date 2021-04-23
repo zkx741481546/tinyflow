@@ -59,10 +59,8 @@ class MemoryManager(threading.Thread):
             move_to_gpu = node[1]
             node_ndarray_new = None
 
-
             global index_to_cpu_map
             global index_to_gpu_map
-
 
             if move_to_gpu == 0:
                 node_ndarray = index_to_gpu_map[node_index]
@@ -97,6 +95,11 @@ class MemoryManager(threading.Thread):
                     # print("swap in 和 passive import 重合")
                 # print("swap finish: node " + str(node_index) + " to " + str(move_to_gpu))
                 # print((time2 - time1).microseconds)
+
+            # if 28 in index_to_gpu_map and not index_to_gpu_map[28] is None:
+            #     print(index_to_gpu_map[28].asnumpy())
+            # if 28 in index_to_cpu_flag:
+            #     print(index_to_cpu_map[28].asnumpy())
 
 
 
@@ -1037,7 +1040,7 @@ class FlattenOp(Op):
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
         assert use_numpy == False
-        input_vals[0].copyto(output_val)
+        input_vals[0].copyto(output_val, cudaStream)
         return 0
 
     def gradient(self, node, output_grad):
@@ -1061,7 +1064,7 @@ class FlattenGradientOp(Op):
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
         assert use_numpy == False
-        input_vals[1].copyto(output_val)
+        input_vals[1].copyto(output_val, cudaStream)
         return 0
 
     def gradient(self, node, output_grad):
@@ -2459,9 +2462,9 @@ class Executor(object):
                 start_node = self.topo_order[start_node_id]
                 start_node.release_list.append(node_id)
 
-            # print(top_swap_list)
-            # print(top_release_list)
-            # print(top_recomputation_list)
+            print(top_swap_list)
+            print(top_release_list)
+            print(top_recomputation_list)
             print("swap list")
             for node in self.topo_order:
                 print(node.control_message_out)
@@ -2529,7 +2532,15 @@ class Executor(object):
                     index_to_cpu_map[n.index].copyto(node_ndarray_new, self.cudaStream)
                     index_to_gpu_map[n.index] = node_ndarray_new
                     n.array_status = 1
+                assert ndarray.is_gpu_ctx(index_to_gpu_map[n.index].ctx)
                 input_vals.append(index_to_gpu_map[n.index])
+
+                # todo 错误点
+                if n.index == 28 or n.index == 115:
+                    if n.index in index_to_cpu_flag:
+                        print(index_to_cpu_map[n.index].asnumpy())
+                if n.index == 28 or n.index == 115:
+                    print(index_to_gpu_map[n.index].asnumpy())
 
             if node.issgd:
                 # todo 对于sgd op 的特殊处理
@@ -2652,7 +2663,8 @@ class Executor(object):
         eval_return_list.append(return_feed_dict)
 
         if total_swap_in != 0:
-            print("passive swap所占的比例为" + str(passive_swap_in / total_swap_in))
+            pass
+            # print("passive swap所占的比例为" + str(passive_swap_in / total_swap_in))
 
         return eval_return_list
         # return [index_to_gpu_map[n.index] for n in self.eval_node_list]

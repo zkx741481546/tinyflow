@@ -156,6 +156,8 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
     b4_val = rand.normal(scale=0.1, size=(1024))
     b5_val = rand.normal(scale=0.1, size=(1024))
     b6_val = rand.normal(scale=0.1, size=(10))
+
+
     W1_val_m = np.zeros(shape=(784, 4096), dtype=np.float32)
     W2_val_m = np.zeros(shape=(4096, 1024), dtype=np.float32)
     W3_val_m = np.zeros(shape=(1024, 1024), dtype=np.float32)
@@ -266,46 +268,11 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
         executor.Variable_node_to_mv[b5][1]: b5_val_v,
         executor.Variable_node_to_mv[b6][1]: b6_val_v}
 
-    # del W1_val
-    # del W2_val
-    # del W3_val
-    # del W4_val
-    # del W5_val
-    # del W6_val
-    # del b1_val
-    # del b2_val
-    # del b3_val
-    # del b4_val
-    # del b5_val
-    # del b6_val
-    # del W1_val_m
-    # del W2_val_m
-    # del W3_val_m
-    # del W4_val_m
-    # del W5_val_m
-    # del W6_val_m
-    # del b1_val_m
-    # del b2_val_m
-    # del b3_val_m
-    # del b4_val_m
-    # del b5_val_m
-    # del b6_val_m
-    # del W1_val_v
-    # del W2_val_v
-    # del W3_val_v
-    # del W4_val_v
-    # del W5_val_v
-    # del W6_val_v
-    # del b1_val_v
-    # del b2_val_v
-    # del b3_val_v
-    # del b4_val_v
-    # del b5_val_v
-    # del b6_val_v
 
 
 
     lr = 1.0e-3
+    f1 = open("./log/gpu_time.txt", "w+")
     for i in range(num_epochs):
         print("epoch %d" % i)
         for minibatch_index in range(n_train_batches):
@@ -326,7 +293,12 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
 
 
             # 计算单步的梯度
+            time1 = datetime.datetime.now()
+
             res = executor.run(feed_dict=feed_dict)
+
+            time2 = datetime.datetime.now()
+            print(str((time2 - time1).microseconds), file=f1)
             # print(loss_val.asnumpy())
             loss_val = res[0]
             feed_dict = res[1]
@@ -358,7 +330,7 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
                 print(loss_val.asnumpy())
             else:
                 print(loss_val)
-
+    f1.close()
     print("success")
     return
 

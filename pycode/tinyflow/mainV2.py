@@ -832,6 +832,7 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                 # todo 此处控制了在一定轮数之后才进行决策
                 log_repeat += 1
                 if log_repeat == 10:
+                    # log_repeat = 0
                     release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
                     control_messages = []
                     for i in range(job_num):
