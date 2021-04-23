@@ -6,13 +6,15 @@ import json
 os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3,4,5,6,7'
 from pynvml import *
 import time
-
+import numpy as np
 nvmlInit()
 
 
 def run(gpu):
     import time
     import torch
+    import setproctitle
+    setproctitle.setproctitle('myProc')
     gpu = f'cuda:{gpu}'
     a = torch.ones((100000, 100), device=gpu)
     b = torch.ones((100, 12000), device=gpu)
@@ -38,7 +40,7 @@ def run(gpu):
         if len(d) > 1:
             d.clear()
         # gpu_op.matrix_multiply(X_val, False, W1_val, False, out_val, cublasHandle)
-        time.sleep(0.1)
+        time.sleep(np.random.random_sample()/10)
 
 
 already_took = {}
@@ -51,8 +53,9 @@ while True:
     for i in range(8):
         handle = nvmlDeviceGetHandleByIndex(i)
         flag = []
-        for _ in range(1):
-            flag.append(nvmlDeviceGetUtilizationRates(handle).gpu == 0)
+        for _ in range(5):
+            tmp = nvmlDeviceGetUtilizationRates(handle)
+            flag.append(tmp.gpu == 0 and tmp.memory <=10)
             time.sleep(1)
         if False not in flag:
             if i not in already_took.keys() and i not in release:
