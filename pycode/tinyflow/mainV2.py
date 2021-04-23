@@ -15,9 +15,6 @@ import time
 import matplotlib
 # matplotlib.use('Agg')
 import numpy as np
-import os
-from keras import Model, models
-from keras.callbacks import EarlyStopping, ModelCheckpoint
 from pynvml import *
 from keras.models import Sequential, load_model
 from keras.layers import Dense, Conv1D, MaxPool1D, Dropout, Flatten
