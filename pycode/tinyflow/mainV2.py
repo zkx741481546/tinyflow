@@ -331,7 +331,7 @@ def get_max_memory_used(tensor_access_list, swap_tasks, swapped_out_tensor, reco
             return 0
 
     time_axis = sorted(tmp, key=cmp_to_key(custom_cmp))
-    end_time_axis = sorted(tmp, key=cmp_to_key(custom_cmp_end_time))
+    end_time_axis = sorted(tensor_access_list, key=cmp_to_key(custom_cmp_end_time))
     # occupied by handle, cudnn, cuda stream and cudart
     memory_used = 0
     max_memory_actual = float('-inf')
