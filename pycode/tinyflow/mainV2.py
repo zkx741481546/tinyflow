@@ -322,7 +322,16 @@ def get_max_memory_used(tensor_access_list, swap_tasks, swapped_out_tensor, reco
             else:
                 return 0
 
+    def custom_cmp_end_time(x,y):
+        if x.end_time < y.end_time:
+            return -1
+        elif x.end_time > y.end_time:
+            return 1
+        else:
+            return 0
+
     time_axis = sorted(tmp, key=cmp_to_key(custom_cmp))
+    end_time_axis = sorted(tmp, key=cmp_to_key(custom_cmp_end_time))
     # occupied by handle, cudnn, cuda stream and cudart
     memory_used = 0
     max_memory_actual = float('-inf')
@@ -363,10 +372,11 @@ def get_max_memory_used(tensor_access_list, swap_tasks, swapped_out_tensor, reco
                 else:
                     last_input_tensor_access = event
         elif isinstance(event, SwapTask):
+            # 使用按照结束时间排序的时间轴进行倒序查找
             last_event = None
-            for j in range(time_index - 1, -1, -1):
-                if isinstance(time_axis[j], TensorAccess) and time_axis[j].end_time <= event.start_time:
-                    last_event = time_axis[j]
+            for j in range(len(end_time_axis) - 1, -1, -1):
+                if isinstance(end_time_axis[j], TensorAccess) and end_time_axis[j].end_time <= event.start_time:
+                    last_event = end_time_axis[j]
                     break
             assert last_event is not None
             event.execute_ref = last_event
