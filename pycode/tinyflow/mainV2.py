@@ -199,8 +199,10 @@ def load_all_model():
 
 def get_predicted_execution_time(op_name, inputs_of_model, logged_time: list):
     if len(logged_time) > 1:
+        print(logged_time[1])
         return logged_time[1]
     else:
+        print(50)
         return 50
     # global models
     # old_gpu = os.environ["CUDA_VISIBLE_DEVICES"]
@@ -831,11 +833,16 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                     logged_times[job_id][node_message[0]].append(node_message[1])
                 # todo 此处控制了在一定轮数之后才进行决策
                 log_repeat += 1
-                if log_repeat == 10:
-                    # log_repeat = 0
+                if log_repeat == 50:
+                    log_repeat = 0
+
                     release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
+
                     control_messages = []
                     for i in range(job_num):
+
+                        # logged_times[i] = []
+
                         print(swap_order)
                         control_message = [swap_order[i], release_order[i], recomputation_order[i]]
                         control_messages.append(control_message)
