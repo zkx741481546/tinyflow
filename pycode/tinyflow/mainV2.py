@@ -333,7 +333,7 @@ def get_max_memory_used(tensor_access_list, swap_tasks, swapped_out_tensor, reco
             return 0
 
     time_axis = sorted(tmp, key=cmp_to_key(custom_cmp))
-    end_time_axis = sorted(tensor_access_list, key=cmp_to_key(custom_cmp_end_time))
+    end_time_axis = sorted(tmp, key=cmp_to_key(custom_cmp_end_time))
     # occupied by handle, cudnn, cuda stream and cudart
     memory_used = 0
     max_memory_actual = float('-inf')
@@ -376,7 +376,8 @@ def get_max_memory_used(tensor_access_list, swap_tasks, swapped_out_tensor, reco
         elif isinstance(event, SwapTask):
             # 使用按照结束时间排序的时间轴进行倒序查找
             last_event = None
-            for j in range(len(end_time_axis) - 1, -1, -1):
+            idx=end_time_axis.index(event)
+            for j in range(idx - 1, -1, -1):
                 if isinstance(end_time_axis[j], TensorAccess) and end_time_axis[j].end_time <= event.start_time:
                     last_event = end_time_axis[j]
                     break
@@ -824,9 +825,9 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                 tensor_num = len(message_graph)
                 for i in range(tensor_num):
                     logged_times[job_id].append([50])
-                # logged_times[job_id] = [[50, 0.01], [50, 0.01], [50, 351], [50, 0.01], [50, 87], [50, 136], [50, 98], [50, 0.01], [50, 77], [50, 0.01], [50, 23], [50, 85], [50, 33], [50, 0.01], [50, 63], [50, 0.01], [50, 23],
-                #      [50, 71], [50, 0.01], [50, 80], [50, 65], [50, 56], [50, 69], [50, 56], [50, 203], [50, 28], [50, 66], [50, 60], [50, 66], [50, 29], [50, 75], [50, 62], [50, 32], [50, 24], [50, 81],
-                #      [50, 114], [50, 50], [50, 42], [50, 707], [50, 554], [50, 121]]
+                logged_times[job_id] = [[50, 0.01], [50, 0.01], [50, 351], [50, 0.01], [50, 87], [50, 136], [50, 98], [50, 0.01], [50, 77], [50, 0.01], [50, 23], [50, 85], [50, 33], [50, 0.01], [50, 63], [50, 0.01], [50, 23],
+                     [50, 71], [50, 0.01], [50, 80], [50, 65], [50, 56], [50, 69], [50, 56], [50, 203], [50, 28], [50, 66], [50, 60], [50, 66], [50, 29], [50, 75], [50, 62], [50, 32], [50, 24], [50, 81],
+                     [50, 114], [50, 50], [50, 42], [50, 707], [50, 554], [50, 121]]
                 s = time.time()
                 release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
                 print(f'time:{time.time() - s}')
