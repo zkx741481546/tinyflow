@@ -75,7 +75,7 @@ class MemoryManager(threading.Thread):
                 index_to_gpu_map[node_index] = None
                 # print("swaping node " + str(node_index) + " to cpu")
                 # self.lock.release()
-                # print("swap finish: node " + str(node_index) + " to " + str(move_to_gpu))
+                print("swap finish: node " + str(node_index) + " to " + str(move_to_gpu))
 
             else:
                 node_ndarray = index_to_cpu_map[node_index]
@@ -93,7 +93,7 @@ class MemoryManager(threading.Thread):
                 # print("swaping node " + str(node_index) + " to gpu")
 
                     # print("swap in 和 passive import 重合")
-                # print("swap finish: node " + str(node_index) + " to " + str(move_to_gpu))
+                print("swap finish: node " + str(node_index) + " to " + str(move_to_gpu))
                 # print((time2 - time1).microseconds)
 
             # if 28 in index_to_gpu_map and not index_to_gpu_map[28] is None:
@@ -2535,12 +2535,12 @@ class Executor(object):
                 assert ndarray.is_gpu_ctx(index_to_gpu_map[n.index].ctx)
                 input_vals.append(index_to_gpu_map[n.index])
 
-                # todo 错误点
-                if n.index == 28 or n.index == 115:
-                    if n.index in index_to_cpu_flag:
-                        print(index_to_cpu_map[n.index].asnumpy())
-                if n.index == 28 or n.index == 115:
-                    print(index_to_gpu_map[n.index].asnumpy())
+                # # todo 错误点
+                # if n.index == 28 or n.index == 115:
+                #     if n.index in index_to_cpu_flag:
+                #         print(index_to_cpu_map[n.index].asnumpy())
+                # if n.index == 28 or n.index == 115:
+                #     print(index_to_gpu_map[n.index].asnumpy())
 
             if node.issgd:
                 # todo 对于sgd op 的特殊处理
