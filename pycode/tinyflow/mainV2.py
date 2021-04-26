@@ -658,7 +658,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
                                 back_boundary = last_time_access.time + tensor.swap_time
                             succeed = False
                             front_boundary = output_access.time
-                            failed_input_access = []
+                            # failed_input_access = []
                             swap_out_succeed = True
                             have_next_ITA = True
                             # 如果是因为swap out放不下，则不用继续更新可行区间了，直接break
@@ -678,7 +678,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
                                         # 看一下后面第一个swap_in能否放下
                                         for i, access in enumerate(all_access_of_tensor):
                                             # 找到后面第一个访问
-                                            if access.start_time >= swap_out_task.start_time and access not in failed_input_access:
+                                            if access.start_time >= swap_out_task.end_time:
                                                 have_next_ITA = True
                                                 if can_next_input_access_swap_in(i, all_access_of_tensor, swap_out_task, swap_scheduler):
                                                     swapped_out_tensor.add(tensor)
@@ -689,7 +689,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
                                                     succeed = True
                                                     swapped_flag = True
                                                 else:
-                                                    failed_input_access.append(access)
+                                                    # failed_input_access.append(access)
                                                     swap_scheduler[swap_out_task.tensor.job_id].remove(swap_out_task)
                                                     # 修正swap_out_task前向限制为这个失败的input_access的结束时间
                                                     front_boundary = access.end_time
