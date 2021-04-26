@@ -75,7 +75,7 @@ class MemoryManager(threading.Thread):
                 index_to_gpu_map[node_index] = None
                 # print("swaping node " + str(node_index) + " to cpu")
                 # self.lock.release()
-                print("swap finish: node " + str(node_index) + " to " + str(move_to_gpu))
+                # print("swap finish: node " + str(node_index) + " to " + str(move_to_gpu))
 
             else:
                 node_ndarray = index_to_cpu_map[node_index]
@@ -93,7 +93,7 @@ class MemoryManager(threading.Thread):
                 # print("swaping node " + str(node_index) + " to gpu")
 
                     # print("swap in 和 passive import 重合")
-                print("swap finish: node " + str(node_index) + " to " + str(move_to_gpu))
+                # print("swap finish: node " + str(node_index) + " to " + str(move_to_gpu))
                 # print((time2 - time1).microseconds)
 
             # if 28 in index_to_gpu_map and not index_to_gpu_map[28] is None:
@@ -2478,11 +2478,14 @@ class Executor(object):
 
         total_swap_in = 0
         passive_swap_in = 0
+        time_old = datetime.datetime.now()
 
         # Traverse graph in topo order and compute values for all nodes.
         for node in self.topo_order:
-            if have_got_global_message:
-                print(node.index)
+            # if have_got_global_message:
+            #     print(node.index)
+
+            # print(node.index)
 
             if node.index in index_to_gpu_map:
                 # Skip placeholder nodes. Values already provided by feed_dict.
@@ -2586,10 +2589,15 @@ class Executor(object):
                 else:
                     self.control_queue.put((wait_time, node_id, move_to_gpu))
 
-            t1 = datetime.datetime.now()
             node.op.compute(node, input_vals, node_val, self.cudnnHandle, self.cublasHandle, self.cudaStream, False)
-            t2 = datetime.datetime.now()
-            node.runtime = (t2 - t1).microseconds / 1000
+
+            time_new = datetime.datetime.now()
+            node.runtime = (time_new - time_old).microseconds / 1000
+            time_old = time_new
+
+            if node.index == 114:
+                print("node.runtime = ", node.runtime)
+
             # print(node.index)
 
             # print(node.index)
