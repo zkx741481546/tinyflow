@@ -113,8 +113,8 @@ class SwapTask(object):
         self.time = time
         self.execute_time = None
         self.execute_ref = None
-        self.start_time_=None
-        self.end_time_=None
+        self.start_time_ = None
+        self.end_time_ = None
 
     @property
     def start_time(self):
@@ -246,41 +246,53 @@ def get_free_intervals(target_task, swap_schedule, access_of_target_tensor, key=
     # 列出在可行区间内的所有空白时间区间，并按区间排序
     if target_task.back_boundary - target_task.front_boundary < target_task.time_cost:
         return []
-    temp_intervals = []
+    intervals = []
     for task in swap_schedule:
         if target_task.front_boundary < task.start_time < task.end_time < target_task.back_boundary:
-            temp_intervals.append((task.start_time, task.end_time))
+            intervals.append((task.start_time, task.end_time))
         elif task.start_time < target_task.front_boundary < task.end_time < target_task.back_boundary:
-            temp_intervals.append((target_task.front_boundary, task.end_time))
+            intervals.append((target_task.front_boundary, task.end_time))
         elif target_task.front_boundary < task.start_time < target_task.back_boundary < task.end_time:
-            temp_intervals.append((task.start_time, target_task.back_boundary))
+            intervals.append((task.start_time, target_task.back_boundary))
         elif task.start_time < target_task.front_boundary < target_task.back_boundary < task.end_time:
             return []
     # 防止区间与被调度张量的access重合
-    intervals = []
-    for access in access_of_target_tensor:
-        for start, end in temp_intervals:
-            if start < access.start_time < access.end_time < end:
-                intervals.append((start, access.start_time))
-                intervals.append((access.end_time, end))
-            elif access.start_time < start < access.end_time < end:
-                intervals.append((access.end_time, end))
-            elif start < access.start_time < end < access.end_time:
-                intervals.append((start, access.start_time))
-            elif access.start_time < start < end < access.end_time:
-                pass
-            else:
-                intervals.append((start, end))
+
     intervals = sorted(intervals, key=lambda x: x[0])
     not_occupied_intervals = []
     s = target_task.front_boundary
-
     for interval in intervals:
         if s < interval[0]:
             not_occupied_intervals.append((s, interval[0]))
         s = interval[1]
     if s < target_task.back_boundary:
         not_occupied_intervals.append((s, target_task.back_boundary))
+
+    i = 0
+    while True:
+        start, end = not_occupied_intervals[i]
+        flag = False
+        for access in access_of_target_tensor:
+            if start < access.start_time < access.end_time < end:
+                not_occupied_intervals[i] = (start, access.start_time)
+                not_occupied_intervals.insert(i + 1, (access.end_time, end))
+                flag = True
+                break
+            elif access.start_time <= start < access.end_time < end:
+                not_occupied_intervals[i] = (access.end_time, end)
+                flag = True
+                break
+            elif start < access.start_time < end <= access.end_time:
+                not_occupied_intervals[i] = (start, access.start_time)
+                flag = True
+                break
+            elif end < access.start_time:
+                break
+        if not flag:
+            i += 1
+        if i >= len(not_occupied_intervals):
+            break
+
     # 按照区间起点/终点排序
     not_occupied_intervals = sorted(not_occupied_intervals, key=lambda x: x[key], reverse=not asc)
     return not_occupied_intervals
@@ -458,7 +470,7 @@ def draw(tensor_access_list, swap_schedule):
 
 def try_swap_in(swap_in_task: SwapTask, swap_scheduler, access_of_target_tensor):
     # swap_in越晚越好，按结束时间降序排序
-    free_intervals = get_free_intervals(swap_in_task, swap_scheduler[swap_in_task.tensor.job_id],access_of_target_tensor ,1, asc=False)
+    free_intervals = get_free_intervals(swap_in_task, swap_scheduler[swap_in_task.tensor.job_id], access_of_target_tensor, 1, asc=False)
     succeed = False
     for interval in free_intervals:
         if interval[1] - interval[0] >= swap_in_task.time_cost:
@@ -879,13 +891,13 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                 # print(logged_times[0])
 
 
-# import pickle
-#
-# with open('../../global_graphs', 'rb') as f:
-#     g = pickle.load(f)
-# global_graphs = g
-# with open('../../logged_times', 'rb') as f:
-#     logged_times = pickle.load(f)
-# job_num = 1
-# init(global_graphs, logged_times, 0)
-# release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
+import pickle
+
+with open('../../global_graphs', 'rb') as f:
+    g = pickle.load(f)
+global_graphs = g
+with open('../../logged_times', 'rb') as f:
+    logged_times = pickle.load(f)
+job_num = 1
+init(global_graphs, logged_times, 0)
+release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
