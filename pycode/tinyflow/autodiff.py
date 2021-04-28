@@ -2482,8 +2482,8 @@ class Executor(object):
 
         # Traverse graph in topo order and compute values for all nodes.
         for node in self.topo_order:
-            # if have_got_global_message:
-            #     print(node.index)
+            if have_got_global_message:
+                print(node.index)
 
             # print(node.index)
 
@@ -2547,10 +2547,11 @@ class Executor(object):
 
             if node.issgd:
                 # todo 对于sgd op 的特殊处理
-                t1 = datetime.datetime.now()
                 node.op.compute(node, input_vals, None, self.cudnnHandle, self.cublasHandle, self.cudaStream, False)
-                t2 = datetime.datetime.now()
-                node.runtime = (t2 - t1).microseconds / 1000
+
+                time_new = datetime.datetime.now()
+                node.runtime = (time_new - time_old).microseconds / 1000
+                time_old = time_new
 
                 for control_message in node.control_message_out:
                     wait_time = control_message[0]
@@ -2595,8 +2596,8 @@ class Executor(object):
             node.runtime = (time_new - time_old).microseconds / 1000
             time_old = time_new
 
-            if node.index == 114:
-                print("node.runtime = ", node.runtime)
+            # if node.index == 114:
+            #     print("node.runtime = ", node.runtime)
 
             # print(node.index)
 

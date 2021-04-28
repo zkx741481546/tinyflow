@@ -21,10 +21,11 @@ from keras.layers import Dense, Conv1D, MaxPool1D, Dropout, Flatten
 from matplotlib import cm
 from tensorboard.plugins.hparams import keras
 from tools import *
+import pickle
 
 GPU = load_gpu()
-# nvmlInit()
-# handle = nvmlDeviceGetHandleByIndex(GPU)
+nvmlInit()
+handle = nvmlDeviceGetHandleByIndex(GPU)
 os.environ["CUDA_VISIBLE_DEVICES"] = f"{GPU}"
 pyplt = py.offline.plot
 PCIE_bandwidth = 12  # MB/ms
@@ -584,8 +585,6 @@ global_tensors = {}
 swap_scheduler = []
 parameters = []
 models = {}
-
-
 # load_all_model()
 
 
@@ -605,10 +604,9 @@ def init(graphs, logged_times: list, gpu: int):
     tensor_access_by_tensor = [[] for _ in range(job_num)]
     os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu)
     # 获取当前剩余显存总量
-    # nvmlInit()
-    # handle = nvmlDeviceGetHandleByIndex(gpu)
-    # total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
-    total_memory = 6000
+    nvmlInit()
+    handle = nvmlDeviceGetHandleByIndex(gpu)
+    total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
     job_num = len(graphs)
     tmp = [get_framework_info(graphs[i], logged_times[i], i) for i in range(job_num)]
     global_tensor_access = [tmp[i][0] for i in range(job_num)]
@@ -658,8 +656,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
     job_id_ordered_by_weights = list(map(lambda x: x[0], sorted([(job_id, weights) for job_id, weights in enumerate(jobs_weights)], key=lambda x: x[1], reverse=True)))
     while swapped_flag or (recomputation_flag and enable_recomputation):
         # MB
-        # total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
-        total_memory = 6000
+        total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
         max_memory, max_tensors, last_input_accesses, max_time, foot_prints, time_axis = run_global_memory_analysis(global_tensor_access, swap_scheduler, swapped_out_tensor, recomputation_tensor,
                                                                                                                     tensor_access_by_tensor)
         if iter == 0:
@@ -820,8 +817,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
         iter += 1
     fig = go.Figure(data=[go.Scatter(x=list(original_memory_footprint[0].keys()), y=list(original_memory_footprint[0].values())), go.Scatter(x=list(foot_prints[0].keys()), y=list(foot_prints[0].values()))])
     plotly.offline.plot(fig, filename='../../pic/footprint.html')
-    # total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
-    total_memory = 6000
+    total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
     stats = 'succeed' if max_memory < total_memory else ' failure'
     print(f'scheduling {stats}')
     draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
@@ -839,6 +835,7 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
     # control_messages.append(control_message)
     # global_control_queue.put(control_messages)
 
+
     logged_times = []
     log_repeat = 0
     while True:
@@ -855,13 +852,15 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                 logged_times.append([])
                 global_graphs.append(message_graph)
                 tensor_num = len(message_graph)
+
+                with open("./log/global_graphs", "wb") as f1:
+                    pickle.dump(global_graphs, f1)
+
                 for i in range(tensor_num):
                     logged_times[job_id].append([50])
-                logged_times[job_id] = [[50, 0.01], [50, 0.01], [50, 351], [50, 0.01], [50, 87], [50, 136], [50, 98], [50, 0.01], [50, 77], [50, 0.01], [50, 23], [50, 85], [50, 33], [50, 0.01], [50, 63],
-                                        [50, 0.01], [50, 23],
-                                        [50, 71], [50, 0.01], [50, 80], [50, 65], [50, 56], [50, 69], [50, 56], [50, 203], [50, 28], [50, 66], [50, 60], [50, 66], [50, 29], [50, 75], [50, 62], [50, 32],
-                                        [50, 24], [50, 81],
-                                        [50, 114], [50, 50], [50, 42], [50, 707], [50, 554], [50, 121]]
+                # logged_times[job_id] = [[50, 0.01], [50, 0.01], [50, 351], [50, 0.01], [50, 87], [50, 136], [50, 98], [50, 0.01], [50, 77], [50, 0.01], [50, 23], [50, 85], [50, 33], [50, 0.01], [50, 63], [50, 0.01], [50, 23],
+                #      [50, 71], [50, 0.01], [50, 80], [50, 65], [50, 56], [50, 69], [50, 56], [50, 203], [50, 28], [50, 66], [50, 60], [50, 66], [50, 29], [50, 75], [50, 62], [50, 32], [50, 24], [50, 81],
+                #      [50, 114], [50, 50], [50, 42], [50, 707], [50, 554], [50, 121]]
                 s = time.time()
                 release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
                 print(f'time:{time.time() - s}')
@@ -876,12 +875,16 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                 # todo 此处控制了在一定轮数之后才进行决策
                 log_repeat += 1
                 if log_repeat == 50:
-                    log_repeat = 0
+                    # log_repeat = 0
+
+                    with open("./log/logged_times", "wb") as f1:
+                        pickle.dump(logged_times, f1)
 
                     release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
 
                     control_messages = []
                     for i in range(job_num):
+
                         # logged_times[i] = []
 
                         print(swap_order)
@@ -889,15 +892,3 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                         control_messages.append(control_message)
                     global_control_queue.put(control_messages)
                 # print(logged_times[0])
-
-
-import pickle
-
-with open('../../global_graphs', 'rb') as f:
-    g = pickle.load(f)
-global_graphs = g
-with open('../../logged_times', 'rb') as f:
-    logged_times = pickle.load(f)
-job_num = 1
-init(global_graphs, logged_times, 0)
-release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
