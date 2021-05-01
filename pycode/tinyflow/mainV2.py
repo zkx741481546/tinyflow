@@ -875,7 +875,7 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                 # todo 此处控制了在一定轮数之后才进行决策
                 log_repeat += 1
                 if log_repeat == 50:
-                    # log_repeat = 0
+                    log_repeat = 0
 
                     with open("./log/logged_times", "wb") as f1:
                         pickle.dump(logged_times, f1)
@@ -883,9 +883,12 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                     release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
 
                     control_messages = []
+
                     for i in range(job_num):
 
                         # logged_times[i] = []
+                        for logged_time in logged_times[i]:
+                            logged_time = []
 
                         print(swap_order)
                         control_message = [swap_order[i], release_order[i], recomputation_order[i]]

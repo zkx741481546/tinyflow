@@ -2547,11 +2547,17 @@ class Executor(object):
 
             if node.issgd:
                 # todo 对于sgd op 的特殊处理
-                node.op.compute(node, input_vals, None, self.cudnnHandle, self.cublasHandle, self.cudaStream, False)
 
-                time_new = datetime.datetime.now()
-                node.runtime = (time_new - time_old).microseconds / 1000
-                time_old = time_new
+
+                # todo 两种不同的时间计算策略
+                t1 = datetime.datetime.now()
+                node.op.compute(node, input_vals, None, self.cudnnHandle, self.cublasHandle, self.cudaStream, False)
+                t2 = datetime.datetime.now()
+                node.runtime = (t2 - t1).microseconds / 1000
+
+                # time_new = datetime.datetime.now()
+                # node.runtime = (time_new - time_old).microseconds / 1000
+                # time_old = time_new
 
                 for control_message in node.control_message_out:
                     wait_time = control_message[0]
@@ -2590,11 +2596,16 @@ class Executor(object):
                 else:
                     self.control_queue.put((wait_time, node_id, move_to_gpu))
 
-            node.op.compute(node, input_vals, node_val, self.cudnnHandle, self.cublasHandle, self.cudaStream, False)
+            # todo 两种不同的时间计算策略
 
-            time_new = datetime.datetime.now()
-            node.runtime = (time_new - time_old).microseconds / 1000
-            time_old = time_new
+            t1 = datetime.datetime.now()
+            node.op.compute(node, input_vals, node_val, self.cudnnHandle, self.cublasHandle, self.cudaStream, False)
+            t2 = datetime.datetime.now()
+            node.runtime = (t2 - t1).microseconds / 1000
+
+            # time_new = datetime.datetime.now()
+            # node.runtime = (time_new - time_old).microseconds / 1000
+            # time_old = time_new
 
             # if node.index == 114:
             #     print("node.runtime = ", node.runtime)
@@ -2672,8 +2683,8 @@ class Executor(object):
         eval_return_list.append(return_feed_dict)
 
         if total_swap_in != 0:
-            pass
-            # print("passive swap所占的比例为" + str(passive_swap_in / total_swap_in))
+            # pass
+            print("passive swap所占的比例为" + str(passive_swap_in / total_swap_in))
 
         return eval_return_list
         # return [index_to_gpu_map[n.index] for n in self.eval_node_list]
