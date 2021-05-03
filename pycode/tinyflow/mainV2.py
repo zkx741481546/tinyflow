@@ -21,6 +21,7 @@ from keras.layers import Dense, Conv1D, MaxPool1D, Dropout, Flatten
 from matplotlib import cm
 from tensorboard.plugins.hparams import keras
 from tools import *
+import pickle
 
 GPU = load_gpu()
 # nvmlInit()
@@ -855,13 +856,15 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                 logged_times.append([])
                 global_graphs.append(message_graph)
                 tensor_num = len(message_graph)
+
+                with open("./log/global_graphs", "wb") as f1:
+                    pickle.dump(global_graphs, f1)
+
                 for i in range(tensor_num):
                     logged_times[job_id].append([50])
-                logged_times[job_id] = [[50, 0.01], [50, 0.01], [50, 351], [50, 0.01], [50, 87], [50, 136], [50, 98], [50, 0.01], [50, 77], [50, 0.01], [50, 23], [50, 85], [50, 33], [50, 0.01], [50, 63],
-                                        [50, 0.01], [50, 23],
-                                        [50, 71], [50, 0.01], [50, 80], [50, 65], [50, 56], [50, 69], [50, 56], [50, 203], [50, 28], [50, 66], [50, 60], [50, 66], [50, 29], [50, 75], [50, 62], [50, 32],
-                                        [50, 24], [50, 81],
-                                        [50, 114], [50, 50], [50, 42], [50, 707], [50, 554], [50, 121]]
+                # logged_times[job_id] = [[50, 0.01], [50, 0.01], [50, 351], [50, 0.01], [50, 87], [50, 136], [50, 98], [50, 0.01], [50, 77], [50, 0.01], [50, 23], [50, 85], [50, 33], [50, 0.01], [50, 63], [50, 0.01], [50, 23],
+                #      [50, 71], [50, 0.01], [50, 80], [50, 65], [50, 56], [50, 69], [50, 56], [50, 203], [50, 28], [50, 66], [50, 60], [50, 66], [50, 29], [50, 75], [50, 62], [50, 32], [50, 24], [50, 81],
+                #      [50, 114], [50, 50], [50, 42], [50, 707], [50, 554], [50, 121]]
                 s = time.time()
                 release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
                 print(f'time:{time.time() - s}')
@@ -878,11 +881,18 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                 if log_repeat == 50:
                     log_repeat = 0
 
+                    with open("./log/logged_times", "wb") as f1:
+                        pickle.dump(logged_times, f1)
+
                     release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
 
                     control_messages = []
+
                     for i in range(job_num):
+
                         # logged_times[i] = []
+                        for logged_time in logged_times[i]:
+                            logged_time = []
 
                         print(swap_order)
                         control_message = [swap_order[i], release_order[i], recomputation_order[i]]
