@@ -24,8 +24,8 @@ from tools import *
 import pickle
 
 GPU = load_gpu()
-# nvmlInit()
-# handle = nvmlDeviceGetHandleByIndex(GPU)
+nvmlInit()
+handle = nvmlDeviceGetHandleByIndex(GPU)
 os.environ["CUDA_VISIBLE_DEVICES"] = f"{GPU}"
 pyplt = py.offline.plot
 PCIE_bandwidth = 12  # MB/ms
@@ -202,7 +202,6 @@ def get_predicted_execution_time(op_name, inputs_of_model, logged_time: list):
         print(logged_time[1])
         return logged_time[1]
     else:
-        print(50)
         return 50
     # global models
     # old_gpu = os.environ["CUDA_VISIBLE_DEVICES"]
@@ -501,8 +500,8 @@ def get_framework_info(info, logged_time, job_id):
     tensor_access_list = []
     global_time = 0
     parameter = []
-    #   operation_id
-    # todo 修改传入系统的参数
+    # tensor_id: execution time of operator which generate the tensor
+    operator_execution_time = []
     for output_tensor_id, input_tensor_id, output_tensor_size, operation_name, is_parameter, shape, inputs_of_model in info:
         # is_parameter: 生成的张量是否为参数
         # 输入的为Byte
@@ -513,6 +512,7 @@ def get_framework_info(info, logged_time, job_id):
             input_tensor = tensors[tensor_id]
             input_tensors.append(input_tensor)
         time_cost = get_predicted_execution_time(operation_name, inputs_of_model, logged_time[output_tensor_id])
+        operator_execution_time.append(time_cost)
         output_tensor = Tensor(tensor_id=output_tensor_id, job_id=job_id, size=output_tensor_size, source_tensors=input_tensors, recomputation_time=time_cost, is_parameter=is_parameter, shape=shape)
         output_access = TensorAccess(tensor=output_tensor, time=global_time + time_cost, run_time=time_cost, access_type=AccessType.output, operation_id=output_tensor_id, operation_name=operation_name)
         tensor_access_list.append(output_access)
@@ -538,7 +538,7 @@ def get_framework_info(info, logged_time, job_id):
     swap_scheduler = []
     # 对参数进行swap in调度
     # earliest_swap = None
-    earliest_time = float('inf')
+    # earliest_time = float('inf')
     # 从最早的参数开始安排
     parameter = sorted(parameter, key=lambda x: dic[x][0].start_time)
     # for para in parameter:
@@ -562,7 +562,7 @@ def get_framework_info(info, logged_time, job_id):
     #         event.end_time = event.end_time + delta_time
     #         event.end_time = event.end_time + delta_time
 
-    return tensor_access_list, swap_scheduler, parameters
+    return tensor_access_list, swap_scheduler, parameter, operator_execution_time
 
 
 # 随机生成数据用的参数
@@ -585,6 +585,7 @@ global_tensors = {}
 swap_scheduler = []
 parameters = []
 models = {}
+execution_time = {}
 
 
 # load_all_model()
@@ -601,6 +602,7 @@ def init(graphs, logged_times: list, gpu: int):
     global global_tensors
     global swap_scheduler
     global parameters
+    global execution_time
     global_graphs = graphs
     jobs_weights = [weight for _ in range(len(graphs))]
     tensor_access_by_tensor = [[] for _ in range(job_num)]
@@ -615,6 +617,8 @@ def init(graphs, logged_times: list, gpu: int):
     global_tensor_access = [tmp[i][0] for i in range(job_num)]
     swap_scheduler = [tmp[i][1] for i in range(job_num)]
     parameters = [tmp[i][2] for i in range(job_num)]
+    execution_time = [tmp[i][3] for i in range(job_num)]
+
 
 
 def add_job(graph, job_id, gpu: int):
@@ -839,7 +843,7 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
     # control_message = [swap_order, [], []]
     # control_messages.append(control_message)
     # global_control_queue.put(control_messages)
-
+    global execution_time
     logged_times = []
     log_repeat = 0
     while True:
@@ -895,7 +899,7 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                             logged_time = []
 
                         print(swap_order)
-                        control_message = [swap_order[i], release_order[i], recomputation_order[i]]
+                        control_message = [swap_order[i], release_order[i], recomputation_order[i], execution_time[i]]
                         control_messages.append(control_message)
                     global_control_queue.put(control_messages)
                 # print(logged_times[0])
