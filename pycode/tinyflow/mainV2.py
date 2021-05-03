@@ -23,8 +23,8 @@ from tensorboard.plugins.hparams import keras
 from tools import *
 
 GPU = load_gpu()
-# nvmlInit()
-# handle = nvmlDeviceGetHandleByIndex(GPU)
+nvmlInit()
+handle = nvmlDeviceGetHandleByIndex(GPU)
 os.environ["CUDA_VISIBLE_DEVICES"] = f"{GPU}"
 pyplt = py.offline.plot
 PCIE_bandwidth = 12  # MB/ms
@@ -201,7 +201,6 @@ def get_predicted_execution_time(op_name, inputs_of_model, logged_time: list):
         print(logged_time[1])
         return logged_time[1]
     else:
-        print(50)
         return 50
     # global models
     # old_gpu = os.environ["CUDA_VISIBLE_DEVICES"]
