@@ -24,8 +24,8 @@ from tools import *
 import pickle
 
 GPU = load_gpu()
-nvmlInit()
-handle = nvmlDeviceGetHandleByIndex(GPU)
+# nvmlInit()
+# handle = nvmlDeviceGetHandleByIndex(GPU)
 os.environ["CUDA_VISIBLE_DEVICES"] = f"{GPU}"
 pyplt = py.offline.plot
 PCIE_bandwidth = 12  # MB/ms
@@ -39,7 +39,7 @@ load_list = ['convolution_2d_forward_VALID', 'convolution_backward_filter_2d_VAL
              'pooling_2d_backward_mean', 'matrix_multiply', 'matrix_elementwise_multiply_by_const', 'matrix_elementwise_add',
              'array_set', 'concat_forward', 'concat_a_backward',
              'concat_b_backward', 'sgd_update', 'cross', 'cross_backward', 'adam_mv', 'adam_compute']
-
+optimizer_op = ['AdamOp']
 
 class TaskType(Enum):
     swap_out = 0
@@ -231,7 +231,7 @@ def liveness_analysis(tensor_access_list):
             tensor_access = tensor_access_list[job_id][i]
             if tensor_access.tensor not in tmp and len(tensor_access_by_tensor[tensor_access.tensor.job_id][tensor_access.tensor]) > 1:
                 # 新生成的参数不会释放
-                if tensor_access.operation_name != 'feed_dict' and tensor_access.tensor.is_parameter:
+                if tensor_access.operation_name in optimizer_op and tensor_access.tensor.is_parameter:
                     continue
                 tmp.add(tensor_access.tensor)
                 tensor_access.release_flag = True
@@ -373,7 +373,7 @@ def get_max_memory_used(tensor_access_list, swap_tasks, swapped_out_tensor, reco
     wait_to_be_released = []
     max_time = None
     foot_print = {}
-    # 首先把输入的x，y以及所有没被swap out的参数载入显存，因为他们从上轮迭代结束时就一直在现存里面
+    # 首先把输入的x，y以及所有没被swap out的参数载入显存，因为他们从上轮迭代结束时就一直在显存里面
     for tensor in tensors:
         if tensor.in_gpu_at_beginning and tensor not in swapped_out_tensor:
             in_gpu_tensors.add(tensor)
@@ -391,8 +391,7 @@ def get_max_memory_used(tensor_access_list, swap_tasks, swapped_out_tensor, reco
                     in_gpu_tensors.remove(access.tensor)
         if isinstance(event, TensorAccess):
             if event.access_type == AccessType.output:
-                # feed dict进入的参数已经swap in了，他们的feed dict不按照增加显存处理
-                if not (event.tensor.is_parameter and event.operation_name == 'feed_dict') and event.tensor not in in_gpu_tensors:
+                if event.tensor not in in_gpu_tensors:
                     memory_used += event.tensor.size
                     in_gpu_tensors.add(event.tensor)
             else:
@@ -513,6 +512,8 @@ def get_framework_info(info, logged_time, job_id):
             input_tensors.append(input_tensor)
         time_cost = get_predicted_execution_time(operation_name, inputs_of_model, logged_time[output_tensor_id])
         operator_execution_time.append(time_cost)
+        if operation_name in optimizer_op:
+            is_parameter = 1
         output_tensor = Tensor(tensor_id=output_tensor_id, job_id=job_id, size=output_tensor_size, source_tensors=input_tensors, recomputation_time=time_cost, is_parameter=is_parameter, shape=shape)
         output_access = TensorAccess(tensor=output_tensor, time=global_time + time_cost, run_time=time_cost, access_type=AccessType.output, operation_id=output_tensor_id, operation_name=operation_name)
         tensor_access_list.append(output_access)
@@ -679,7 +680,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
             swapped_flag = False
             for tensor in max_tensors:
                 # 对该张量进行swap_out计划的安排
-                is_new_parameter = tensor.is_parameter and tensor_access_by_tensor[tensor.job_id][tensor][0].operation_name != 'feed_dict' and len(tensor_access_by_tensor[tensor.job_id][tensor]) == 1
+                is_new_parameter = tensor.is_parameter and tensor_access_by_tensor[tensor.job_id][tensor][0].operation_name in optimizer_op and len(tensor_access_by_tensor[tensor.job_id][tensor]) == 1
                 if not is_new_parameter:
                     if swap_out_number[tensor.job_id] <= swap_out_number_limits[tensor.job_id] and len(tensor_access_by_tensor[tensor.job_id][tensor]) > 1:
                         # swapped_out表示所有可能的swap_in已经调度过了
@@ -775,9 +776,9 @@ def generate_scheduling_plan(logged_times, gpu: int):
                             for t in tensor.source_tensors:
                                 if t.is_parameter:
                                     # 试图swap in
-                                    # 找到第一次访问
-                                    first_access = tensor_access_by_tensor[t.job_id][t][0]
-                                    assert first_access.access_type == AccessType.output and first_access.operator_name == 'feed_dict'
+                                    # 找到第一次input访问(feed_dict不实际使用)
+                                    first_access = tensor_access_by_tensor[t.job_id][t][1]
+                                    assert first_access.access_type == AccessType.input
                                     swap_in_task = SwapTask(t, first_access.time, first_access.tensor.swap_time, TaskType.swap_in, front_boundary=float('-inf'), back_boundary=first_access.start_time)
                                     res = try_swap_in(swap_in_task, swap_scheduler, tensor_access_by_tensor[t.job_id][t])
                                     # assert not res, f'swap in parameter:{t} failed'
