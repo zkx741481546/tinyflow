@@ -761,38 +761,39 @@ def generate_scheduling_plan(logged_times, gpu: int):
                                 break
                 # 如果是新参数，则尝试对新参数进行swap out，对对应的旧参数进行swap in
                 else:
-                    output_access = tensor_access_by_tensor[tensor.job_id][tensor][0]
-                    assert output_access.access_type == AccessType.output
-                    # TODO: 框架在开始下一个batch的计算前需要等待最后一个swap结束
-                    swap_out_task = SwapTask(tensor, time=output_access.time, time_cost=tensor.swap_time, task_type=TaskType.swap_out, front_boundary=output_access.end_time, back_boundary=float('inf'))
-                    free_intervals = get_free_intervals(swap_out_task, swap_scheduler[swap_out_task.tensor.job_id], tensor_access_by_tensor[tensor.job_id][tensor])
-                    for interval in free_intervals:
-                        if interval[1] - interval[0] >= swap_out_task.time_cost:
-                            swap_out_task.start_time = interval[0]
-                            swap_out_task.end_time = swap_out_task.start_time + swap_out_task.time_cost
-                            swap_scheduler[swap_out_task.tensor.job_id].append(swap_out_task)
-                            # 找到对应的旧参数张量
-                            # 由于二者可行域无关，所以直接查看对应的swap in 能否调度
-                            for t in tensor.source_tensors:
-                                if t.is_parameter:
-                                    # 试图swap in
-                                    # 找到第一次input访问(feed_dict不实际使用)
-                                    first_access = tensor_access_by_tensor[t.job_id][t][1]
-                                    assert first_access.access_type == AccessType.input
-                                    swap_in_task = SwapTask(t, first_access.time, first_access.tensor.swap_time, TaskType.swap_in, front_boundary=float('-inf'), back_boundary=first_access.start_time)
-                                    res = try_swap_in(swap_in_task, swap_scheduler, tensor_access_by_tensor[t.job_id][t])
-                                    # assert not res, f'swap in parameter:{t} failed'
-                                    if res:
-                                        swapped_out_tensor.add(tensor)
-                                        swap_out_dict[tensor] = swap_out_task
-                                        swapped_in_access.add(first_access)
-                                        swap_out_number[tensor.job_id] += 1
-                                        swapped_flag = True
-                                    else:
-                                        swap_scheduler[swap_out_task.tensor.job_id].remove(swap_out_task)
-                                        assert tensor not in swapped_out_tensor
-                                    break
-                            break
+                    if tensor not in swapped_out_tensor:
+                        output_access = tensor_access_by_tensor[tensor.job_id][tensor][0]
+                        assert output_access.access_type == AccessType.output
+                        # TODO: 框架在开始下一个batch的计算前需要等待最后一个swap结束
+                        swap_out_task = SwapTask(tensor, time=output_access.time, time_cost=tensor.swap_time, task_type=TaskType.swap_out, front_boundary=output_access.end_time, back_boundary=float('inf'))
+                        free_intervals = get_free_intervals(swap_out_task, swap_scheduler[swap_out_task.tensor.job_id], tensor_access_by_tensor[tensor.job_id][tensor])
+                        for interval in free_intervals:
+                            if interval[1] - interval[0] >= swap_out_task.time_cost:
+                                swap_out_task.start_time = interval[0]
+                                swap_out_task.end_time = swap_out_task.start_time + swap_out_task.time_cost
+                                swap_scheduler[swap_out_task.tensor.job_id].append(swap_out_task)
+                                # 找到对应的旧参数张量
+                                # 由于二者可行域无关，所以直接查看对应的swap in 能否调度
+                                for t in tensor.source_tensors:
+                                    if t.is_parameter:
+                                        # 试图swap in
+                                        # 找到第一次input访问(feed_dict不实际使用)
+                                        first_access = tensor_access_by_tensor[t.job_id][t][1]
+                                        assert first_access.access_type == AccessType.input
+                                        swap_in_task = SwapTask(t, first_access.time, first_access.tensor.swap_time, TaskType.swap_in, front_boundary=0, back_boundary=first_access.start_time)
+                                        res = try_swap_in(swap_in_task, swap_scheduler, tensor_access_by_tensor[t.job_id][t])
+                                        # assert not res, f'swap in parameter:{t} failed'
+                                        if res:
+                                            swapped_out_tensor.add(tensor)
+                                            swap_out_dict[tensor] = swap_out_task
+                                            swapped_in_access.add(first_access)
+                                            swap_out_number[tensor.job_id] += 1
+                                            swapped_flag = True
+                                        else:
+                                            swap_scheduler[swap_out_task.tensor.job_id].remove(swap_out_task)
+                                            assert tensor not in swapped_out_tensor
+                                        break
+                                break
         elif enable_recomputation:
             recomputation_flag = False
             # 需要重计算
