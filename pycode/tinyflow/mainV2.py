@@ -882,13 +882,27 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
             else:
                 for node_message in message_graph:
                     logged_times[job_id][node_message[0]].append(node_message[1])
+
+                total_time_old = 0
+                for run_time in execution_time[job_id]:
+                    total_time_old += run_time
+                total_time_new = 0
+                for run_time in message_graph:
+                    total_time_new += run_time
+                change_rate = abs(total_time_new - total_time_old) / total_time_old
+                is_replan = False
+                if change_rate > 0.2:
+                    is_replan = True
+                else:
+                    is_replan = False
+
+
                 # todo 此处控制了在一定轮数之后才进行决策
                 log_repeat += 1
-                if log_repeat == 50:
-                    log_repeat = 0
+                if log_repeat > 5000000:
 
-                    with open("./log/logged_times", "wb") as f1:
-                        pickle.dump(logged_times, f1)
+                    # with open("./log/logged_times", "wb") as f1:
+                    #     pickle.dump(logged_times, f1)
 
                     release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
 
@@ -903,17 +917,17 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                         print(swap_order)
                         control_message = [swap_order[i], release_order[i], recomputation_order[i], execution_time[i]]
                         control_messages.append(control_message)
-                    global_control_queue.put(control_messages)
+                    # global_control_queue.put(control_messages)
                 # print(logged_times[0])
 
 
-import pickle
-
-with open('../../global_graphs', 'rb') as f:
-    g = pickle.load(f)
-global_graphs = g
-with open('../../logged_times', 'rb') as f:
-    logged_times = pickle.load(f)
-job_num = 1
-init(global_graphs, logged_times, 0)
-release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
+# import pickle
+#
+# with open('../../global_graphs', 'rb') as f:
+#     g = pickle.load(f)
+# global_graphs = g
+# with open('../../logged_times', 'rb') as f:
+#     logged_times = pickle.load(f)
+# job_num = 1
+# init(global_graphs, logged_times, 0)
+# release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)

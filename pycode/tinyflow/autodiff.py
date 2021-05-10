@@ -2548,7 +2548,6 @@ class Executor(object):
             if node.issgd:
                 # todo 对于sgd op 的特殊处理
 
-
                 # todo 两种不同的时间计算策略
                 t1 = datetime.datetime.now()
                 node.op.compute(node, input_vals, None, self.cudnnHandle, self.cublasHandle, self.cudaStream, False)
