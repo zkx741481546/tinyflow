@@ -198,11 +198,9 @@ def load_all_model():
 
 
 def get_predicted_execution_time(op_name, inputs_of_model, logged_time: list):
-    if len(logged_time) > 1:
-        print(logged_time[1])
-        return logged_time[1]
-    else:
-        return 50
+
+    return logged_time[0]
+
     # global models
     # old_gpu = os.environ["CUDA_VISIBLE_DEVICES"]
     # os.environ["CUDA_VISIBLE_DEVICES"] = '-1'
@@ -848,6 +846,9 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
     global execution_time
     logged_times = []
     log_repeat = 0
+    alpha = 0.9
+
+
     while True:
         if not global_message_queue.empty():
             global_message = global_message_queue.get()
@@ -867,7 +868,7 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                     pickle.dump(global_graphs, f1)
 
                 for i in range(tensor_num):
-                    logged_times[job_id].append([50])
+                    logged_times[job_id].append([1])
                 # logged_times[job_id] = [[50, 0.01], [50, 0.01], [50, 351], [50, 0.01], [50, 87], [50, 136], [50, 98], [50, 0.01], [50, 77], [50, 0.01], [50, 23], [50, 85], [50, 33], [50, 0.01], [50, 63], [50, 0.01], [50, 23],
                 #      [50, 71], [50, 0.01], [50, 80], [50, 65], [50, 56], [50, 69], [50, 56], [50, 203], [50, 28], [50, 66], [50, 60], [50, 66], [50, 29], [50, 75], [50, 62], [50, 32], [50, 24], [50, 81],
                 #      [50, 114], [50, 50], [50, 42], [50, 707], [50, 554], [50, 121]]
@@ -880,31 +881,41 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                     control_messages.append(control_message)
                     # global_control_queue.put(control_messages)
             else:
-                for node_message in message_graph:
-                    logged_times[job_id][node_message[0]].append(node_message[1])
+
 
                 total_time_old = 0
                 for run_time in execution_time[job_id]:
                     total_time_old += run_time
                 total_time_new = 0
                 for run_time in message_graph:
-                    total_time_new += run_time
+                    total_time_new += run_time[1]
                 change_rate = abs(total_time_new - total_time_old) / total_time_old
                 is_replan = False
-                if change_rate > 0.2:
+                print("change rate is ", change_rate)
+                # print("total time new is", total_time_new)
+                # print("total time old is", total_time_old)
+
+                if change_rate > 0.5:
                     is_replan = True
                 else:
                     is_replan = False
 
+                # with open("./log/total_time.txt", "a") as f1:
+                #     print(total_time_new, file=f1)
 
                 # todo 此处控制了在一定轮数之后才进行决策
                 log_repeat += 1
-                if log_repeat > 5000000:
+                if log_repeat > 5 and is_replan:
 
                     # with open("./log/logged_times", "wb") as f1:
                     #     pickle.dump(logged_times, f1)
 
+                    for node_message in message_graph:
+                        time_new = node_message[1] * alpha + execution_time[job_id][node_message[0]] * (1 - alpha)
+                        logged_times[job_id][node_message[0]] = [node_message[1]]
+
                     release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
+
 
                     control_messages = []
 
@@ -917,7 +928,7 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                         print(swap_order)
                         control_message = [swap_order[i], release_order[i], recomputation_order[i], execution_time[i]]
                         control_messages.append(control_message)
-                    # global_control_queue.put(control_messages)
+                        # global_control_queue.put(control_messages)
                 # print(logged_times[0])
 
 
