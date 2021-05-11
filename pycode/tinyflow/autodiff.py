@@ -2215,6 +2215,7 @@ class Executor(object):
         self.learning_rate = learning_rate
         self.Variable_node_list = get_Variable_node_list(self.targetloss)
 
+
         self.Variable_node_list.reverse()
         self.Variable_node_grad_list = gradients(self.targetloss, self.Variable_node_list)  # 反向node
         # 这个eval_node_list全是adamop不是变量
@@ -2267,6 +2268,7 @@ class Executor(object):
         # todo 此处hard code，后续需要修改
         self.ctx_cpu = ndarray.cpu(0)
         self.ctx_gpu = ndarray.gpu(0)
+        self.total_node = len(self.topo_order)
 
         self.f = open("./log/hit_rate.txt")
 
@@ -2357,6 +2359,12 @@ class Executor(object):
                 index_to_cpu_flag[node.index] = True
                 index_to_cpu_map[node.index] = value
                 feed_shapes[node] = value.shape
+            if node.name == "X" or node.name == "y_":
+                continue
+            else:
+                index_to_gpu_map[node.index + self.total_node] = None
+                index_to_cpu_flag[node.index + self.total_node] = False
+                index_to_cpu_map[node.index + self.total_node] = ndarray.empty(value.shape, self.ctx_cpu)
 
 
         # collect shapes for all placeholders
@@ -2529,7 +2537,7 @@ class Executor(object):
                 if index_to_gpu_map[n.index] is None:
                     # print("when computing " + str(node.index) + " passive import " + str(n.index))
                     # todo 考虑如何被动进行swap in
-                    assert index_to_cpu_flag[n.index], "输入tensor不在cpu上"
+                    assert index_to_cpu_flag[n.index], "when computing" + str(node.index) + " 输入tensor " + str(n.index) + " 不在cpu上"
                     passive_swap_in += 1
                     node_ndarray_new = ndarray.empty(self.node_to_shape_map[n], self.ctx_gpu)
                     index_to_cpu_map[n.index].copyto(node_ndarray_new, self.cudaStream)
@@ -2551,6 +2559,12 @@ class Executor(object):
                 # todo 两种不同的时间计算策略
                 t1 = datetime.datetime.now()
                 node.op.compute(node, input_vals, None, self.cudnnHandle, self.cublasHandle, self.cudaStream, False)
+
+                for i in range(3):
+                    input_node = node.inputs[i]
+                    index_to_gpu_map[input_node.index + self.total_node] = index_to_gpu_map[input_node.index]
+
+
                 t2 = datetime.datetime.now()
                 node.runtime = (t2 - t1).microseconds / 1000
 
@@ -2674,10 +2688,10 @@ class Executor(object):
         for n in feed_dict:
             if n.name == "X" or n.name == "y_":
                 continue
-            if index_to_gpu_map[n.index] is None and index_to_cpu_flag[n.index]:
-                return_feed_dict[n] = index_to_cpu_map[n.index]
+            if index_to_gpu_map[n.index + self.total_node] is None and index_to_cpu_flag[n.index + self.total_node]:
+                return_feed_dict[n] = index_to_cpu_map[n.index + self.total_node]
             else:
-                return_feed_dict[n] = index_to_gpu_map[n.index]
+                return_feed_dict[n] = index_to_gpu_map[n.index + self.total_node]
 
         eval_return_list.append(return_feed_dict)
 
