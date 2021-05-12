@@ -499,28 +499,30 @@ def get_framework_info(info, logged_time, job_id):
     parameter = []
     # tensor_id: execution time of operator which generate the tensor
     operator_execution_time = []
-    for output_tensor_id, input_tensor_id, output_tensor_size, operation_name, is_parameter, shape, inputs_of_model in info:
+    # for output_tensor_id, input_tensor_id, output_tensor_size, operation_name, is_parameter, shape, inputs_of_model in info:
+    for tensor_info, input_tensor_id, operation_name, operation_id, is_parameter, inputs_of_model in info:
         # is_parameter: 生成的张量是否为参数
         # 输入的为Byte
         # 转换为MB
-        output_tensor_size = output_tensor_size / 1000000
         input_tensors = []
         for tensor_id in input_tensor_id:
             input_tensor = tensors[tensor_id]
             input_tensors.append(input_tensor)
-        time_cost = get_predicted_execution_time(operation_name, inputs_of_model, logged_time[output_tensor_id])
-        operator_execution_time.append(time_cost)
-        if operation_name in optimizer_op:
-            is_parameter = 1
-        output_tensor = Tensor(tensor_id=output_tensor_id, job_id=job_id, size=output_tensor_size, source_tensors=input_tensors, recomputation_time=time_cost, is_parameter=is_parameter, shape=shape)
-        output_access = TensorAccess(tensor=output_tensor, time=global_time + time_cost, run_time=time_cost, access_type=AccessType.output, operation_id=output_tensor_id, operation_name=operation_name)
-        tensor_access_list.append(output_access)
-        tensors[output_tensor.tensor_id] = output_tensor
-        if is_parameter:
-            parameter.append(output_tensor)
+        time_cost = get_predicted_execution_time(operation_name, inputs_of_model, logged_time[operation_id])
+        for output_tensor_id, output_tensor_size, shape in tensor_info:
+            output_tensor_size = output_tensor_size / 1000000
+            operator_execution_time.append(time_cost)
+            if operation_name in optimizer_op:
+                assert is_parameter == 1
+            output_tensor = Tensor(tensor_id=output_tensor_id, job_id=job_id, size=output_tensor_size, source_tensors=input_tensors, recomputation_time=time_cost, is_parameter=is_parameter, shape=shape)
+            output_access = TensorAccess(tensor=output_tensor, time=global_time + time_cost, run_time=time_cost, access_type=AccessType.output, operation_id=output_tensor_id, operation_name=operation_name)
+            tensor_access_list.append(output_access)
+            tensors[output_tensor.tensor_id] = output_tensor
+            if is_parameter:
+                parameter.append(output_tensor)
         for tensor_id in input_tensor_id:
             input_tensor = tensors[tensor_id]
-            input_access = TensorAccess(tensor=input_tensor, time=global_time, run_time=time_cost, access_type=AccessType.input, operation_id=output_tensor_id, operation_name=operation_name)
+            input_access = TensorAccess(tensor=input_tensor, time=global_time, run_time=time_cost, access_type=AccessType.input, operation_id=operation_id, operation_name=operation_name)
             tensor_access_list.append(input_access)
         global_time += time_cost
 
