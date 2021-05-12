@@ -2403,7 +2403,15 @@ class Executor(object):
 
             # 新的返回信息
             # output_tensor_id, input_tensor_id, output_tensor_size, operation_name, is_parameter, is_input_or_output, shape, inputs_of_model
-                return_element = [node.index, node_inputs, node_size, operation_name, is_input, self.node_to_shape_map[node], []]
+                tensor_list = []
+                if operation_name != "AdamOp":
+                    tensor_list = [(node.index, node_size, self.node_to_shape_map[node])]
+                else:
+                    for i in range(3):
+                        tensor_list.append((node.inputs[i].index + self.total_node,
+                                            np.prod(self.node_to_shape_map[node.inputs[i]]) * 4,
+                                            self.node_to_shape_map[node.inputs[i]]))
+                return_element = [tensor_list, operation_name, is_input,[]]
                 return_list.append(return_element)
             self.top_message_queue.put([0, return_list])
         else:
