@@ -24,8 +24,8 @@ from tools import *
 import pickle
 
 GPU = load_gpu()
-# nvmlInit()
-# handle = nvmlDeviceGetHandleByIndex(GPU)
+nvmlInit()
+handle = nvmlDeviceGetHandleByIndex(GPU)
 os.environ["CUDA_VISIBLE_DEVICES"] = f"{GPU}"
 pyplt = py.offline.plot
 PCIE_bandwidth = 12  # MB/ms
@@ -319,7 +319,11 @@ def generate_swap_recomputation_release_order(tensor_access_by_tensor, swap_sche
         recomp_orders[job_id] = recomps
         for task in swap_tasks:
             # (task_id, node_id(tensor_id), start_time, start_node, move_to_gpu, start_node_type)
-            swaps.append([task.tensor.tensor_id, task.execute_time, task.execute_ref.operation_id, 0 if task.task_type == TaskType.swap_out else 1, 1, task.start_time])
+            if task.execute_ref is not None:
+                ref = task.execute_ref.operation_id
+            else:
+                ref = 0
+            swaps.append([task.tensor.tensor_id, task.execute_time, ref, 0 if task.task_type == TaskType.swap_out else 1, 1, task.start_time])
         swap_orders[job_id] = list(map(lambda x: x[:-1], sorted(swaps, key=lambda x: x[-1])))
     return release_orders, swap_orders, recomp_orders
 
@@ -407,7 +411,6 @@ def get_max_memory_used(tensor_access_list, swap_tasks, swapped_out_tensor, reco
                 if isinstance(end_time_axis[j], TensorAccess) and end_time_axis[j].end_time <= event.start_time:
                     last_event = end_time_axis[j]
                     break
-            assert last_event is not None
             event.execute_ref = last_event
             event.execute_time = event.start_time - last_event.end_time
             if event.task_type == TaskType.swap_in:
@@ -609,10 +612,10 @@ def init(graphs, logged_times: list, gpu: int):
     tensor_access_by_tensor = [[] for _ in range(job_num)]
     os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu)
     # 获取当前剩余显存总量
-    # nvmlInit()
-    # handle = nvmlDeviceGetHandleByIndex(gpu)
-    # total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
-    total_memory = 6000
+    nvmlInit()
+    handle = nvmlDeviceGetHandleByIndex(gpu)
+    total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
+    # total_memory = 6000
     job_num = len(graphs)
     tmp = [get_framework_info(graphs[i], logged_times[i], i) for i in range(job_num)]
     global_tensor_access = [tmp[i][0] for i in range(job_num)]
@@ -662,10 +665,11 @@ def generate_scheduling_plan(logged_times, gpu: int):
     last_memory_used = 0
     max_memory = 0
     job_id_ordered_by_weights = list(map(lambda x: x[0], sorted([(job_id, weights) for job_id, weights in enumerate(jobs_weights)], key=lambda x: x[1], reverse=True)))
+    draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
     while swapped_flag or (recomputation_flag and enable_recomputation):
         # MB
-        # total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
-        total_memory = 6000
+        total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
+        # total_memory = 6000
         max_memory, max_tensors, last_input_accesses, max_time, foot_prints, time_axis = run_global_memory_analysis(global_tensor_access, swap_scheduler, swapped_out_tensor, recomputation_tensor,
                                                                                                                     tensor_access_by_tensor)
         if iter == 0:
@@ -827,8 +831,8 @@ def generate_scheduling_plan(logged_times, gpu: int):
         iter += 1
     fig = go.Figure(data=[go.Scatter(x=list(original_memory_footprint[0].keys()), y=list(original_memory_footprint[0].values())), go.Scatter(x=list(foot_prints[0].keys()), y=list(foot_prints[0].values()))])
     plotly.offline.plot(fig, filename='../../pic/footprint.html')
-    # total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
-    total_memory = 6000
+    total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
+    # total_memory = 6000
     stats = 'succeed' if max_memory < total_memory else ' failure'
     print(f'scheduling {stats}')
     draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
