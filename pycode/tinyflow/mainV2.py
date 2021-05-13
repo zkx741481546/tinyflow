@@ -615,7 +615,7 @@ def init(graphs, logged_times: list, gpu: int):
     nvmlInit()
     handle = nvmlDeviceGetHandleByIndex(gpu)
     total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
-    # total_memory = 6000
+    #　total_memory = 6000
     job_num = len(graphs)
     tmp = [get_framework_info(graphs[i], logged_times[i], i) for i in range(job_num)]
     global_tensor_access = [tmp[i][0] for i in range(job_num)]
@@ -652,6 +652,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
     swap_out_number_limits = [int(weight * tensor_num) for weight, tensor_num in zip(jobs_weights, tensor_nums)]
     swap_out_number = [0 for _ in tensor_nums]
     swapped_out_tensor = set()
+    swapped_in_source_tensor = set()
     swap_out_dict = {}
     swapped_in_access = set()
     recomputations = []
@@ -779,7 +780,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
                                 # 找到对应的旧参数张量
                                 # 由于二者可行域无关，所以直接查看对应的swap in 能否调度
                                 for t in tensor.source_tensors:
-                                    if t.is_parameter:
+                                    if t.is_parameter and t not in swapped_in_source_tensor:
                                         # 试图swap in
                                         # 找到第一次input访问(feed_dict不实际使用)
                                         first_access = tensor_access_by_tensor[t.job_id][t][1]
@@ -788,6 +789,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
                                         res = try_swap_in(swap_in_task, swap_scheduler, tensor_access_by_tensor[t.job_id][t])
                                         # assert not res, f'swap in parameter:{t} failed'
                                         if res:
+                                            swapped_in_source_tensor.add(t)
                                             swapped_out_tensor.add(tensor)
                                             swap_out_dict[tensor] = swap_out_task
                                             swapped_in_access.add(first_access)
