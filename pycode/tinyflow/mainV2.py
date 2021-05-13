@@ -319,10 +319,8 @@ def generate_swap_recomputation_release_order(tensor_access_by_tensor, swap_sche
         recomp_orders[job_id] = recomps
         for task in swap_tasks:
             # (task_id, node_id(tensor_id), start_time, start_node, move_to_gpu, start_node_type)
-            if task.execute_ref is not None:
-                ref = task.execute_ref.operation_id
-            else:
-                ref = 0
+            # if task.execute_ref is not None:
+            ref = task.execute_ref.operation_id
             swaps.append([task.tensor.tensor_id, task.execute_time, ref, 0 if task.task_type == TaskType.swap_out else 1, 1, task.start_time])
         swap_orders[job_id] = list(map(lambda x: x[:-1], sorted(swaps, key=lambda x: x[-1])))
     return release_orders, swap_orders, recomp_orders
@@ -411,6 +409,8 @@ def get_max_memory_used(tensor_access_list, swap_tasks, swapped_out_tensor, reco
                 if isinstance(end_time_axis[j], TensorAccess) and end_time_axis[j].end_time <= event.start_time:
                     last_event = end_time_axis[j]
                     break
+            if last_event is None:
+                last_event = tensor_access_list[0]
             event.execute_ref = last_event
             event.execute_time = event.start_time - last_event.end_time
             if event.task_type == TaskType.swap_in:
@@ -665,7 +665,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
     last_memory_used = 0
     max_memory = 0
     job_id_ordered_by_weights = list(map(lambda x: x[0], sorted([(job_id, weights) for job_id, weights in enumerate(jobs_weights)], key=lambda x: x[1], reverse=True)))
-    draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
+    # draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
     while swapped_flag or (recomputation_flag and enable_recomputation):
         # MB
         total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
