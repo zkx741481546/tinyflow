@@ -518,7 +518,7 @@ def get_framework_info(info, logged_time, job_id):
             if operation_name in optimizer_op:
                 is_parameter = 1
             output_tensor = Tensor(tensor_id=output_tensor_id, job_id=job_id, size=output_tensor_size, source_tensors=input_tensors, recomputation_time=time_cost, is_parameter=is_parameter, shape=shape)
-            output_access = TensorAccess(tensor=output_tensor, time=global_time + time_cost, run_time=time_cost, access_type=AccessType.output, operation_id=output_tensor_id, operation_name=operation_name)
+            output_access = TensorAccess(tensor=output_tensor, time=global_time + time_cost, run_time=time_cost, access_type=AccessType.output, operation_id=operation_id, operation_name=operation_name)
             tensor_access_list.append(output_access)
             tensors[output_tensor.tensor_id] = output_tensor
             if is_parameter:
