@@ -24,8 +24,10 @@ from tools import *
 import pickle
 
 GPU = load_gpu()
-nvmlInit()
-handle = nvmlDeviceGetHandleByIndex(GPU)
+debug_mod = False
+if not debug_mod:
+    nvmlInit()
+    handle = nvmlDeviceGetHandleByIndex(GPU)
 os.environ["CUDA_VISIBLE_DEVICES"] = f"{GPU}"
 pyplt = py.offline.plot
 PCIE_bandwidth = 12  # MB/ms
@@ -40,6 +42,7 @@ load_list = ['convolution_2d_forward_VALID', 'convolution_backward_filter_2d_VAL
              'array_set', 'concat_forward', 'concat_a_backward',
              'concat_b_backward', 'sgd_update', 'cross', 'cross_backward', 'adam_mv', 'adam_compute']
 optimizer_op = ['AdamOp']
+
 
 class TaskType(Enum):
     swap_out = 0
@@ -198,7 +201,6 @@ def load_all_model():
 
 
 def get_predicted_execution_time(op_name, inputs_of_model, logged_time: list):
-
     return logged_time[0]
 
     # global models
@@ -227,9 +229,10 @@ def liveness_analysis(tensor_access_list):
         tmp = set()
         for i in range(len(tensor_access_list[job_id]) - 1, -1, -1):
             tensor_access = tensor_access_list[job_id][i]
-            if tensor_access.tensor not in tmp and len(tensor_access_by_tensor[tensor_access.tensor.job_id][tensor_access.tensor]) > 1:
+            accesses_of_tensor = tensor_access_by_tensor[tensor_access.tensor.job_id][tensor_access.tensor]
+            if tensor_access.tensor not in tmp and len(accesses_of_tensor) > 1 and tensor_access == accesses_of_tensor[-1]:
                 # 新生成的参数不会释放
-                if tensor_access.operation_name in optimizer_op and tensor_access.tensor.is_parameter:
+                if tensor_access.operation_name in optimizer_op and tensor_access.tensor.is_parameter and tensor_access.access_type==AccessType.output:
                     continue
                 tmp.add(tensor_access.tensor)
                 tensor_access.release_flag = True
@@ -612,17 +615,18 @@ def init(graphs, logged_times: list, gpu: int):
     tensor_access_by_tensor = [[] for _ in range(job_num)]
     os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu)
     # 获取当前剩余显存总量
-    nvmlInit()
-    handle = nvmlDeviceGetHandleByIndex(gpu)
-    total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
-    #　total_memory = 6000
+    if not debug_mod:
+        nvmlInit()
+        handle = nvmlDeviceGetHandleByIndex(gpu)
+        total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
+    else:
+        total_memory = 6000
     job_num = len(graphs)
     tmp = [get_framework_info(graphs[i], logged_times[i], i) for i in range(job_num)]
     global_tensor_access = [tmp[i][0] for i in range(job_num)]
     swap_scheduler = [tmp[i][1] for i in range(job_num)]
     parameters = [tmp[i][2] for i in range(job_num)]
     execution_time = [tmp[i][3] for i in range(job_num)]
-
 
 
 def add_job(graph, job_id, gpu: int):
@@ -669,8 +673,10 @@ def generate_scheduling_plan(logged_times, gpu: int):
     # draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
     while swapped_flag or (recomputation_flag and enable_recomputation):
         # MB
-        total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
-        # total_memory = 6000
+        if not debug_mod:
+            total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
+        else:
+            total_memory = 6000
         max_memory, max_tensors, last_input_accesses, max_time, foot_prints, time_axis = run_global_memory_analysis(global_tensor_access, swap_scheduler, swapped_out_tensor, recomputation_tensor,
                                                                                                                     tensor_access_by_tensor)
         if iter == 0:
@@ -833,8 +839,10 @@ def generate_scheduling_plan(logged_times, gpu: int):
         iter += 1
     fig = go.Figure(data=[go.Scatter(x=list(original_memory_footprint[0].keys()), y=list(original_memory_footprint[0].values())), go.Scatter(x=list(foot_prints[0].keys()), y=list(foot_prints[0].values()))])
     plotly.offline.plot(fig, filename='../../pic/footprint.html')
-    total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
-    # total_memory = 6000
+    if not debug_mod:
+        total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
+    else:
+        total_memory = 6000
     stats = 'succeed' if max_memory < total_memory else ' failure'
     print(f'scheduling {stats}')
     draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
@@ -855,7 +863,6 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
     logged_times = []
     log_repeat = 0
     alpha = 0.9
-
 
     while True:
         if not global_message_queue.empty():
@@ -890,7 +897,6 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                     # global_control_queue.put(control_messages)
             else:
 
-
                 total_time_old = 0
                 for run_time in execution_time[job_id]:
                     total_time_old += run_time
@@ -924,7 +930,6 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
 
                     release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
 
-
                     control_messages = []
 
                     for i in range(job_num):
@@ -940,13 +945,13 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                 # print(logged_times[0])
 
 
-# import pickle
-#
-# with open('../../global_graphs', 'rb') as f:
-#     g = pickle.load(f)
-# global_graphs = g
-# with open('../../logged_times', 'rb') as f:
-#     logged_times = pickle.load(f)
-# job_num = 1
-# init(global_graphs, logged_times, 0)
-# release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
+import pickle
+
+with open('../../global_graphs', 'rb') as f:
+    g = pickle.load(f)
+global_graphs = g
+with open('../../logged_times', 'rb') as f:
+    logged_times = pickle.load(f)
+job_num = 1
+init(global_graphs, logged_times, 0)
+release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
