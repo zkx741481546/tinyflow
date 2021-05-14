@@ -231,11 +231,10 @@ def liveness_analysis(tensor_access_list):
             tensor_access = tensor_access_list[job_id][i]
             accesses_of_tensor = tensor_access_by_tensor[tensor_access.tensor.job_id][tensor_access.tensor]
             if tensor_access.tensor not in tmp and len(accesses_of_tensor) > 1 and tensor_access == accesses_of_tensor[-1]:
-                # 新生成的参数不会释放
-                if tensor_access.operation_name in optimizer_op and tensor_access.tensor.is_parameter and tensor_access.access_type==AccessType.output:
-                    continue
-                tmp.add(tensor_access.tensor)
-                tensor_access.release_flag = True
+                # 参数不会释放
+                if not tensor_access.tensor.is_parameter:
+                    tmp.add(tensor_access.tensor)
+                    tensor_access.release_flag = True
 
 
 def is_overlap(task: SwapTask, target: SwapTask):
@@ -395,7 +394,9 @@ def get_max_memory_used(tensor_access_list, swap_tasks, swapped_out_tensor, reco
         if isinstance(event, TensorAccess):
             if event.access_type == AccessType.output:
                 if event.tensor not in in_gpu_tensors:
-                    memory_used += event.tensor.size
+                    # 新参数不额外占用空间
+                    if event.operation_name not in optimizer_op:
+                        memory_used += event.tensor.size
                     in_gpu_tensors.add(event.tensor)
             else:
                 # 用完即释放的
@@ -944,14 +945,14 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                         global_control_queue.put(control_messages)
                 # print(logged_times[0])
 
+if debug_mod:
+    import pickle
 
-import pickle
-
-with open('../../global_graphs', 'rb') as f:
-    g = pickle.load(f)
-global_graphs = g
-with open('../../logged_times', 'rb') as f:
-    logged_times = pickle.load(f)
-job_num = 1
-init(global_graphs, logged_times, 0)
-release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
+    with open('../../global_graphs', 'rb') as f:
+        g = pickle.load(f)
+    global_graphs = g
+    with open('../../logged_times', 'rb') as f:
+        logged_times = pickle.load(f)
+    job_num = 1
+    init(global_graphs, logged_times, 0)
+    release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
