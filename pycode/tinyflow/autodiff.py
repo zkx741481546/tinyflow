@@ -2410,7 +2410,7 @@ class Executor(object):
                         tensor_list.append((node.inputs[i].index + self.total_node,
                                             np.prod(self.node_to_shape_map[node.inputs[i]]) * 4,
                                             self.node_to_shape_map[node.inputs[i]]))
-                return_element = [tensor_list, node_inputs, operation_name, is_input, []]
+                return_element = [tensor_list, node_inputs, operation_name, node.index, is_input, []]
                 return_list.append(return_element)
             self.top_message_queue.put([0, return_list])
         else:
