@@ -945,14 +945,14 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                         global_control_queue.put(control_messages)
                 # print(logged_times[0])
 
-if debug_mod:
-    import pickle
-
-    with open('../../global_graphs', 'rb') as f:
-        g = pickle.load(f)
-    global_graphs = g
-    with open('../../logged_times', 'rb') as f:
-        logged_times = pickle.load(f)
-    job_num = 1
-    init(global_graphs, logged_times, 0)
-    release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
+# if debug_mod:
+#     import pickle
+#
+#     with open('../../global_graphs', 'rb') as f:
+#         g = pickle.load(f)
+#     global_graphs = g
+#     with open('../../logged_times', 'rb') as f:
+#         logged_times = pickle.load(f)
+#     job_num = 1
+#     init(global_graphs, logged_times, 0)
+#     release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
