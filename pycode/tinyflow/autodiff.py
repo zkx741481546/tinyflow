@@ -2424,7 +2424,7 @@ class Executor(object):
         # e.g. call run() on test data after trainng
         if not are_feed_shapes_equal(feed_shapes, self.feed_shapes):
             # todo not allowed to change when running
-            assert False
+            assert False, str(feed_shapes)
             self.infer_shape(feed_shapes)
             self.feed_shapes = feed_shapes
 
@@ -2570,6 +2570,7 @@ class Executor(object):
                 for i in range(3):
                     input_node = node.inputs[i]
                     index_to_gpu_map[input_node.index + self.total_node] = index_to_gpu_map[input_node.index]
+                    index_to_gpu_map[input_node.index] = None
 
 
                 t2 = datetime.datetime.now()
