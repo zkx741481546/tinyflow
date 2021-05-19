@@ -594,7 +594,6 @@ global_tensors = {}
 swap_scheduler = []
 parameters = []
 models = {}
-execution_time = {}
 
 
 # load_all_model()
@@ -611,7 +610,6 @@ def init(graphs, logged_times: list, gpu: int):
     global global_tensors
     global swap_scheduler
     global parameters
-    global execution_time
     global_graphs = graphs
     jobs_weights = [weight for _ in range(len(graphs))]
     tensor_access_by_tensor = [[] for _ in range(job_num)]
@@ -628,7 +626,6 @@ def init(graphs, logged_times: list, gpu: int):
     global_tensor_access = [tmp[i][0] for i in range(job_num)]
     swap_scheduler = [tmp[i][1] for i in range(job_num)]
     parameters = [tmp[i][2] for i in range(job_num)]
-    execution_time = [tmp[i][3] for i in range(job_num)]
 
 
 def add_job(graph, job_id, gpu: int):
@@ -861,10 +858,10 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
     # control_message = [swap_order, [], []]
     # control_messages.append(control_message)
     # global_control_queue.put(control_messages)
-    global execution_time
     logged_times = []
     log_repeat = 0
     alpha = 0.9
+    second_schedule_finished = False
 
     while True:
         if not global_message_queue.empty():
@@ -900,8 +897,8 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
             else:
 
                 total_time_old = 0
-                for run_time in execution_time[job_id]:
-                    total_time_old += run_time
+                for run_time in logged_times[job_id]:
+                    total_time_old += run_time[0]
                 total_time_new = 0
                 for run_time in message_graph:
                     total_time_new += run_time[1]
@@ -921,13 +918,16 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
 
                 # todo 此处控制了在一定轮数之后才进行决策
                 log_repeat += 1
-                if log_repeat > 5 and is_replan:
+                if log_repeat > 5 and (is_replan or (not second_schedule_finished)):
+
+                    second_schedule_finished = True
 
                     # with open("./log/logged_times", "wb") as f1:
                     #     pickle.dump(logged_times, f1)
 
                     for node_message in message_graph:
-                        time_new = node_message[1] * alpha + execution_time[job_id][node_message[0]] * (1 - alpha)
+                        time_new = node_message[1] * alpha + logged_times[job_id][node_message[0]][0] * (1 - alpha)
+                        # todo 未实装指数平滑
                         logged_times[job_id][node_message[0]] = [node_message[1]]
 
                     release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)

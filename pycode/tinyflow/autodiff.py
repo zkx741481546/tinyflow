@@ -13,6 +13,9 @@ import datetime
 index_to_cpu_map = {}
 index_to_cpu_flag = {}
 index_to_gpu_map = {}
+swaping_index = 0
+swap_finish_event = threading.Event()
+have_got_control_message = False
 
 
 class MemoryManagerController(threading.Thread):
@@ -36,13 +39,14 @@ class MemoryManagerController(threading.Thread):
             wait_time = control_message[0]
             node_index = control_message[1]
             move_to_gpu = control_message[2]
+            is_swap_finish = control_message[3]
             # print(node_index, move_to_gpu)
             time.sleep(wait_time / 1000.0)
             if move_to_gpu == 1 and index_to_gpu_map[node_index] is not None:
                 continue
-            if move_to_gpu == 0 and index_to_cpu_flag[node_index] == True:
+            if move_to_gpu == 0 and node_index in index_to_cpu_flag and index_to_cpu_flag[node_index]:
                 continue
-            self.will_do_queue.put((node_index, move_to_gpu))
+            self.will_do_queue.put((node_index, move_to_gpu, is_swap_finish))
 
 
 class MemoryManager(threading.Thread):
@@ -61,11 +65,14 @@ class MemoryManager(threading.Thread):
             node = self.will_do_queue.get(block=True)
             node_index = node[0]
             move_to_gpu = node[1]
+            is_swap_finish = node[2]
             node_ndarray_new = None
 
             global index_to_cpu_map
             global index_to_gpu_map
+            global swaping_index
 
+            swaping_index = node.index
             if move_to_gpu == 0:
                 node_ndarray = index_to_gpu_map[node_index]
                 node_ndarray.copyto(index_to_cpu_map[node_index], self.cudaSwapStream)
@@ -93,6 +100,8 @@ class MemoryManager(threading.Thread):
                     index_to_gpu_map[node_index] = node_ndarray_new
                 else:
                     pass
+            if is_swap_finish:
+                swap_finish_event.set()
 
                 # print("swaping node " + str(node_index) + " to gpu")
 
@@ -2344,6 +2353,7 @@ class Executor(object):
         index_to_gpu_map = {}
         index_to_cpu_flag = {}
         feed_shapes = {}
+        swap_finish_event.clear()
 
         for node, value in feed_dict.items():
             # convert values to ndarray.NDArray if necessary
@@ -2437,11 +2447,10 @@ class Executor(object):
         for node in self.topo_order:
             node.array_status = 0
 
-        # todo 测试用
-        have_got_global_message = False
 
         if not self.top_control_queue.empty():
-            have_got_global_message = True
+            global have_got_control_message
+            have_got_control_message = True
             print("get control message")
             # todo 解析从上游传入的控制信息。
 
@@ -2459,19 +2468,22 @@ class Executor(object):
                 control_node.recompute_list = []
                 control_node.release_list = []
 
-            for swap_message in top_swap_list:
+            for i in range(len(top_swap_list)):
+
+                swap_message = top_swap_list[i]
                 node_index = swap_message[0]
                 start_time = swap_message[1]
                 start_node_id = swap_message[2]
                 move_to_gpu = swap_message[3]
+                is_last_swap = (i == len(top_swap_list) - 1)
 
                 start_node = self.topo_order[start_node_id]
                 if start_node.control_message_out_time == 0:
                     start_node.control_message_out_time = start_time
-                    start_node.control_message_out.append((start_time, node_index, move_to_gpu))
+                    start_node.control_message_out.append((start_time, node_index, move_to_gpu, is_last_swap))
                 else:
                     start_node.control_message_out.append(
-                        (start_time - start_node.control_message_out_time, node_index, move_to_gpu))
+                        (start_time - start_node.control_message_out_time, node_index, move_to_gpu, is_last_swap))
                     start_node.control_message_out_time = start_time
 
             for release_message in top_release_list:
@@ -2501,8 +2513,7 @@ class Executor(object):
 
         # Traverse graph in topo order and compute values for all nodes.
         for node in self.topo_order:
-            if have_got_global_message:
-                print(node.index)
+
 
             # print(node.index)
 
@@ -2513,10 +2524,12 @@ class Executor(object):
                     wait_time = control_message[0]
                     node_id = control_message[1]
                     move_to_gpu = control_message[2]
+                    is_last_swap = control_message[3]
                     if move_to_gpu:
-                        self.control_queue.put((wait_time, node_id, move_to_gpu))
+                        total_swap_in += 1
+                        self.control_queue.put((wait_time, node_id, move_to_gpu, is_last_swap))
                     else:
-                        self.control_queue.put((wait_time, node_id, move_to_gpu))
+                        self.control_queue.put((wait_time, node_id, move_to_gpu, is_last_swap))
 
                     # # todo 仅用于测试
                     # self.have_done_queue.get(block=True)
@@ -2546,6 +2559,12 @@ class Executor(object):
 
             for n in node.inputs:
                 if index_to_gpu_map[n.index] is None:
+
+                    global swaping_index
+                    if swaping_index == n.index:
+                        # todo
+                        pass
+
                     # print("when computing " + str(node.index) + " passive import " + str(n.index))
                     # todo 考虑如何被动进行swap in
                     assert index_to_cpu_flag[n.index], "when computing" + str(node.index) + " 输入tensor " + str(n.index) + " 不在cpu上"
@@ -2588,11 +2607,12 @@ class Executor(object):
                     wait_time = control_message[0]
                     node_id = control_message[1]
                     move_to_gpu = control_message[2]
+                    is_last_swap = control_message[3]
                     if move_to_gpu:
                         total_swap_in += 1
-                        self.control_queue.put((wait_time, node_id, move_to_gpu))
+                        self.control_queue.put((wait_time, node_id, move_to_gpu, is_last_swap))
                     else:
-                        self.control_queue.put((wait_time, node_id, move_to_gpu))
+                        self.control_queue.put((wait_time, node_id, move_to_gpu, is_last_swap))
 
                     # # todo 仅用于测试
                     # self.have_done_queue.get(block=True)
@@ -2644,12 +2664,13 @@ class Executor(object):
                 wait_time = control_message[0]
                 node_id = control_message[1]
                 move_to_gpu = control_message[2]
+                is_last_swap = control_message[3]
                 if move_to_gpu:
                     total_swap_in += 1
-                    self.control_queue.put((wait_time, node_id, move_to_gpu))
+                    self.control_queue.put((wait_time, node_id, move_to_gpu, is_last_swap))
                 else:
 
-                    self.control_queue.put((wait_time, node_id, move_to_gpu))
+                    self.control_queue.put((wait_time, node_id, move_to_gpu, is_last_swap))
 
                 # # todo 仅用于测试
                 # self.have_done_queue.get(block=True)
@@ -2710,6 +2731,11 @@ class Executor(object):
         if total_swap_in != 0:
             # pass
             print("passive swap所占的比例为" + str(passive_swap_in / total_swap_in))
+
+        if have_got_control_message:
+            print("等待同步")
+            swap_finish_event.wait()
+        print("同步完成")
 
         return eval_return_list
         # return [index_to_gpu_map[n.index] for n in self.eval_node_list]
