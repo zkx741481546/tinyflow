@@ -400,17 +400,22 @@ class GPURecord(threading.Thread):
         self.f = open("./log/gpu_record.txt", "w+")
         # todo 临时用作释放的计数器
         self.times = 0
+        self.max_gpu_memory = 0
 
     def run(self):
         while True:
-            if self.times == 30:
+            if self.times == 30000:
                 self.f.close()
                 break
             self.times += 1
-            time.sleep(1)
+            time.sleep(0.1)
             meminfo = pynvml.nvmlDeviceGetMemoryInfo(self.handle)
+            memory_used = meminfo.used / 1024 ** 2
+            if memory_used>self.max_gpu_memory:
+                self.max_gpu_memory = memory_used
             print("time", datetime.datetime.now(),
-                  "\tmemory", meminfo.used / 1024 ** 2, file = self.f)  # 已用显存大小
+                  "\tmemory", memory_used,
+                  "\tmax_memory_used", self.max_gpu_memory, file=self.f)  # 已用显存大小
 
     def stop(self):
         self.f.close()
