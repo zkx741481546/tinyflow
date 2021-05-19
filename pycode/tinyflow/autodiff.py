@@ -14,6 +14,7 @@ index_to_cpu_map = {}
 index_to_cpu_flag = {}
 index_to_gpu_map = {}
 swaping_index = 0
+swaping_to_gpu = 0
 swap_finish_event = threading.Event()
 have_got_control_message = False
 
@@ -71,8 +72,10 @@ class MemoryManager(threading.Thread):
             global index_to_cpu_map
             global index_to_gpu_map
             global swaping_index
+            global swaping_to_gpu
 
             swaping_index = node.index
+            swaping_to_gpu = move_to_gpu
             if move_to_gpu == 0:
                 node_ndarray = index_to_gpu_map[node_index]
                 node_ndarray.copyto(index_to_cpu_map[node_index], self.cudaSwapStream)
@@ -2561,18 +2564,21 @@ class Executor(object):
                 if index_to_gpu_map[n.index] is None:
 
                     global swaping_index
-                    if swaping_index == n.index:
-                        # todo
-                        pass
-
-                    # print("when computing " + str(node.index) + " passive import " + str(n.index))
-                    # todo 考虑如何被动进行swap in
-                    assert index_to_cpu_flag[n.index], "when computing" + str(node.index) + " 输入tensor " + str(n.index) + " 不在cpu上"
-                    passive_swap_in += 1
-                    node_ndarray_new = ndarray.empty(self.node_to_shape_map[n], self.ctx_gpu)
-                    index_to_cpu_map[n.index].copyto(node_ndarray_new, self.cudaStream)
-                    index_to_gpu_map[n.index] = node_ndarray_new
-                    n.array_status = 1
+                    global swaping_to_gpu
+                    if swaping_index == n.index and swaping_to_gpu == 1:
+                        # todo 如果当前swap正好是需要passive的，等待swap
+                        while index_to_gpu_map[n.index] is None:
+                            time.sleep(0.01)
+                        print("等待swap in成功")
+                    else:
+                        # print("when computing " + str(node.index) + " passive import " + str(n.index))
+                        # todo 考虑如何被动进行swap in
+                        assert index_to_cpu_flag[n.index], "when computing" + str(node.index) + " 输入tensor " + str(n.index) + " 不在cpu上"
+                        passive_swap_in += 1
+                        node_ndarray_new = ndarray.empty(self.node_to_shape_map[n], self.ctx_gpu)
+                        index_to_cpu_map[n.index].copyto(node_ndarray_new, self.cudaStream)
+                        index_to_gpu_map[n.index] = node_ndarray_new
+                        n.array_status = 1
                 assert ndarray.is_gpu_ctx(index_to_gpu_map[n.index].ctx)
                 input_vals.append(index_to_gpu_map[n.index])
 
