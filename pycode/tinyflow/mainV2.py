@@ -267,7 +267,8 @@ def get_free_intervals(target_task, swap_schedule, access_of_target_tensor, key=
         s = interval[1]
     if s < target_task.back_boundary:
         not_occupied_intervals.append((s, target_task.back_boundary))
-
+    if len(not_occupied_intervals) == 0:
+        return []
     i = 0
     while True:
         start, end = not_occupied_intervals[i]
