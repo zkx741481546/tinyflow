@@ -38,6 +38,10 @@ class MemoryManagerController(threading.Thread):
             move_to_gpu = control_message[2]
             # print(node_index, move_to_gpu)
             time.sleep(wait_time / 1000.0)
+            if move_to_gpu == 1 and index_to_gpu_map[node_index] is not None:
+                continue
+            if move_to_gpu == 0 and index_to_cpu_flag[node_index] == True:
+                continue
             self.will_do_queue.put((node_index, move_to_gpu))
 
 
