@@ -918,7 +918,7 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
 
                 # todo 此处控制了在一定轮数之后才进行决策
                 log_repeat += 1
-                if log_repeat > 5 and (is_replan or (not second_schedule_finished)):
+                if log_repeat > 0 and (is_replan or (not second_schedule_finished)):
 
                     second_schedule_finished = True
 
