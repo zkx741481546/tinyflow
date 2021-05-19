@@ -248,7 +248,7 @@ def get_free_intervals(target_task, swap_schedule, access_of_target_tensor, key=
         return []
     intervals = []
     for task in swap_schedule:
-        if target_task.front_boundary < task.start_time < task.end_time < target_task.back_boundary:
+        if target_task.front_boundary <= task.start_time < task.end_time <= target_task.back_boundary:
             intervals.append((task.start_time, task.end_time))
         elif task.start_time < target_task.front_boundary < task.end_time < target_task.back_boundary:
             intervals.append((target_task.front_boundary, task.end_time))
