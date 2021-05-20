@@ -211,7 +211,7 @@ if __name__ == '__main__':
     job_number = 1
 
     gpu_num = GPU
-    batch_size=4
+    batch_size = 2
     num_step = 20
     vgg16 = VGG16(num_step=num_step, batch_size=batch_size, gpu_num=gpu_num)
     X_val = np.random.normal(loc=0, scale=0.1, size=(batch_size, 3, 224, 224))  # number = batch_size  channel = 3  image_size = 224*224

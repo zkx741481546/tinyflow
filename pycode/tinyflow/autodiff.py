@@ -2496,6 +2496,12 @@ class Executor(object):
                 start_node = self.topo_order[start_node_id]
                 start_node.release_list.append(node_id)
 
+            for recompute_message in top_recomputation_list:
+                start_node_id = recompute_message[0]
+                node_id = recompute_message[1]
+                start_node = self.topo_order[start_node_id]
+                start_node.recompute_list.append(node_id)
+
             print(top_swap_list)
             print(top_release_list)
             print(top_recomputation_list)
@@ -2517,8 +2523,7 @@ class Executor(object):
         # Traverse graph in topo order and compute values for all nodes.
         for node in self.topo_order:
 
-
-            # print(node.index)
+            print(node.index)
 
             if node.index in index_to_gpu_map:
                 # Skip placeholder nodes. Values already provided by feed_dict.
@@ -2553,18 +2558,41 @@ class Executor(object):
                 # todo  加入重计算的过程,重计算在被动swap in之前
                 recompute_node = self.topo_order[recompute_index]
                 recompute_inputs = []
-                for input_node in recompute_node.inputs:
-                    recompute_inputs.append(node_to_gpu_map[input_node])
+
+                for n in recompute_node.inputs:
+                    assert index_to_gpu_map[n.index] is not None
+                    if index_to_gpu_map[n.index] is None:
+
+                        global swaping_index
+                        global swaping_to_gpu
+                        if swaping_index == n.index and swaping_to_gpu == 1:
+                            # todo 如果当前swap正好是需要passive的，等待swap
+                            while index_to_gpu_map[n.index] is None:
+                                time.sleep(0.01)
+                            print("等待swap in成功")
+                        else:
+                            # print("when computing " + str(node.index) + " passive import " + str(n.index))
+                            # todo 考虑如何被动进行swap in
+                            assert index_to_cpu_flag[n.index], "when computing" + str(node.index) + " 输入tensor " + str(
+                                n.index) + " 不在cpu上"
+                            passive_swap_in += 1
+                            node_ndarray_new = ndarray.empty(self.node_to_shape_map[n], self.ctx_gpu)
+                            index_to_cpu_map[n.index].copyto(node_ndarray_new, self.cudaStream)
+                            index_to_gpu_map[n.index] = node_ndarray_new
+                            n.array_status = 1
+                    assert ndarray.is_gpu_ctx(index_to_gpu_map[n.index].ctx)
+                    recompute_inputs.append(index_to_gpu_map[n.index])
+
                 recompute_ndarray = ndarray.empty(self.node_to_shape_map[recompute_node], self.ctx_gpu)
                 recompute_node.array_status = 1
-                recompute_node.op.compute(recompute_node, recompute_inputs, recompute_ndarray, False)
+                recompute_node.op.compute(recompute_node, recompute_inputs, recompute_ndarray, self.cudnnHandle, self.cublasHandle, self.cudaStream, False)
                 index_to_gpu_map[recompute_node.index] = recompute_ndarray
+                assert ndarray.is_gpu_ctx(recompute_ndarray.ctx)
 
             for n in node.inputs:
                 if index_to_gpu_map[n.index] is None:
 
-                    global swaping_index
-                    global swaping_to_gpu
+
                     if swaping_index == n.index and swaping_to_gpu == 1:
                         # todo 如果当前swap正好是需要passive的，等待swap
                         while index_to_gpu_map[n.index] is None:
