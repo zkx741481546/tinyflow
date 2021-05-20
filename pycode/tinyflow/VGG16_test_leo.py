@@ -196,6 +196,8 @@ class GPURecord(threading.Thread):
             # if self.times == 30000:
             #     self.f.close()
             #     break
+            if self.f.closed:
+                break
             self.times += 1
             # time.sleep(0.1)
             meminfo = pynvml.nvmlDeviceGetMemoryInfo(self.handle)
@@ -213,7 +215,7 @@ class GPURecord(threading.Thread):
         self.f.close()
 
 if __name__ == '__main__':
-    gpu_record = GPURecord()
+    # gpu_record = GPURecord()
     global_message_queue = multiprocessing.Queue()
     global_control_queue = multiprocessing.Queue()
 
@@ -242,12 +244,14 @@ if __name__ == '__main__':
     scheduler = Process(target=mp.multiprocess_init, args=(global_message_queue, global_control_queue))
     scheduler.start()
     # scheduler.join()
-    gpu_record.start()
+    # gpu_record.start()
     while True:
         for i in range(job_number):
             if not top_message_queue_list[i].empty():
+                print("系统回传信息")
                 global_message_queue.put([i, top_message_queue.get()])
         if not global_control_queue.empty():
+            print("算法给出策略")
             global_control = global_control_queue.get()
             for i in range(job_number):
                 top_control_queue.put(global_control[i])

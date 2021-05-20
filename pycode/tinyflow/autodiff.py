@@ -2507,12 +2507,15 @@ class Executor(object):
             print(top_recomputation_list)
             print("swap list")
             for node in self.topo_order:
+                print("Node: ", str(node.index), end=" ")
                 print(node.control_message_out)
             print("recompute list")
             for node in self.topo_order:
+                print("Node: ", str(node.index), end=" ")
                 print(node.recompute_list)
             print("release list")
             for node in self.topo_order:
+                print("Node: ", str(node.index), end=" ")
                 print(node.release_list)
             print("update control message")
 
