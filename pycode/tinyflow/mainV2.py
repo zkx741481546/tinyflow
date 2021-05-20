@@ -92,6 +92,7 @@ class TensorAccess:
         self.release_flag = False
         self.operation_id = operation_id
         self.operation_name = operation_name
+        self.release_for_recomputation = []
 
     def to_tuple(self):
         return (self.tensor.tensor_id, self.time)
@@ -318,7 +319,7 @@ def generate_swap_recomputation_release_order(tensor_access_by_tensor, swap_sche
                 releases.append((access.operation_id, access.tensor.tensor_id))
         release_orders[job_id] = releases
         for access in recomputations:
-            recomps.append((access.operation_id, access.tensor.tensor_id, access.time))
+            recomps.append((access.operation_id, access.tensor.tensor_id, access.release_for_recomputation))
         recomp_orders[job_id] = recomps
         for task in swap_tasks:
             # (task_id, node_id(tensor_id), start_time, start_node, move_to_gpu, start_node_type)
@@ -663,6 +664,8 @@ def generate_scheduling_plan(logged_times, gpu: int):
     swapped_in_access = set()
     recomputations = []
     recomputation_tensor = set()
+    # key：tensor，value：[所有释放这个张量的重计算对应的在recomputations中的index]
+    released_by_recomputation_op = defaultdict(list)
     # 上一轮没有成功的swap_out时为False
     swapped_flag = True
     recomputation_flag = True
@@ -835,6 +838,24 @@ def generate_scheduling_plan(logged_times, gpu: int):
                                 all_access_of_tensor[i - 1].release_flag = True
                                 recomputation_flag = True
                                 recomputation_tensor.add(access.tensor)
+                                # 　确保source不会被release
+                                for source_tensor in access.tensor.source_tensors:
+                                    # 确保不会被其他重计算提前release
+                                    if source_tensor in released_by_recomputation_op.keys():
+                                        indexes = released_by_recomputation_op[source_tensor]
+                                        for index in indexes:
+                                            access2 = recomputations[index]
+                                            if access.start_time > access2.end_time:
+                                                access2.release_for_recomputation.remove(source_tensor.tensor_id)
+                                                released_by_recomputation_op.pop(source_tensor)
+                                    accesses = tensor_access_by_tensor[source_tensor.job_id][source_tensor]
+                                    for temp_acc in accesses:
+                                        if temp_acc.release_flag:
+                                            temp_acc.release_flag = False
+                                            access.release_for_recomputation.append(source_tensor.tensor_id)
+                                            released_by_recomputation_op[source_tensor].append(len(recomputations) - 1)
+                                            break
+
                                 # 无需插入重计算导致的张量访问，因为一个不需要swap in 的input访问不会改变显存占用
                                 # print('recompute')
                                 break
