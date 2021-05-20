@@ -22,7 +22,7 @@ class VGG16():
         self.ad = ad
 
     def vgg16(self, executor_ctx, top_control_queue, top_message_queue, n_class, X_val, y_val):
-
+        gpu_record = GPURecord()
         X = self.ad.Placeholder("X")
         y_ = self.ad.Placeholder("y_")
         W1_1 = self.ad.Variable("W1_1")
@@ -157,10 +157,17 @@ class VGG16():
             feed_dict_mv.update({m_key: m_val, v_key: v_val})
 
         feed_dict.update(feed_dict_mv)
-
+        f1 = open("./log/gpu_time.txt", "w+")
         for i in range(self.num_step):
             print("step", i)
-
+            if i==1:
+                gpu_record.start()
+                start_time = time.time()
+            if i==5:
+                gpu_record.stop()
+                f1.write(f'time_cost:{time.time() - start_time}')
+                f1.flush()
+                f1.close()
             feed_dict[X] = ndarray.array(X_val, ctx=executor_ctx)
             feed_dict[y_] = ndarray.array(y_val, ctx=executor_ctx)
             res = executor.run(feed_dict=feed_dict)
@@ -180,17 +187,27 @@ class GPURecord(threading.Thread):
         self.f = open("./log/gpu_record.txt", "w+")
         # todo 临时用作释放的计数器
         self.times = 0
+        self.max_gpu_memory = 0
+        meminfo = pynvml.nvmlDeviceGetMemoryInfo(self.handle)
+        self.base_used = meminfo.used / 1024 ** 2
 
     def run(self):
         while True:
-            if self.times == 30:
-                self.f.close()
-                break
+            # if self.times == 30000:
+            #     self.f.close()
+            #     break
             self.times += 1
-            time.sleep(1)
+            # time.sleep(0.1)
             meminfo = pynvml.nvmlDeviceGetMemoryInfo(self.handle)
+            memory_used = meminfo.used / 1024 ** 2
+            if memory_used>self.max_gpu_memory:
+                self.max_gpu_memory = memory_used
             print("time", datetime.datetime.now(),
-                  "\tmemory", meminfo.used / 1024 ** 2, file = self.f)  # 已用显存大小
+                  "\tmemory", memory_used,
+                  "\tmax_memory_used", self.max_gpu_memory,
+                  "\tretained_memory_used", memory_used-self.base_used,
+                  "\tretained_max_memory_used", self.max_gpu_memory-self.base_used, file=self.f)  # 已用显存大小
+            self.f.flush()
 
     def stop(self):
         self.f.close()
