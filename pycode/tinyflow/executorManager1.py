@@ -79,11 +79,12 @@ def sgd_update_gpu(param, grad_param, learning_rate, cuda_stream):
 
 
 def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_queue, top_message_queue):
-
     # 训练一个三层感知机模型
     print("Build 3-layer MLP model...")
 
     cuda_stream = gpu_op.create_cudaStream()
+    gpu_record = GPURecord()
+
 
     W1 = ad.Variable(name="W1")
     W2 = ad.Variable(name="W2")
@@ -275,6 +276,10 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
     f1 = open("./log/gpu_time.txt", "w+")
     for i in range(num_epochs):
         print("epoch %d" % i)
+        if i==1:
+            gpu_record.start()
+        if i==11:
+            gpu_record.stop()
         for minibatch_index in range(n_train_batches):
             minibatch_start = minibatch_index * batch_size
             minibatch_end = (minibatch_index + 1) * batch_size
@@ -400,17 +405,27 @@ class GPURecord(threading.Thread):
         self.f = open("./log/gpu_record.txt", "w+")
         # todo 临时用作释放的计数器
         self.times = 0
+        self.max_gpu_memory = 0
+        meminfo = pynvml.nvmlDeviceGetMemoryInfo(self.handle)
+        self.base_used = meminfo.used / 1024 ** 2
 
     def run(self):
         while True:
-            if self.times == 30:
-                self.f.close()
-                break
+            # if self.times == 30000:
+            #     self.f.close()
+            #     break
             self.times += 1
-            time.sleep(1)
+            # time.sleep(0.1)
             meminfo = pynvml.nvmlDeviceGetMemoryInfo(self.handle)
+            memory_used = meminfo.used / 1024 ** 2
+            if memory_used>self.max_gpu_memory:
+                self.max_gpu_memory = memory_used
             print("time", datetime.datetime.now(),
-                  "\tmemory", meminfo.used / 1024 ** 2, file = self.f)  # 已用显存大小
+                  "\tmemory", memory_used,
+                  "\tmax_memory_used", self.max_gpu_memory,
+                  "\tretained_memory_used", memory_used-self.base_used,
+                  "\tretained_max_memory_used", self.max_gpu_memory-self.base_used, file=self.f)  # 已用显存大小
+            self.f.flush()
 
     def stop(self):
         self.f.close()
@@ -440,7 +455,7 @@ if __name__ == '__main__':
     scheduler.start()
     # scheduler.join()
 
-    gpu_record.start()
+    #　gpu_record.start()
     while True:
         for i in range(job_number):
             if not top_message_queue_list[i].empty():
