@@ -215,7 +215,7 @@ if __name__ == '__main__':
     num_step = 20
     vgg16 = VGG16(num_step=num_step, batch_size=batch_size, gpu_num=gpu_num)
     X_val = np.random.normal(loc=0, scale=0.1, size=(batch_size, 3, 224, 224))  # number = batch_size  channel = 3  image_size = 224*224
-    y_val = np.random.normal(loc=0, scale=0.1, size=(batch_size, 1000))  # n_class = 1000
+    y_val = np.random.randint(low=0, high=1, size=(batch_size, 1000))  # n_class = 1000
 
 
     p1 = Process(target=vgg16.vgg16, args=(executor_ctx, top_control_queue, top_message_queue, 1000, X_val, y_val))

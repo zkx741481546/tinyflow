@@ -831,31 +831,19 @@ def generate_scheduling_plan(logged_times, gpu: int):
                     for i, access in enumerate(all_access_of_tensor):
                         if access.access_type == AccessType.input and access not in recomputations:
                             if access.start_time >= now_time:
-                                recomputations.append(access)
-                                all_access_of_tensor[i - 1].release_flag = True
-                                recomputation_flag = True
-                                recomputation_tensor.add(access.tensor)
-                                # 　确保source不会被release
                                 for source_tensor in access.tensor.source_tensors:
-                                    # 确保不会被其他重计算提前release
-                                    if source_tensor in released_by_recomputation_op.keys():
-                                        indexes = released_by_recomputation_op[source_tensor]
-                                        for index in indexes:
-                                            access2 = recomputations[index]
-                                            if access.start_time > access2.end_time:
-                                                access2.release_for_recomputation.remove(source_tensor.tensor_id)
-                                                released_by_recomputation_op.pop(source_tensor)
                                     accesses = tensor_access_by_tensor[source_tensor.job_id][source_tensor]
                                     for temp_acc in accesses:
-                                        if temp_acc.release_flag:
-                                            temp_acc.release_flag = False
-                                            access.release_for_recomputation.append(source_tensor.tensor_id)
-                                            released_by_recomputation_op[source_tensor].append(len(recomputations) - 1)
+                                        # 　确保source被release过的不进行重计算
+                                        if temp_acc.release_flag and temp_acc.end_time <= access.start_time:
                                             break
-
-                                # 无需插入重计算导致的张量访问，因为一个不需要swap in 的input访问不会改变显存占用
-                                # print('recompute')
-                                break
+                                    else:
+                                        recomputations.append(access)
+                                        all_access_of_tensor[i - 1].release_flag = True
+                                        recomputation_flag = True
+                                        recomputation_tensor.add(access.tensor)
+                                    break
+                            break
         iter += 1
     fig = go.Figure(data=[go.Scatter(x=list(original_memory_footprint[0].keys()), y=list(original_memory_footprint[0].values())), go.Scatter(x=list(foot_prints[0].keys()), y=list(foot_prints[0].values()))])
     plotly.offline.plot(fig, filename='../../pic/footprint.html')
