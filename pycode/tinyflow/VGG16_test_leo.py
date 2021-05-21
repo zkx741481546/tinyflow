@@ -160,10 +160,10 @@ class VGG16():
         f1 = open("./log/gpu_time.txt", "w+")
         for i in range(self.num_step):
             print("step", i)
-            if i==1:
+            if i==5:
                 gpu_record.start()
                 start_time = time.time()
-            if i==5:
+            if i==10:
                 gpu_record.stop()
                 f1.write(f'time_cost:{time.time() - start_time}')
                 f1.flush()
@@ -190,14 +190,12 @@ class GPURecord(threading.Thread):
         self.max_gpu_memory = 0
         meminfo = pynvml.nvmlDeviceGetMemoryInfo(self.handle)
         self.base_used = meminfo.used / 1024 ** 2
-
+        self.flag = True
     def run(self):
-        while True:
+        while self.flag:
             # if self.times == 30000:
             #     self.f.close()
             #     break
-            if self.f.closed:
-                break
             self.times += 1
             # time.sleep(0.1)
             meminfo = pynvml.nvmlDeviceGetMemoryInfo(self.handle)
@@ -212,6 +210,8 @@ class GPURecord(threading.Thread):
             self.f.flush()
 
     def stop(self):
+        self.flag = False
+        time.sleep(0.001)
         self.f.close()
 
 if __name__ == '__main__':
