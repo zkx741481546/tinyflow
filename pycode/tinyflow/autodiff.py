@@ -2526,7 +2526,7 @@ class Executor(object):
         # Traverse graph in topo order and compute values for all nodes.
         for node in self.topo_order:
 
-            print(node.index)
+            # print(node.index)
 
             if node.index in index_to_gpu_map:
                 # Skip placeholder nodes. Values already provided by feed_dict.
@@ -2746,6 +2746,10 @@ class Executor(object):
         eval_return_list = []
         return_feed_dict = {}
 
+        if have_got_control_message:
+            print("等待同步")
+            swap_finish_event.wait()
+        print("同步完成")
 
         n = self.eval_node_list[0]
         assert not index_to_gpu_map[n.index] is None
@@ -2769,10 +2773,7 @@ class Executor(object):
             # pass
             print("passive swap所占的比例为" + str(passive_swap_in / total_swap_in))
 
-        if have_got_control_message:
-            print("等待同步")
-            swap_finish_event.wait()
-        print("同步完成")
+
 
         return eval_return_list
         # return [index_to_gpu_map[n.index] for n in self.eval_node_list]
