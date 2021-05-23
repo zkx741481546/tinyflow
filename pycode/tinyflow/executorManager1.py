@@ -438,18 +438,30 @@ if __name__ == '__main__':
 
     top_control_queue_list = []
     top_message_queue_list = []
+
     executor_ctx = ndarray.gpu(0)
     num_epochs = 20
     print_loss_val_each_epoch = True
+
     top_control_queue = multiprocessing.Queue()
     top_control_queue_list.append(top_control_queue)
     top_message_queue = multiprocessing.Queue()
     top_message_queue_list.append(top_message_queue)
     job_number = 1
 
-    p1 = Process(target=mnist_mlp, args=(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_queue, top_message_queue))
+    p1 = Process(target=mnist_mlp,
+                 args=(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_queue, top_message_queue))
     p1.start()
-    # p1.join()
+
+    top_control_queue2 = multiprocessing.Queue()
+    top_control_queue_list.append(top_control_queue2)
+    top_message_queue2 = multiprocessing.Queue()
+    top_message_queue_list.append(top_message_queue2)
+    job_number += 1
+
+    p2 = Process(target=mnist_mlp,
+                 args=(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_queue2, top_message_queue2))
+    p2.start()
 
     scheduler = Process(target=mp.multiprocess_init, args=(global_message_queue, global_control_queue))
     scheduler.start()
@@ -459,11 +471,14 @@ if __name__ == '__main__':
     while True:
         for i in range(job_number):
             if not top_message_queue_list[i].empty():
-                global_message_queue.put([i, top_message_queue.get()])
+                print("job ", i, "message")
+                global_message_queue.put([i, top_message_queue_list[i].get()])
         if not global_control_queue.empty():
             global_control = global_control_queue.get()
             for i in range(job_number):
-                top_control_queue.put(global_control[i])
+                if i in global_control:
+                    print("job ", i, "control")
+                    top_control_queue_list[i].put(global_control[i])
 
 
 

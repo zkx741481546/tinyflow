@@ -884,6 +884,12 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
     alpha = 0.9
     second_schedule_finished = False
 
+    # todo 设置从executor到algorithm的job_id的映射
+    map_out_to_in = {}
+    map_in_to_out = {}
+    global job_num
+    job_num = 0
+
     while True:
         if not global_message_queue.empty():
             global_message = global_message_queue.get()
@@ -891,10 +897,16 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
             message_type = global_message[1][0]
             message_graph = global_message[1][1]
 
+
             if message_type == 0:
-                # todo add to add_job
-                global job_num
+
+                # print("job_id =", job_id)
+
                 job_num += 1
+                map_out_to_in[job_id] = job_num - 1
+                map_in_to_out[job_num - 1] = job_id
+                job_id_in = job_num - 1
+
                 logged_times.append([])
                 global_graphs.append(message_graph)
                 tensor_num = len(message_graph)
@@ -903,7 +915,7 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                     pickle.dump(global_graphs, f1)
 
                 for i in range(tensor_num):
-                    logged_times[job_id].append([1])
+                    logged_times[job_id_in].append([1])
                 # logged_times[job_id] = [[50, 0.01], [50, 0.01], [50, 351], [50, 0.01], [50, 87], [50, 136], [50, 98], [50, 0.01], [50, 77], [50, 0.01], [50, 23], [50, 85], [50, 33], [50, 0.01], [50, 63], [50, 0.01], [50, 23],
                 #      [50, 71], [50, 0.01], [50, 80], [50, 65], [50, 56], [50, 69], [50, 56], [50, 203], [50, 28], [50, 66], [50, 60], [50, 66], [50, 29], [50, 75], [50, 62], [50, 32], [50, 24], [50, 81],
                 #      [50, 114], [50, 50], [50, 42], [50, 707], [50, 554], [50, 121]]
@@ -917,8 +929,10 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                     # global_control_queue.put(control_messages)
             else:
 
+                job_id_in = map_out_to_in[job_id]
+
                 total_time_old = 0
-                for run_time in logged_times[job_id]:
+                for run_time in logged_times[job_id_in]:
                     total_time_old += run_time[0]
                 total_time_new = 0
                 for run_time in message_graph:
@@ -947,23 +961,19 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                     #     pickle.dump(logged_times, f1)
 
                     for node_message in message_graph:
-                        time_new = node_message[1] * alpha + logged_times[job_id][node_message[0]][0] * (1 - alpha)
+                        time_new = node_message[1] * alpha + logged_times[job_id_in][node_message[0]][0] * (1 - alpha)
                         # todo 未实装指数平滑
-                        logged_times[job_id][node_message[0]] = [node_message[1]]
+                        logged_times[job_id_in][node_message[0]] = [node_message[1]]
 
                     release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
 
-                    control_messages = []
+                    control_messages = {}
 
                     for i in range(job_num):
 
-                        # logged_times[i] = []
-                        for logged_time in logged_times[i]:
-                            logged_time = []
-
                         print(swap_order)
                         control_message = [swap_order[i], release_order[i], recomputation_order[i]]
-                        control_messages.append(control_message)
+                        control_messages[map_in_to_out[i]] = control_message
                     global_control_queue.put(control_messages)
                 # print(logged_times[0])
 
