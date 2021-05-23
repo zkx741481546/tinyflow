@@ -42,7 +42,8 @@ class MemoryManagerController(threading.Thread):
             move_to_gpu = control_message[2]
             is_swap_finish = control_message[3]
             # print(node_index, move_to_gpu)
-            time.sleep(wait_time / 1000.0)
+            if wait_time > 0:
+                time.sleep(wait_time / 1000.0)
             if move_to_gpu == 1 and index_to_gpu_map[node_index] is not None:
                 continue
             if move_to_gpu == 0 and node_index in index_to_cpu_flag and index_to_cpu_flag[node_index]:
