@@ -1,0 +1,3188 @@
+topo_order:
+index:0	b8
+index:1	b8m
+index:2	b8v
+index:3	X
+index:4	W1_1
+index:5	Convolution2DForward
+index:6	ActivationForward
+index:7	W1_2
+index:8	Convolution2DForward
+index:9	ActivationForward
+index:10	Pooling2DForward
+index:11	W2_1
+index:12	Convolution2DForward
+index:13	ActivationForward
+index:14	W2_2
+index:15	Convolution2DForward
+index:16	ActivationForward
+index:17	Pooling2DForward
+index:18	W3_1
+index:19	Convolution2DForward
+index:20	ActivationForward
+index:21	W3_2
+index:22	Convolution2DForward
+index:23	ActivationForward
+index:24	W3_3
+index:25	Convolution2DForward
+index:26	ActivationForward
+index:27	Pooling2DForward
+index:28	W4_1
+index:29	Convolution2DForward
+index:30	ActivationForward
+index:31	W4_2
+index:32	Convolution2DForward
+index:33	ActivationForward
+index:34	W4_3
+index:35	Convolution2DForward
+index:36	ActivationForward
+index:37	Pooling2DForward
+index:38	W5_1
+index:39	Convolution2DForward
+index:40	ActivationForward
+index:41	W5_2
+index:42	Convolution2DForward
+index:43	ActivationForward
+index:44	W5_3
+index:45	Convolution2DForward
+index:46	ActivationForward
+index:47	Pooling2DForward
+index:48	Flatten
+index:49	W6
+index:50	MatMul
+index:51	b6
+index:52	BroadcastTo
+index:53	+
+index:54	FullyActivationForward
+index:55	FullyDropoutForward
+index:56	W7
+index:57	MatMul
+index:58	b7
+index:59	BroadcastTo
+index:60	+
+index:61	FullyActivationForward
+index:62	FullyDropoutForward
+index:63	W8
+index:64	MatMul
+index:65	BroadcastTo
+index:66	+
+index:67	FullyBNForward
+index:68	FullyActivationForward
+index:69	y_
+index:70	CrossOp
+index:71	ReduceSumOp
+index:72	Oneslike
+index:73	BroadcastTo
+index:74	CrossBackwardOp
+index:75	FullyActivationBackward
+index:76	FullyBNBackward
+index:77	BroadcastToGradient
+index:78	AdamOp
+index:79	W8m
+index:80	W8v
+index:81	Zeroslike
+index:82	+
+index:83	MatMul
+index:84	b7m
+index:85	b7v
+index:86	MatMul
+index:87	AdamOp
+index:88	FullyDropoutBackward
+index:89	FullyActivationBackward
+index:90	BroadcastToGradient
+index:91	AdamOp
+index:92	W7m
+index:93	W7v
+index:94	Zeroslike
+index:95	+
+index:96	MatMul
+index:97	b6m
+index:98	b6v
+index:99	MatMul
+index:100	AdamOp
+index:101	FullyDropoutBackward
+index:102	FullyActivationBackward
+index:103	BroadcastToGradient
+index:104	AdamOp
+index:105	W6m
+index:106	W6v
+index:107	Zeroslike
+index:108	+
+index:109	MatMul
+index:110	W5_3m
+index:111	W5_3v
+index:112	MatMul
+index:113	AdamOp
+index:114	FlattenGradient
+index:115	Pooling2DBackward
+index:116	ActivationBackward
+index:117	Convolution2DBackward
+index:118	W5_2m
+index:119	W5_2v
+index:120	Convolution2DBackward
+index:121	AdamOp
+index:122	ActivationBackward
+index:123	Convolution2DBackward
+index:124	W5_1m
+index:125	W5_1v
+index:126	Convolution2DBackward
+index:127	AdamOp
+index:128	ActivationBackward
+index:129	Convolution2DBackward
+index:130	W4_3m
+index:131	W4_3v
+index:132	Convolution2DBackward
+index:133	AdamOp
+index:134	Pooling2DBackward
+index:135	ActivationBackward
+index:136	Convolution2DBackward
+index:137	W4_2m
+index:138	W4_2v
+index:139	Convolution2DBackward
+index:140	AdamOp
+index:141	ActivationBackward
+index:142	Convolution2DBackward
+index:143	W4_1m
+index:144	W4_1v
+index:145	Convolution2DBackward
+index:146	AdamOp
+index:147	ActivationBackward
+index:148	Convolution2DBackward
+index:149	W3_3m
+index:150	W3_3v
+index:151	Convolution2DBackward
+index:152	AdamOp
+index:153	Pooling2DBackward
+index:154	ActivationBackward
+index:155	Convolution2DBackward
+index:156	W3_2m
+index:157	W3_2v
+index:158	Convolution2DBackward
+index:159	AdamOp
+index:160	ActivationBackward
+index:161	Convolution2DBackward
+index:162	W3_1m
+index:163	W3_1v
+index:164	Convolution2DBackward
+index:165	AdamOp
+index:166	ActivationBackward
+index:167	Convolution2DBackward
+index:168	W2_2m
+index:169	W2_2v
+index:170	Convolution2DBackward
+index:171	AdamOp
+index:172	Pooling2DBackward
+index:173	ActivationBackward
+index:174	Convolution2DBackward
+index:175	W2_1m
+index:176	W2_1v
+index:177	Convolution2DBackward
+index:178	AdamOp
+index:179	ActivationBackward
+index:180	Convolution2DBackward
+index:181	W1_2m
+index:182	W1_2v
+index:183	Convolution2DBackward
+index:184	AdamOp
+index:185	Pooling2DBackward
+index:186	ActivationBackward
+index:187	Convolution2DBackward
+index:188	W1_1m
+index:189	W1_1v
+index:190	Convolution2DBackward
+index:191	AdamOp
+index:192	ActivationBackward
+index:193	Convolution2DBackward
+index:194	AdamOp
+
+run:
+index:0	b8	time:2021-05-25 14:40:58.755432
+index:1	b8m	time:2021-05-25 14:40:58.755583
+index:2	b8v	time:2021-05-25 14:40:58.755670
+index:3	X	time:2021-05-25 14:40:58.755728
+index:4	W1_1	time:2021-05-25 14:40:58.758805
+index:5	Convolution2DForward	time:2021-05-25 14:40:58.759330
+index:6	ActivationForward	time:2021-05-25 14:40:58.761180
+index:7	W1_2	time:2021-05-25 14:40:58.763375
+index:8	Convolution2DForward	time:2021-05-25 14:40:58.763891
+index:9	ActivationForward	time:2021-05-25 14:40:58.770354
+index:10	Pooling2DForward	time:2021-05-25 14:40:58.772545
+index:11	W2_1	time:2021-05-25 14:40:58.774087
+index:12	Convolution2DForward	time:2021-05-25 14:40:58.774262
+index:13	ActivationForward	time:2021-05-25 14:40:58.777706
+index:14	W2_2	time:2021-05-25 14:40:58.779048
+index:15	Convolution2DForward	time:2021-05-25 14:40:58.779313
+index:16	ActivationForward	time:2021-05-25 14:40:58.785669
+index:17	Pooling2DForward	time:2021-05-25 14:40:58.787012
+index:18	W3_1	time:2021-05-25 14:40:58.787971
+index:19	Convolution2DForward	time:2021-05-25 14:40:58.788438
+index:20	ActivationForward	time:2021-05-25 14:40:58.792509
+index:21	W3_2	time:2021-05-25 14:40:58.793415
+index:22	Convolution2DForward	time:2021-05-25 14:40:58.794805
+index:23	ActivationForward	time:2021-05-25 14:40:58.802831
+index:24	W3_3	time:2021-05-25 14:40:58.803837
+index:25	Convolution2DForward	time:2021-05-25 14:40:58.805397
+index:26	ActivationForward	time:2021-05-25 14:40:58.813440
+index:27	Pooling2DForward	time:2021-05-25 14:40:58.814342
+index:28	W4_1	time:2021-05-25 14:40:58.815086
+index:29	Convolution2DForward	time:2021-05-25 14:40:58.817447
+index:30	ActivationForward	time:2021-05-25 14:40:58.824506
+index:31	W4_2	time:2021-05-25 14:40:58.825308
+index:32	Convolution2DForward	time:2021-05-25 14:40:58.829844
+index:33	ActivationForward	time:2021-05-25 14:40:58.838569
+index:34	W4_3	time:2021-05-25 14:40:58.839611
+index:35	Convolution2DForward	time:2021-05-25 14:40:58.844042
+index:36	ActivationForward	time:2021-05-25 14:40:58.852952
+index:37	Pooling2DForward	time:2021-05-25 14:40:58.853991
+index:38	W5_1	time:2021-05-25 14:40:58.854591
+index:39	Convolution2DForward	time:2021-05-25 14:40:58.858913
+index:40	ActivationForward	time:2021-05-25 14:40:58.862306
+index:41	W5_2	time:2021-05-25 14:40:58.863183
+index:42	Convolution2DForward	time:2021-05-25 14:40:58.867514
+index:43	ActivationForward	time:2021-05-25 14:40:58.870789
+index:44	W5_3	time:2021-05-25 14:40:58.871669
+index:45	Convolution2DForward	time:2021-05-25 14:40:58.876660
+index:46	ActivationForward	time:2021-05-25 14:40:58.880194
+index:47	Pooling2DForward	time:2021-05-25 14:40:58.881089
+index:48	Flatten	time:2021-05-25 14:40:58.881228
+index:49	W6	time:2021-05-25 14:40:58.881331
+index:50	MatMul	time:2021-05-25 14:40:59.070807
+index:51	b6	time:2021-05-25 14:40:59.073669
+index:52	BroadcastTo	time:2021-05-25 14:40:59.073801
+index:53	+	time:2021-05-25 14:40:59.073858
+index:54	FullyActivationForward	time:2021-05-25 14:40:59.073913
+index:55	FullyDropoutForward	time:2021-05-25 14:40:59.073983
+index:56	W7	time:2021-05-25 14:40:59.079429
+index:57	MatMul	time:2021-05-25 14:40:59.108455
+index:58	b7	time:2021-05-25 14:40:59.109040
+index:59	BroadcastTo	time:2021-05-25 14:40:59.115063
+index:60	+	time:2021-05-25 14:40:59.115159
+index:61	FullyActivationForward	time:2021-05-25 14:40:59.115222
+index:62	FullyDropoutForward	time:2021-05-25 14:40:59.115282
+index:63	W8	time:2021-05-25 14:40:59.120832
+index:64	MatMul	time:2021-05-25 14:40:59.129013
+index:65	BroadcastTo	time:2021-05-25 14:40:59.129225
+index:66	+	time:2021-05-25 14:40:59.129275
+index:67	FullyBNForward	time:2021-05-25 14:40:59.129337
+index:68	FullyActivationForward	time:2021-05-25 14:40:59.129477
+index:69	y_	time:2021-05-25 14:40:59.129534
+index:70	CrossOp	time:2021-05-25 14:40:59.129629
+index:71	ReduceSumOp	time:2021-05-25 14:40:59.129684
+index:72	Oneslike	time:2021-05-25 14:40:59.129762
+index:73	BroadcastTo	time:2021-05-25 14:40:59.129812
+index:74	CrossBackwardOp	time:2021-05-25 14:40:59.129865
+index:75	FullyActivationBackward	time:2021-05-25 14:40:59.129918
+index:76	FullyBNBackward	time:2021-05-25 14:40:59.129970
+index:77	BroadcastToGradient	time:2021-05-25 14:40:59.130099
+index:78	AdamOp	time:2021-05-25 14:40:59.130174
+index:79	W8m	time:2021-05-25 14:40:59.130236
+index:80	W8v	time:2021-05-25 14:40:59.138071
+index:81	Zeroslike	time:2021-05-25 14:40:59.145538
+index:82	+	time:2021-05-25 14:40:59.145651
+index:83	MatMul	time:2021-05-25 14:40:59.145755
+index:84	b7m	time:2021-05-25 14:40:59.146299
+index:85	b7v	time:2021-05-25 14:40:59.146387
+index:86	MatMul	time:2021-05-25 14:40:59.146477
+index:87	AdamOp	time:2021-05-25 14:40:59.146660
+index:88	FullyDropoutBackward	time:2021-05-25 14:40:59.152069
+index:89	FullyActivationBackward	time:2021-05-25 14:40:59.152507
+index:90	BroadcastToGradient	time:2021-05-25 14:40:59.152574
+index:91	AdamOp	time:2021-05-25 14:40:59.152664
+index:92	W7m	time:2021-05-25 14:40:59.152722
+index:93	W7v	time:2021-05-25 14:40:59.201097
+index:94	Zeroslike	time:2021-05-25 14:40:59.249707
+index:95	+	time:2021-05-25 14:40:59.249803
+index:96	MatMul	time:2021-05-25 14:40:59.249878
+index:97	b6m	time:2021-05-25 14:40:59.250987
+index:98	b6v	time:2021-05-25 14:40:59.251086
+index:99	MatMul	time:2021-05-25 14:40:59.251167
+index:100	AdamOp	time:2021-05-25 14:40:59.251687
+index:101	FullyDropoutBackward	time:2021-05-25 14:40:59.274224
+index:102	FullyActivationBackward	time:2021-05-25 14:40:59.274285
+index:103	BroadcastToGradient	time:2021-05-25 14:40:59.274341
+index:104	AdamOp	time:2021-05-25 14:40:59.274444
+index:105	W6m	time:2021-05-25 14:40:59.274500
+index:106	W6v	time:2021-05-25 14:40:59.569702
+index:107	Zeroslike	time:2021-05-25 14:40:59.865579
+index:108	+	time:2021-05-25 14:40:59.865719
+index:109	MatMul	time:2021-05-25 14:40:59.865791
+index:110	W5_3m	time:2021-05-25 14:40:59.869359
+index:111	W5_3v	time:2021-05-25 14:40:59.874146
+index:112	MatMul	time:2021-05-25 14:40:59.878691
+index:113	AdamOp	time:2021-05-25 14:40:59.881465
+index:114	FlattenGradient	time:2021-05-25 14:41:00.018793
+index:115	Pooling2DBackward	time:2021-05-25 14:41:00.018868
+index:116	ActivationBackward	time:2021-05-25 14:41:00.019516
+index:117	Convolution2DBackward	time:2021-05-25 14:41:00.020047
+index:118	W5_2m	time:2021-05-25 14:41:00.024080
+index:119	W5_2v	time:2021-05-25 14:41:00.028805
+index:120	Convolution2DBackward	time:2021-05-25 14:41:00.033248
+index:121	AdamOp	time:2021-05-25 14:41:00.036252
+index:122	ActivationBackward	time:2021-05-25 14:41:00.039652
+index:123	Convolution2DBackward	time:2021-05-25 14:41:00.040190
+index:124	W5_1m	time:2021-05-25 14:41:00.044368
+index:125	W5_1v	time:2021-05-25 14:41:00.048787
+index:126	Convolution2DBackward	time:2021-05-25 14:41:00.053190
+index:127	AdamOp	time:2021-05-25 14:41:00.057439
+index:128	ActivationBackward	time:2021-05-25 14:41:00.060838
+index:129	Convolution2DBackward	time:2021-05-25 14:41:00.061464
+index:130	W4_3m	time:2021-05-25 14:41:00.065609
+index:131	W4_3v	time:2021-05-25 14:41:00.069979
+index:132	Convolution2DBackward	time:2021-05-25 14:41:00.074311
+index:133	AdamOp	time:2021-05-25 14:41:00.078484
+index:134	Pooling2DBackward	time:2021-05-25 14:41:00.081901
+index:135	ActivationBackward	time:2021-05-25 14:41:00.082737
+index:136	Convolution2DBackward	time:2021-05-25 14:41:00.083493
+index:137	W4_2m	time:2021-05-25 14:41:00.096469
+index:138	W4_2v	time:2021-05-25 14:41:00.104922
+index:139	Convolution2DBackward	time:2021-05-25 14:41:00.110198
+index:140	AdamOp	time:2021-05-25 14:41:00.118179
+index:141	ActivationBackward	time:2021-05-25 14:41:00.121675
+index:142	Convolution2DBackward	time:2021-05-25 14:41:00.122422
+index:143	W4_1m	time:2021-05-25 14:41:00.133985
+index:144	W4_1v	time:2021-05-25 14:41:00.136311
+index:145	Convolution2DBackward	time:2021-05-25 14:41:00.138635
+index:146	AdamOp	time:2021-05-25 14:41:00.146865
+index:147	ActivationBackward	time:2021-05-25 14:41:00.150690
+index:148	Convolution2DBackward	time:2021-05-25 14:41:00.151567
+index:149	W3_3m	time:2021-05-25 14:41:00.158175
+index:150	W3_3v	time:2021-05-25 14:41:00.159534
+index:151	Convolution2DBackward	time:2021-05-25 14:41:00.160806
+index:152	AdamOp	time:2021-05-25 14:41:00.168628
+index:153	Pooling2DBackward	time:2021-05-25 14:41:00.170630
+index:154	ActivationBackward	time:2021-05-25 14:41:00.171922
+index:155	Convolution2DBackward	time:2021-05-25 14:41:00.173041
+index:156	W3_2m	time:2021-05-25 14:41:00.185059
+index:157	W3_2v	time:2021-05-25 14:41:00.186384
+index:158	Convolution2DBackward	time:2021-05-25 14:41:00.187671
+index:159	AdamOp	time:2021-05-25 14:41:00.195497
+index:160	ActivationBackward	time:2021-05-25 14:41:00.196525
+index:161	Convolution2DBackward	time:2021-05-25 14:41:00.197680
+index:162	W3_1m	time:2021-05-25 14:41:00.209724
+index:163	W3_1v	time:2021-05-25 14:41:00.210281
+index:164	Convolution2DBackward	time:2021-05-25 14:41:00.210733
+index:165	AdamOp	time:2021-05-25 14:41:00.218537
+index:166	ActivationBackward	time:2021-05-25 14:41:00.219568
+index:167	Convolution2DBackward	time:2021-05-25 14:41:00.220638
+index:168	W2_2m	time:2021-05-25 14:41:00.226510
+index:169	W2_2v	time:2021-05-25 14:41:00.226769
+index:170	Convolution2DBackward	time:2021-05-25 14:41:00.226975
+index:171	AdamOp	time:2021-05-25 14:41:00.231355
+index:172	Pooling2DBackward	time:2021-05-25 14:41:00.231929
+index:173	ActivationBackward	time:2021-05-25 14:41:00.234139
+index:174	Convolution2DBackward	time:2021-05-25 14:41:00.235844
+index:175	W2_1m	time:2021-05-25 14:41:00.247162
+index:176	W2_1v	time:2021-05-25 14:41:00.247336
+index:177	Convolution2DBackward	time:2021-05-25 14:41:00.247467
+index:178	AdamOp	time:2021-05-25 14:41:00.254242
+index:179	ActivationBackward	time:2021-05-25 14:41:00.254558
+index:180	Convolution2DBackward	time:2021-05-25 14:41:00.256324
+index:181	W1_2m	time:2021-05-25 14:41:00.262864
+index:182	W1_2v	time:2021-05-25 14:41:00.262992
+index:183	Convolution2DBackward	time:2021-05-25 14:41:00.263095
+index:184	AdamOp	time:2021-05-25 14:41:00.266719
+index:185	Pooling2DBackward	time:2021-05-25 14:41:00.266900
+index:186	ActivationBackward	time:2021-05-25 14:41:00.271298
+index:187	Convolution2DBackward	time:2021-05-25 14:41:00.274298
+index:188	W1_1m	time:2021-05-25 14:41:00.289771
+index:189	W1_1v	time:2021-05-25 14:41:00.289868
+index:190	Convolution2DBackward	time:2021-05-25 14:41:00.289964
+index:191	AdamOp	time:2021-05-25 14:41:00.297668
+index:192	ActivationBackward	time:2021-05-25 14:41:00.297806
+index:193	Convolution2DBackward	time:2021-05-25 14:41:00.300981
+index:194	AdamOp	time:2021-05-25 14:41:00.304866
+finish_swap_out	index:0	b8	time:2021-05-25 14:41:00.306833
+finish_swap_out	index:1	b8m	time:2021-05-25 14:41:00.307037
+finish_swap_out	index:2	b8v	time:2021-05-25 14:41:00.307158
+finish_swap_out	index:3	X	time:2021-05-25 14:41:00.309671
+finish_swap_out	index:4	W1_1	time:2021-05-25 14:41:00.310860
+finish_swap_out	index:7	W1_2	time:2021-05-25 14:41:00.319183
+finish_swap_out	index:11	W2_1	time:2021-05-25 14:41:00.323550
+finish_swap_out	index:14	W2_2	time:2021-05-25 14:41:00.324263
+finish_swap_out	index:18	W3_1	time:2021-05-25 14:41:00.331079
+finish_swap_out	index:21	W3_2	time:2021-05-25 14:41:00.334346
+finish_swap_out	index:24	W3_3	time:2021-05-25 14:41:00.337849
+finish_swap_out	index:28	W4_1	time:2021-05-25 14:41:00.342522
+finish_swap_out	index:31	W4_2	time:2021-05-25 14:41:00.346860
+finish_swap_out	index:34	W4_3	time:2021-05-25 14:41:00.351392
+finish_swap_out	index:38	W5_1	time:2021-05-25 14:41:00.357416
+finish_swap_out	index:41	W5_2	time:2021-05-25 14:41:00.361248
+finish_swap_out	index:44	W5_3	time:2021-05-25 14:41:00.365143
+finish_swap_out	index:49	W6	time:2021-05-25 14:41:00.475094
+finish_swap_out	index:51	b6	time:2021-05-25 14:41:00.475349
+finish_swap_out	index:56	W7	time:2021-05-25 14:41:00.493356
+finish_swap_out	index:58	b7	time:2021-05-25 14:41:00.493554
+finish_swap_out	index:63	W8	time:2021-05-25 14:41:00.498632
+finish_swap_out	index:69	y_	time:2021-05-25 14:41:00.499762
+finish_swap_out	index:79	W8m	time:2021-05-25 14:41:00.504793
+finish_swap_out	index:80	W8v	time:2021-05-25 14:41:00.510079
+finish_swap_out	index:84	b7m	time:2021-05-25 14:41:00.511257
+finish_swap_out	index:85	b7v	time:2021-05-25 14:41:00.511438
+finish_swap_out	index:92	W7m	time:2021-05-25 14:41:00.529808
+finish_swap_out	index:93	W7v	time:2021-05-25 14:41:00.547437
+finish_swap_out	index:97	b6m	time:2021-05-25 14:41:00.550131
+finish_swap_out	index:98	b6v	time:2021-05-25 14:41:00.550328
+finish_swap_out	index:105	W6m	time:2021-05-25 14:41:00.653525
+finish_swap_out	index:106	W6v	time:2021-05-25 14:41:00.756063
+finish_swap_out	index:110	W5_3m	time:2021-05-25 14:41:00.768500
+finish_swap_out	index:111	W5_3v	time:2021-05-25 14:41:00.774756
+finish_swap_out	index:118	W5_2m	time:2021-05-25 14:41:00.783889
+finish_swap_out	index:119	W5_2v	time:2021-05-25 14:41:00.787344
+finish_swap_out	index:124	W5_1m	time:2021-05-25 14:41:00.791921
+finish_swap_out	index:125	W5_1v	time:2021-05-25 14:41:00.795254
+finish_swap_out	index:130	W4_3m	time:2021-05-25 14:41:00.799913
+finish_swap_out	index:131	W4_3v	time:2021-05-25 14:41:00.803431
+finish_swap_out	index:137	W4_2m	time:2021-05-25 14:41:00.809593
+finish_swap_out	index:138	W4_2v	time:2021-05-25 14:41:00.813438
+finish_swap_out	index:143	W4_1m	time:2021-05-25 14:41:00.817577
+finish_swap_out	index:144	W4_1v	time:2021-05-25 14:41:00.819739
+finish_swap_out	index:149	W3_3m	time:2021-05-25 14:41:00.823261
+finish_swap_out	index:150	W3_3v	time:2021-05-25 14:41:00.824951
+finish_swap_out	index:156	W3_2m	time:2021-05-25 14:41:00.830060
+finish_swap_out	index:157	W3_2v	time:2021-05-25 14:41:00.831675
+finish_swap_out	index:162	W3_1m	time:2021-05-25 14:41:00.834264
+finish_swap_out	index:163	W3_1v	time:2021-05-25 14:41:00.835563
+finish_swap_out	index:168	W2_2m	time:2021-05-25 14:41:00.837244
+finish_swap_out	index:169	W2_2v	time:2021-05-25 14:41:00.837532
+finish_swap_out	index:175	W2_1m	time:2021-05-25 14:41:00.841161
+finish_swap_out	index:176	W2_1v	time:2021-05-25 14:41:00.841359
+finish_swap_out	index:181	W1_2m	time:2021-05-25 14:41:00.846441
+finish_swap_out	index:182	W1_2v	time:2021-05-25 14:41:00.846739
+finish_swap_out	index:188	W1_1m	time:2021-05-25 14:41:00.854421
+finish_swap_out	index:189	W1_1v	time:2021-05-25 14:41:00.854642
+
+run:
+index:0	b8	time:2021-05-25 14:41:00.885425
+index:1	b8m	time:2021-05-25 14:41:00.885631
+index:2	b8v	time:2021-05-25 14:41:00.885735
+index:3	X	time:2021-05-25 14:41:00.886248
+index:4	W1_1	time:2021-05-25 14:41:00.890124
+index:5	Convolution2DForward	time:2021-05-25 14:41:00.890240
+swap_out	index:4	W1_1	time:2021-05-25 14:41:00.890746
+index:6	ActivationForward	time:2021-05-25 14:41:00.892260
+index:7	W1_2	time:2021-05-25 14:41:00.894744
+index:8	Convolution2DForward	time:2021-05-25 14:41:00.895349
+swap_out	index:3	X	time:2021-05-25 14:41:00.895952
+index:9	ActivationForward	time:2021-05-25 14:41:00.902537
+index:10	Pooling2DForward	time:2021-05-25 14:41:00.908011
+swap_out	index:5	Convolution2DForward	time:2021-05-25 14:41:00.908684
+index:11	W2_1	time:2021-05-25 14:41:00.909772
+index:12	Convolution2DForward	time:2021-05-25 14:41:00.942620
+index:13	ActivationForward	time:2021-05-25 14:41:00.946517
+index:14	W2_2	time:2021-05-25 14:41:00.948088
+index:15	Convolution2DForward	time:2021-05-25 14:41:00.948361
+index:16	ActivationForward	time:2021-05-25 14:41:00.954965
+index:17	Pooling2DForward	time:2021-05-25 14:41:00.956343
+swap_out	index:7	W1_2	time:2021-05-25 14:41:00.956843
+index:18	W3_1	time:2021-05-25 14:41:00.957447
+index:19	Convolution2DForward	time:2021-05-25 14:41:00.962913
+swap_out	index:6	ActivationForward	time:2021-05-25 14:41:00.963743
+index:20	ActivationForward	time:2021-05-25 14:41:00.989720
+index:21	W3_2	time:2021-05-25 14:41:00.991069
+index:22	Convolution2DForward	time:2021-05-25 14:41:01.001166
+index:23	ActivationForward	time:2021-05-25 14:41:01.008807
+index:24	W3_3	time:2021-05-25 14:41:01.009792
+index:25	Convolution2DForward	time:2021-05-25 14:41:01.011409
+swap_out	index:11	W2_1	time:2021-05-25 14:41:01.011994
+index:26	ActivationForward	time:2021-05-25 14:41:01.019702
+index:27	Pooling2DForward	time:2021-05-25 14:41:01.022079
+swap_out	index:8	Convolution2DForward	time:2021-05-25 14:41:01.022775
+index:28	W4_1	time:2021-05-25 14:41:01.023099
+index:29	Convolution2DForward	time:2021-05-25 14:41:01.061156
+index:30	ActivationForward	time:2021-05-25 14:41:01.066112
+index:31	W4_2	time:2021-05-25 14:41:01.066834
+index:32	Convolution2DForward	time:2021-05-25 14:41:01.071732
+swap_out	index:10	Pooling2DForward	time:2021-05-25 14:41:01.072257
+index:33	ActivationForward	time:2021-05-25 14:41:01.082154
+index:34	W4_3	time:2021-05-25 14:41:01.089635
+index:35	Convolution2DForward	time:2021-05-25 14:41:01.099424
+swap_out	index:9	ActivationForward	time:2021-05-25 14:41:01.100251
+index:36	ActivationForward	time:2021-05-25 14:41:01.109084
+index:37	Pooling2DForward	time:2021-05-25 14:41:01.136783
+index:38	W5_1	time:2021-05-25 14:41:01.138331
+index:39	Convolution2DForward	time:2021-05-25 14:41:01.151372
+swap_out	index:12	Convolution2DForward	time:2021-05-25 14:41:01.151971
+index:40	ActivationForward	time:2021-05-25 14:41:01.154865
+index:41	W5_2	time:2021-05-25 14:41:01.168120
+index:42	Convolution2DForward	time:2021-05-25 14:41:01.177896
+swap_out	index:14	W2_2	time:2021-05-25 14:41:01.177959
+index:43	ActivationForward	time:2021-05-25 14:41:01.180083
+index:44	W5_3	time:2021-05-25 14:41:01.180586
+index:45	Convolution2DForward	time:2021-05-25 14:41:01.185100
+swap_out	index:13	ActivationForward	time:2021-05-25 14:41:01.185177
+index:46	ActivationForward	time:2021-05-25 14:41:01.187257
+index:47	Pooling2DForward	time:2021-05-25 14:41:01.187412
+index:48	Flatten	time:2021-05-25 14:41:01.200910
+index:49	W6	time:2021-05-25 14:41:01.201204
+index:50	MatMul	time:2021-05-25 14:41:03.054393
+index:51	b6	time:2021-05-25 14:41:03.057807
+index:52	BroadcastTo	time:2021-05-25 14:41:03.058588
+index:53	+	time:2021-05-25 14:41:03.058652
+index:54	FullyActivationForward	time:2021-05-25 14:41:03.058707
+index:55	FullyDropoutForward	time:2021-05-25 14:41:03.058765
+index:56	W7	time:2021-05-25 14:41:03.063204
+index:57	MatMul	time:2021-05-25 14:41:03.100532
+index:58	b7	time:2021-05-25 14:41:03.101064
+index:59	BroadcastTo	time:2021-05-25 14:41:03.101198
+index:60	+	time:2021-05-25 14:41:03.101252
+index:61	FullyActivationForward	time:2021-05-25 14:41:03.101303
+index:62	FullyDropoutForward	time:2021-05-25 14:41:03.101368
+index:63	W8	time:2021-05-25 14:41:03.105628
+index:64	MatMul	time:2021-05-25 14:41:03.113034
+index:65	BroadcastTo	time:2021-05-25 14:41:03.113240
+index:66	+	time:2021-05-25 14:41:03.113293
+index:67	FullyBNForward	time:2021-05-25 14:41:03.113793
+index:68	FullyActivationForward	time:2021-05-25 14:41:03.113980
+index:69	y_	time:2021-05-25 14:41:03.114037
+index:70	CrossOp	time:2021-05-25 14:41:03.114648
+index:71	ReduceSumOp	time:2021-05-25 14:41:03.114727
+index:72	Oneslike	time:2021-05-25 14:41:03.114829
+index:73	BroadcastTo	time:2021-05-25 14:41:03.114885
+index:74	CrossBackwardOp	time:2021-05-25 14:41:03.114931
+index:75	FullyActivationBackward	time:2021-05-25 14:41:03.114990
+index:76	FullyBNBackward	time:2021-05-25 14:41:03.115050
+index:77	BroadcastToGradient	time:2021-05-25 14:41:03.115168
+index:78	AdamOp	time:2021-05-25 14:41:03.115244
+index:79	W8m	time:2021-05-25 14:41:03.115300
+index:80	W8v	time:2021-05-25 14:41:03.123062
+index:81	Zeroslike	time:2021-05-25 14:41:03.130947
+index:82	+	time:2021-05-25 14:41:03.131035
+index:83	MatMul	time:2021-05-25 14:41:03.131091
+index:84	b7m	time:2021-05-25 14:41:03.131651
+index:85	b7v	time:2021-05-25 14:41:03.131771
+index:86	MatMul	time:2021-05-25 14:41:03.131877
+index:87	AdamOp	time:2021-05-25 14:41:03.132054
+index:88	FullyDropoutBackward	time:2021-05-25 14:41:03.137504
+index:89	FullyActivationBackward	time:2021-05-25 14:41:03.137561
+index:90	BroadcastToGradient	time:2021-05-25 14:41:03.138080
+index:91	AdamOp	time:2021-05-25 14:41:03.138170
+index:92	W7m	time:2021-05-25 14:41:03.138228
+index:93	W7v	time:2021-05-25 14:41:03.175291
+index:94	Zeroslike	time:2021-05-25 14:41:03.212216
+index:95	+	time:2021-05-25 14:41:03.212294
+index:96	MatMul	time:2021-05-25 14:41:03.212347
+index:97	b6m	time:2021-05-25 14:41:03.213448
+index:98	b6v	time:2021-05-25 14:41:03.213588
+index:99	MatMul	time:2021-05-25 14:41:03.213694
+index:100	AdamOp	time:2021-05-25 14:41:03.214220
+index:101	FullyDropoutBackward	time:2021-05-25 14:41:03.236756
+index:102	FullyActivationBackward	time:2021-05-25 14:41:03.236811
+index:103	BroadcastToGradient	time:2021-05-25 14:41:03.236864
+index:104	AdamOp	time:2021-05-25 14:41:03.236984
+index:105	W6m	time:2021-05-25 14:41:03.237065
+index:106	W6v	time:2021-05-25 14:41:16.303962
+index:107	Zeroslike	time:2021-05-25 14:41:16.505439
+index:108	+	time:2021-05-25 14:41:16.505587
+index:109	MatMul	time:2021-05-25 14:41:16.505663
+index:110	W5_3m	time:2021-05-25 14:41:16.509226
+index:111	W5_3v	time:2021-05-25 14:41:16.514072
+index:112	MatMul	time:2021-05-25 14:41:16.518918
+index:113	AdamOp	time:2021-05-25 14:41:16.521651
+index:114	FlattenGradient	time:2021-05-25 14:41:16.659126
+index:115	Pooling2DBackward	time:2021-05-25 14:41:16.659197
+index:116	ActivationBackward	time:2021-05-25 14:41:16.659359
+index:117	Convolution2DBackward	time:2021-05-25 14:41:16.659864
+index:118	W5_2m	time:2021-05-25 14:41:16.663917
+index:119	W5_2v	time:2021-05-25 14:41:16.668653
+index:120	Convolution2DBackward	time:2021-05-25 14:41:16.673827
+index:121	AdamOp	time:2021-05-25 14:41:16.677048
+index:122	ActivationBackward	time:2021-05-25 14:41:16.680463
+index:123	Convolution2DBackward	time:2021-05-25 14:41:16.681012
+index:124	W5_1m	time:2021-05-25 14:41:16.685226
+index:125	W5_1v	time:2021-05-25 14:41:16.689935
+index:126	Convolution2DBackward	time:2021-05-25 14:41:16.695750
+index:127	AdamOp	time:2021-05-25 14:41:16.699240
+index:128	ActivationBackward	time:2021-05-25 14:41:16.702633
+index:129	Convolution2DBackward	time:2021-05-25 14:41:16.703163
+index:130	W4_3m	time:2021-05-25 14:41:16.706980
+index:131	W4_3v	time:2021-05-25 14:41:16.711739
+index:132	Convolution2DBackward	time:2021-05-25 14:41:16.716980
+index:133	AdamOp	time:2021-05-25 14:41:16.720372
+index:134	Pooling2DBackward	time:2021-05-25 14:41:16.724047
+index:135	ActivationBackward	time:2021-05-25 14:41:16.724881
+index:136	Convolution2DBackward	time:2021-05-25 14:41:16.725679
+index:137	W4_2m	time:2021-05-25 14:41:16.737175
+index:138	W4_2v	time:2021-05-25 14:41:16.741998
+index:139	Convolution2DBackward	time:2021-05-25 14:41:16.746665
+index:140	AdamOp	time:2021-05-25 14:41:16.755325
+index:141	ActivationBackward	time:2021-05-25 14:41:16.758708
+index:142	Convolution2DBackward	time:2021-05-25 14:41:16.759535
+index:143	W4_1m	time:2021-05-25 14:41:16.771323
+index:144	W4_1v	time:2021-05-25 14:41:16.774189
+index:145	Convolution2DBackward	time:2021-05-25 14:41:16.776921
+index:146	AdamOp	time:2021-05-25 14:41:16.787776
+index:147	ActivationBackward	time:2021-05-25 14:41:16.791513
+index:148	Convolution2DBackward	time:2021-05-25 14:41:16.792350
+index:149	W3_3m	time:2021-05-25 14:41:16.798722
+index:150	W3_3v	time:2021-05-25 14:41:16.803805
+index:151	Convolution2DBackward	time:2021-05-25 14:41:16.805580
+index:152	AdamOp	time:2021-05-25 14:41:16.810304
+index:153	Pooling2DBackward	time:2021-05-25 14:41:16.812303
+index:154	ActivationBackward	time:2021-05-25 14:41:16.813613
+index:155	Convolution2DBackward	time:2021-05-25 14:41:16.814718
+index:156	W3_2m	time:2021-05-25 14:41:16.826720
+index:157	W3_2v	time:2021-05-25 14:41:16.828368
+index:158	Convolution2DBackward	time:2021-05-25 14:41:16.829869
+finish_swap_out	index:4	W1_1	time:2021-05-25 14:41:16.830362
+finish_swap_out	index:3	X	time:2021-05-25 14:41:16.830376
+finish_swap_out	index:5	Convolution2DForward	time:2021-05-25 14:41:16.830385
+finish_swap_out	index:7	W1_2	time:2021-05-25 14:41:16.830392
+finish_swap_out	index:6	ActivationForward	time:2021-05-25 14:41:16.830400
+finish_swap_out	index:11	W2_1	time:2021-05-25 14:41:16.830407
+finish_swap_out	index:8	Convolution2DForward	time:2021-05-25 14:41:16.830414
+finish_swap_out	index:10	Pooling2DForward	time:2021-05-25 14:41:16.830421
+finish_swap_out	index:9	ActivationForward	time:2021-05-25 14:41:16.830428
+finish_swap_out	index:12	Convolution2DForward	time:2021-05-25 14:41:16.830435
+finish_swap_out	index:14	W2_2	time:2021-05-25 14:41:16.830442
+finish_swap_out	index:13	ActivationForward	time:2021-05-25 14:41:16.830448
+swap_in	index:13	ActivationForward	time:2021-05-25 14:41:16.830460
+index:159	AdamOp	time:2021-05-25 14:41:16.837758
+index:160	ActivationBackward	time:2021-05-25 14:41:16.839024
+index:161	Convolution2DBackward	time:2021-05-25 14:41:16.842009
+swap_in	index:14	W2_2	time:2021-05-25 14:41:16.844540
+index:162	W3_1m	time:2021-05-25 14:41:16.857877
+index:163	W3_1v	time:2021-05-25 14:41:16.858328
+index:164	Convolution2DBackward	time:2021-05-25 14:41:16.858662
+swap_in	index:12	Convolution2DForward	time:2021-05-25 14:41:16.859212
+index:165	AdamOp	time:2021-05-25 14:41:16.866604
+index:166	ActivationBackward	time:2021-05-25 14:41:16.867639
+index:167	Convolution2DBackward	time:2021-05-25 14:41:16.870696
+swap_in	index:9	ActivationForward	time:2021-05-25 14:41:16.870733
+index:168	W2_2m	time:2021-05-25 14:41:16.877620
+index:169	W2_2v	time:2021-05-25 14:41:16.888485
+index:170	Convolution2DBackward	time:2021-05-25 14:41:16.888711
+index:171	AdamOp	time:2021-05-25 14:41:16.893476
+index:172	Pooling2DBackward	time:2021-05-25 14:41:16.894016
+swap_in	index:10	Pooling2DForward	time:2021-05-25 14:41:16.894596
+index:173	ActivationBackward	time:2021-05-25 14:41:16.896390
+index:174	Convolution2DBackward	time:2021-05-25 14:41:16.898964
+swap_in	index:8	Convolution2DForward	time:2021-05-25 14:41:16.899003
+finish_swap_in	index:13	ActivationForward	time:2021-05-25 14:41:16.904548
+finish_swap_in	index:14	W2_2	time:2021-05-25 14:41:16.904585
+index:175	W2_1m	time:2021-05-25 14:41:16.916698
+index:176	W2_1v	time:2021-05-25 14:41:16.917348
+index:177	Convolution2DBackward	time:2021-05-25 14:41:16.917868
+index:178	AdamOp	time:2021-05-25 14:41:16.924337
+index:179	ActivationBackward	time:2021-05-25 14:41:16.924637
+swap_in	index:11	W2_1	time:2021-05-25 14:41:16.925165
+finish_swap_in	index:12	Convolution2DForward	time:2021-05-25 14:41:16.930780
+index:180	Convolution2DBackward	time:2021-05-25 14:41:16.932053
+swap_in	index:6	ActivationForward	time:2021-05-25 14:41:16.932092
+finish_swap_in	index:9	ActivationForward	time:2021-05-25 14:41:16.943079
+finish_swap_in	index:10	Pooling2DForward	time:2021-05-25 14:41:16.946056
+finish_swap_in	index:8	Convolution2DForward	time:2021-05-25 14:41:16.957079
+finish_swap_in	index:11	W2_1	time:2021-05-25 14:41:16.958364
+index:181	W1_2m	time:2021-05-25 14:41:16.968543
+index:182	W1_2v	time:2021-05-25 14:41:16.968723
+index:183	Convolution2DBackward	time:2021-05-25 14:41:16.968860
+index:184	AdamOp	time:2021-05-25 14:41:16.972226
+index:185	Pooling2DBackward	time:2021-05-25 14:41:16.972394
+index:186	ActivationBackward	time:2021-05-25 14:41:16.977014
+swap_in	index:7	W1_2	time:2021-05-25 14:41:16.977586
+index:187	Convolution2DBackward	time:2021-05-25 14:41:16.980085
+swap_in	index:5	Convolution2DForward	time:2021-05-25 14:41:16.980139
+finish_swap_in	index:6	ActivationForward	time:2021-05-25 14:41:16.991108
+finish_swap_in	index:7	W1_2	time:2021-05-25 14:41:16.991525
+index:188	W1_1m	time:2021-05-25 14:41:17.005173
+index:189	W1_1v	time:2021-05-25 14:41:17.015950
+index:190	Convolution2DBackward	time:2021-05-25 14:41:17.016049
+index:191	AdamOp	time:2021-05-25 14:41:17.026196
+swap_in	index:3	X	time:2021-05-25 14:41:17.026221
+index:192	ActivationBackward	time:2021-05-25 14:41:17.026941
+swap_in	index:4	W1_1	time:2021-05-25 14:41:17.027445
+finish_swap_in	index:5	Convolution2DForward	time:2021-05-25 14:41:17.038762
+index:193	Convolution2DBackward	time:2021-05-25 14:41:17.041260
+finish_swap_in	index:3	X	time:2021-05-25 14:41:17.042060
+finish_swap_in	index:4	W1_1	time:2021-05-25 14:41:17.042077
+index:194	AdamOp	time:2021-05-25 14:41:17.045707
+finish_swap_out	index:0	b8	time:2021-05-25 14:41:17.047480
+finish_swap_out	index:1	b8m	time:2021-05-25 14:41:17.047667
+finish_swap_out	index:2	b8v	time:2021-05-25 14:41:17.047781
+finish_swap_out	index:3	X	time:2021-05-25 14:41:17.049874
+finish_swap_out	index:4	W1_1	time:2021-05-25 14:41:17.050962
+finish_swap_out	index:7	W1_2	time:2021-05-25 14:41:17.058032
+finish_swap_out	index:11	W2_1	time:2021-05-25 14:41:17.059778
+finish_swap_out	index:14	W2_2	time:2021-05-25 14:41:17.062344
+finish_swap_out	index:18	W3_1	time:2021-05-25 14:41:17.068311
+finish_swap_out	index:21	W3_2	time:2021-05-25 14:41:17.071402
+finish_swap_out	index:24	W3_3	time:2021-05-25 14:41:17.074972
+finish_swap_out	index:28	W4_1	time:2021-05-25 14:41:17.079657
+finish_swap_out	index:31	W4_2	time:2021-05-25 14:41:17.090036
+finish_swap_out	index:34	W4_3	time:2021-05-25 14:41:17.095015
+finish_swap_out	index:38	W5_1	time:2021-05-25 14:41:17.100671
+finish_swap_out	index:41	W5_2	time:2021-05-25 14:41:17.104501
+finish_swap_out	index:44	W5_3	time:2021-05-25 14:41:17.107937
+finish_swap_out	index:49	W6	time:2021-05-25 14:41:17.215600
+finish_swap_out	index:51	b6	time:2021-05-25 14:41:17.215788
+finish_swap_out	index:56	W7	time:2021-05-25 14:41:17.234077
+finish_swap_out	index:58	b7	time:2021-05-25 14:41:17.234260
+finish_swap_out	index:63	W8	time:2021-05-25 14:41:17.239437
+finish_swap_out	index:69	y_	time:2021-05-25 14:41:17.240761
+finish_swap_out	index:79	W8m	time:2021-05-25 14:41:17.245969
+finish_swap_out	index:80	W8v	time:2021-05-25 14:41:17.251095
+finish_swap_out	index:84	b7m	time:2021-05-25 14:41:17.252329
+finish_swap_out	index:85	b7v	time:2021-05-25 14:41:17.252509
+finish_swap_out	index:92	W7m	time:2021-05-25 14:41:17.271531
+finish_swap_out	index:93	W7v	time:2021-05-25 14:41:17.290389
+finish_swap_out	index:97	b6m	time:2021-05-25 14:41:17.292799
+finish_swap_out	index:98	b6v	time:2021-05-25 14:41:17.292958
+finish_swap_out	index:105	W6m	time:2021-05-25 14:41:17.399685
+finish_swap_out	index:106	W6v	time:2021-05-25 14:41:17.506669
+finish_swap_out	index:110	W5_3m	time:2021-05-25 14:41:17.517715
+finish_swap_out	index:111	W5_3v	time:2021-05-25 14:41:17.525150
+finish_swap_out	index:118	W5_2m	time:2021-05-25 14:41:17.531377
+finish_swap_out	index:119	W5_2v	time:2021-05-25 14:41:17.534719
+finish_swap_out	index:124	W5_1m	time:2021-05-25 14:41:17.539059
+finish_swap_out	index:125	W5_1v	time:2021-05-25 14:41:17.542393
+finish_swap_out	index:130	W4_3m	time:2021-05-25 14:41:17.546768
+finish_swap_out	index:131	W4_3v	time:2021-05-25 14:41:17.549945
+finish_swap_out	index:137	W4_2m	time:2021-05-25 14:41:17.555031
+finish_swap_out	index:138	W4_2v	time:2021-05-25 14:41:17.558363
+finish_swap_out	index:143	W4_1m	time:2021-05-25 14:41:17.562072
+finish_swap_out	index:144	W4_1v	time:2021-05-25 14:41:17.564241
+finish_swap_out	index:149	W3_3m	time:2021-05-25 14:41:17.567301
+finish_swap_out	index:150	W3_3v	time:2021-05-25 14:41:17.568743
+finish_swap_out	index:156	W3_2m	time:2021-05-25 14:41:17.573189
+finish_swap_out	index:157	W3_2v	time:2021-05-25 14:41:17.574712
+finish_swap_out	index:162	W3_1m	time:2021-05-25 14:41:17.577430
+finish_swap_out	index:163	W3_1v	time:2021-05-25 14:41:17.578672
+finish_swap_out	index:168	W2_2m	time:2021-05-25 14:41:17.581624
+finish_swap_out	index:169	W2_2v	time:2021-05-25 14:41:17.581931
+finish_swap_out	index:175	W2_1m	time:2021-05-25 14:41:17.587309
+finish_swap_out	index:176	W2_1v	time:2021-05-25 14:41:17.587548
+finish_swap_out	index:181	W1_2m	time:2021-05-25 14:41:17.591914
+finish_swap_out	index:182	W1_2v	time:2021-05-25 14:41:17.592146
+finish_swap_out	index:188	W1_1m	time:2021-05-25 14:41:17.598819
+finish_swap_out	index:189	W1_1v	time:2021-05-25 14:41:17.599082
+
+run:
+index:0	b8	time:2021-05-25 14:41:17.625314
+index:1	b8m	time:2021-05-25 14:41:17.625525
+index:2	b8v	time:2021-05-25 14:41:17.625627
+index:3	X	time:2021-05-25 14:41:17.626131
+index:4	W1_1	time:2021-05-25 14:41:17.630387
+index:5	Convolution2DForward	time:2021-05-25 14:41:17.630500
+swap_out	index:4	W1_1	time:2021-05-25 14:41:17.631164
+index:6	ActivationForward	time:2021-05-25 14:41:17.632608
+index:7	W1_2	time:2021-05-25 14:41:17.635126
+index:8	Convolution2DForward	time:2021-05-25 14:41:17.635871
+swap_out	index:3	X	time:2021-05-25 14:41:17.636630
+index:9	ActivationForward	time:2021-05-25 14:41:17.642608
+index:10	Pooling2DForward	time:2021-05-25 14:41:17.647174
+swap_out	index:5	Convolution2DForward	time:2021-05-25 14:41:17.647922
+index:11	W2_1	time:2021-05-25 14:41:17.649027
+index:12	Convolution2DForward	time:2021-05-25 14:41:17.682552
+index:13	ActivationForward	time:2021-05-25 14:41:17.686370
+index:14	W2_2	time:2021-05-25 14:41:17.687972
+index:15	Convolution2DForward	time:2021-05-25 14:41:17.688256
+index:16	ActivationForward	time:2021-05-25 14:41:17.694694
+index:17	Pooling2DForward	time:2021-05-25 14:41:17.696079
+swap_out	index:7	W1_2	time:2021-05-25 14:41:17.696615
+index:18	W3_1	time:2021-05-25 14:41:17.697187
+index:19	Convolution2DForward	time:2021-05-25 14:41:17.701145
+swap_out	index:6	ActivationForward	time:2021-05-25 14:41:17.701845
+index:20	ActivationForward	time:2021-05-25 14:41:17.706016
+index:21	W3_2	time:2021-05-25 14:41:17.730683
+index:22	Convolution2DForward	time:2021-05-25 14:41:17.742437
+index:23	ActivationForward	time:2021-05-25 14:41:17.749473
+index:24	W3_3	time:2021-05-25 14:41:17.750433
+index:25	Convolution2DForward	time:2021-05-25 14:41:17.752140
+swap_out	index:11	W2_1	time:2021-05-25 14:41:17.752712
+index:26	ActivationForward	time:2021-05-25 14:41:17.761066
+index:27	Pooling2DForward	time:2021-05-25 14:41:17.762424
+swap_out	index:8	Convolution2DForward	time:2021-05-25 14:41:17.763954
+index:28	W4_1	time:2021-05-25 14:41:17.764285
+index:29	Convolution2DForward	time:2021-05-25 14:41:17.801612
+index:30	ActivationForward	time:2021-05-25 14:41:17.806556
+index:31	W4_2	time:2021-05-25 14:41:17.807389
+index:32	Convolution2DForward	time:2021-05-25 14:41:17.812588
+swap_out	index:10	Pooling2DForward	time:2021-05-25 14:41:17.813148
+index:33	ActivationForward	time:2021-05-25 14:41:17.822394
+index:34	W4_3	time:2021-05-25 14:41:17.831086
+index:35	Convolution2DForward	time:2021-05-25 14:41:17.839556
+swap_out	index:9	ActivationForward	time:2021-05-25 14:41:17.840232
+index:36	ActivationForward	time:2021-05-25 14:41:17.848829
+index:37	Pooling2DForward	time:2021-05-25 14:41:17.874040
+index:38	W5_1	time:2021-05-25 14:41:17.875992
+index:39	Convolution2DForward	time:2021-05-25 14:41:17.888556
+swap_out	index:12	Convolution2DForward	time:2021-05-25 14:41:17.889192
+index:40	ActivationForward	time:2021-05-25 14:41:17.892265
+index:41	W5_2	time:2021-05-25 14:41:17.906143
+index:42	Convolution2DForward	time:2021-05-25 14:41:17.915812
+swap_out	index:14	W2_2	time:2021-05-25 14:41:17.915880
+index:43	ActivationForward	time:2021-05-25 14:41:17.918024
+index:44	W5_3	time:2021-05-25 14:41:17.918612
+index:45	Convolution2DForward	time:2021-05-25 14:41:17.923240
+swap_out	index:13	ActivationForward	time:2021-05-25 14:41:17.923298
+index:46	ActivationForward	time:2021-05-25 14:41:17.925413
+index:47	Pooling2DForward	time:2021-05-25 14:41:17.938277
+index:48	Flatten	time:2021-05-25 14:41:17.938544
+index:49	W6	time:2021-05-25 14:41:17.938757
+index:50	MatMul	time:2021-05-25 14:41:18.162555
+index:51	b6	time:2021-05-25 14:41:18.166167
+index:52	BroadcastTo	time:2021-05-25 14:41:18.166774
+index:53	+	time:2021-05-25 14:41:18.166832
+index:54	FullyActivationForward	time:2021-05-25 14:41:18.166891
+index:55	FullyDropoutForward	time:2021-05-25 14:41:18.166945
+index:56	W7	time:2021-05-25 14:41:18.172294
+index:57	MatMul	time:2021-05-25 14:41:18.210160
+index:58	b7	time:2021-05-25 14:41:18.210689
+index:59	BroadcastTo	time:2021-05-25 14:41:18.210823
+index:60	+	time:2021-05-25 14:41:18.210913
+index:61	FullyActivationForward	time:2021-05-25 14:41:18.210987
+index:62	FullyDropoutForward	time:2021-05-25 14:41:18.211041
+index:63	W8	time:2021-05-25 14:41:18.216447
+index:64	MatMul	time:2021-05-25 14:41:18.225686
+index:65	BroadcastTo	time:2021-05-25 14:41:18.225951
+index:66	+	time:2021-05-25 14:41:18.226013
+index:67	FullyBNForward	time:2021-05-25 14:41:18.226067
+index:68	FullyActivationForward	time:2021-05-25 14:41:18.226233
+index:69	y_	time:2021-05-25 14:41:18.226303
+index:70	CrossOp	time:2021-05-25 14:41:18.226862
+index:71	ReduceSumOp	time:2021-05-25 14:41:18.226929
+index:72	Oneslike	time:2021-05-25 14:41:18.227010
+index:73	BroadcastTo	time:2021-05-25 14:41:18.227061
+index:74	CrossBackwardOp	time:2021-05-25 14:41:18.227123
+index:75	FullyActivationBackward	time:2021-05-25 14:41:18.227176
+index:76	FullyBNBackward	time:2021-05-25 14:41:18.227230
+index:77	BroadcastToGradient	time:2021-05-25 14:41:18.227372
+index:78	AdamOp	time:2021-05-25 14:41:18.227455
+index:79	W8m	time:2021-05-25 14:41:18.227514
+index:80	W8v	time:2021-05-25 14:41:18.235511
+index:81	Zeroslike	time:2021-05-25 14:41:18.243776
+index:82	+	time:2021-05-25 14:41:18.243853
+index:83	MatMul	time:2021-05-25 14:41:18.243926
+index:84	b7m	time:2021-05-25 14:41:18.244640
+index:85	b7v	time:2021-05-25 14:41:18.244768
+index:86	MatMul	time:2021-05-25 14:41:18.244941
+index:87	AdamOp	time:2021-05-25 14:41:18.245146
+index:88	FullyDropoutBackward	time:2021-05-25 14:41:18.250592
+index:89	FullyActivationBackward	time:2021-05-25 14:41:18.250670
+index:90	BroadcastToGradient	time:2021-05-25 14:41:18.251139
+index:91	AdamOp	time:2021-05-25 14:41:18.251246
+index:92	W7m	time:2021-05-25 14:41:18.251304
+index:93	W7v	time:2021-05-25 14:41:18.288900
+index:94	Zeroslike	time:2021-05-25 14:41:18.326270
+index:95	+	time:2021-05-25 14:41:18.326348
+index:96	MatMul	time:2021-05-25 14:41:18.326401
+index:97	b6m	time:2021-05-25 14:41:18.327413
+index:98	b6v	time:2021-05-25 14:41:18.327533
+index:99	MatMul	time:2021-05-25 14:41:18.327649
+index:100	AdamOp	time:2021-05-25 14:41:18.328157
+index:101	FullyDropoutBackward	time:2021-05-25 14:41:18.350728
+index:102	FullyActivationBackward	time:2021-05-25 14:41:18.350799
+index:103	BroadcastToGradient	time:2021-05-25 14:41:18.350850
+index:104	AdamOp	time:2021-05-25 14:41:18.350952
+index:105	W6m	time:2021-05-25 14:41:18.351005
+index:106	W6v	time:2021-05-25 14:41:18.571030
+index:107	Zeroslike	time:2021-05-25 14:41:18.793922
+index:108	+	time:2021-05-25 14:41:18.794068
+index:109	MatMul	time:2021-05-25 14:41:18.794136
+index:110	W5_3m	time:2021-05-25 14:41:18.797657
+index:111	W5_3v	time:2021-05-25 14:41:18.802692
+index:112	MatMul	time:2021-05-25 14:41:18.807601
+index:113	AdamOp	time:2021-05-25 14:41:18.810347
+index:114	FlattenGradient	time:2021-05-25 14:41:18.947888
+index:115	Pooling2DBackward	time:2021-05-25 14:41:18.947962
+index:116	ActivationBackward	time:2021-05-25 14:41:18.948129
+index:117	Convolution2DBackward	time:2021-05-25 14:41:18.948794
+index:118	W5_2m	time:2021-05-25 14:41:18.952865
+index:119	W5_2v	time:2021-05-25 14:41:18.957849
+index:120	Convolution2DBackward	time:2021-05-25 14:41:18.964583
+index:121	AdamOp	time:2021-05-25 14:41:18.968207
+index:122	ActivationBackward	time:2021-05-25 14:41:18.971721
+index:123	Convolution2DBackward	time:2021-05-25 14:41:18.972295
+index:124	W5_1m	time:2021-05-25 14:41:18.976333
+index:125	W5_1v	time:2021-05-25 14:41:18.982075
+index:126	Convolution2DBackward	time:2021-05-25 14:41:18.986899
+index:127	AdamOp	time:2021-05-25 14:41:18.990045
+index:128	ActivationBackward	time:2021-05-25 14:41:18.993541
+index:129	Convolution2DBackward	time:2021-05-25 14:41:18.994181
+index:130	W4_3m	time:2021-05-25 14:41:18.998524
+index:131	W4_3v	time:2021-05-25 14:41:19.003324
+index:132	Convolution2DBackward	time:2021-05-25 14:41:19.008067
+index:133	AdamOp	time:2021-05-25 14:41:19.011432
+index:134	Pooling2DBackward	time:2021-05-25 14:41:19.014917
+index:135	ActivationBackward	time:2021-05-25 14:41:19.015705
+index:136	Convolution2DBackward	time:2021-05-25 14:41:19.016538
+index:137	W4_2m	time:2021-05-25 14:41:19.028425
+index:138	W4_2v	time:2021-05-25 14:41:19.033333
+index:139	Convolution2DBackward	time:2021-05-25 14:41:19.038199
+index:140	AdamOp	time:2021-05-25 14:41:19.046626
+index:141	ActivationBackward	time:2021-05-25 14:41:19.050128
+index:142	Convolution2DBackward	time:2021-05-25 14:41:19.050984
+index:143	W4_1m	time:2021-05-25 14:41:19.063068
+index:144	W4_1v	time:2021-05-25 14:41:19.066705
+index:145	Convolution2DBackward	time:2021-05-25 14:41:19.069551
+index:146	AdamOp	time:2021-05-25 14:41:19.077903
+index:147	ActivationBackward	time:2021-05-25 14:41:19.081463
+index:148	Convolution2DBackward	time:2021-05-25 14:41:19.086391
+index:149	W3_3m	time:2021-05-25 14:41:19.093368
+index:150	W3_3v	time:2021-05-25 14:41:19.095256
+index:151	Convolution2DBackward	time:2021-05-25 14:41:19.096770
+index:152	AdamOp	time:2021-05-25 14:41:19.101071
+index:153	Pooling2DBackward	time:2021-05-25 14:41:19.102973
+index:154	ActivationBackward	time:2021-05-25 14:41:19.104286
+index:155	Convolution2DBackward	time:2021-05-25 14:41:19.105526
+index:156	W3_2m	time:2021-05-25 14:41:19.116987
+index:157	W3_2v	time:2021-05-25 14:41:19.118642
+index:158	Convolution2DBackward	time:2021-05-25 14:41:19.120158
+finish_swap_out	index:4	W1_1	time:2021-05-25 14:41:19.120681
+finish_swap_out	index:3	X	time:2021-05-25 14:41:19.120697
+finish_swap_out	index:5	Convolution2DForward	time:2021-05-25 14:41:19.120706
+finish_swap_out	index:7	W1_2	time:2021-05-25 14:41:19.120714
+finish_swap_out	index:6	ActivationForward	time:2021-05-25 14:41:19.120723
+finish_swap_out	index:11	W2_1	time:2021-05-25 14:41:19.120731
+finish_swap_out	index:8	Convolution2DForward	time:2021-05-25 14:41:19.120738
+finish_swap_out	index:10	Pooling2DForward	time:2021-05-25 14:41:19.120746
+finish_swap_out	index:9	ActivationForward	time:2021-05-25 14:41:19.120754
+finish_swap_out	index:12	Convolution2DForward	time:2021-05-25 14:41:19.120761
+finish_swap_out	index:14	W2_2	time:2021-05-25 14:41:19.120769
+finish_swap_out	index:13	ActivationForward	time:2021-05-25 14:41:19.120776
+swap_in	index:13	ActivationForward	time:2021-05-25 14:41:19.120790
+index:159	AdamOp	time:2021-05-25 14:41:19.128517
+index:160	ActivationBackward	time:2021-05-25 14:41:19.130249
+index:161	Convolution2DBackward	time:2021-05-25 14:41:19.133298
+swap_in	index:14	W2_2	time:2021-05-25 14:41:19.134595
+index:162	W3_1m	time:2021-05-25 14:41:19.145691
+index:163	W3_1v	time:2021-05-25 14:41:19.146221
+index:164	Convolution2DBackward	time:2021-05-25 14:41:19.146592
+swap_in	index:12	Convolution2DForward	time:2021-05-25 14:41:19.147179
+index:165	AdamOp	time:2021-05-25 14:41:19.154499
+index:166	ActivationBackward	time:2021-05-25 14:41:19.156326
+index:167	Convolution2DBackward	time:2021-05-25 14:41:19.159270
+swap_in	index:9	ActivationForward	time:2021-05-25 14:41:19.159318
+index:168	W2_2m	time:2021-05-25 14:41:19.166051
+index:169	W2_2v	time:2021-05-25 14:41:19.180242
+index:170	Convolution2DBackward	time:2021-05-25 14:41:19.180472
+index:171	AdamOp	time:2021-05-25 14:41:19.186705
+index:172	Pooling2DBackward	time:2021-05-25 14:41:19.187269
+swap_in	index:10	Pooling2DForward	time:2021-05-25 14:41:19.187928
+index:173	ActivationBackward	time:2021-05-25 14:41:19.189712
+index:174	Convolution2DBackward	time:2021-05-25 14:41:19.192866
+swap_in	index:8	Convolution2DForward	time:2021-05-25 14:41:19.193027
+finish_swap_in	index:13	ActivationForward	time:2021-05-25 14:41:19.199212
+finish_swap_in	index:14	W2_2	time:2021-05-25 14:41:19.199997
+index:175	W2_1m	time:2021-05-25 14:41:19.211713
+index:176	W2_1v	time:2021-05-25 14:41:19.212405
+index:177	Convolution2DBackward	time:2021-05-25 14:41:19.213073
+index:178	AdamOp	time:2021-05-25 14:41:19.220030
+index:179	ActivationBackward	time:2021-05-25 14:41:19.220517
+swap_in	index:11	W2_1	time:2021-05-25 14:41:19.221250
+finish_swap_in	index:12	Convolution2DForward	time:2021-05-25 14:41:19.227576
+index:180	Convolution2DBackward	time:2021-05-25 14:41:19.228938
+swap_in	index:6	ActivationForward	time:2021-05-25 14:41:19.229028
+finish_swap_in	index:9	ActivationForward	time:2021-05-25 14:41:19.241149
+finish_swap_in	index:10	Pooling2DForward	time:2021-05-25 14:41:19.245576
+finish_swap_in	index:8	Convolution2DForward	time:2021-05-25 14:41:19.267343
+finish_swap_in	index:11	W2_1	time:2021-05-25 14:41:19.267833
+index:181	W1_2m	time:2021-05-25 14:41:19.274370
+index:182	W1_2v	time:2021-05-25 14:41:19.274584
+index:183	Convolution2DBackward	time:2021-05-25 14:41:19.274759
+index:184	AdamOp	time:2021-05-25 14:41:19.278470
+index:185	Pooling2DBackward	time:2021-05-25 14:41:19.278655
+index:186	ActivationBackward	time:2021-05-25 14:41:19.283747
+swap_in	index:7	W1_2	time:2021-05-25 14:41:19.284344
+index:187	Convolution2DBackward	time:2021-05-25 14:41:19.286889
+swap_in	index:5	Convolution2DForward	time:2021-05-25 14:41:19.286929
+finish_swap_in	index:6	ActivationForward	time:2021-05-25 14:41:19.298684
+finish_swap_in	index:7	W1_2	time:2021-05-25 14:41:19.310791
+index:188	W1_1m	time:2021-05-25 14:41:19.324788
+index:189	W1_1v	time:2021-05-25 14:41:19.325002
+index:190	Convolution2DBackward	time:2021-05-25 14:41:19.325122
+index:191	AdamOp	time:2021-05-25 14:41:19.332005
+swap_in	index:3	X	time:2021-05-25 14:41:19.332030
+index:192	ActivationBackward	time:2021-05-25 14:41:19.332772
+swap_in	index:4	W1_1	time:2021-05-25 14:41:19.333335
+finish_swap_in	index:5	Convolution2DForward	time:2021-05-25 14:41:19.345121
+index:193	Convolution2DBackward	time:2021-05-25 14:41:19.347616
+finish_swap_in	index:3	X	time:2021-05-25 14:41:19.348658
+finish_swap_in	index:4	W1_1	time:2021-05-25 14:41:19.348677
+index:194	AdamOp	time:2021-05-25 14:41:19.352350
+finish_swap_out	index:0	b8	time:2021-05-25 14:41:19.354310
+finish_swap_out	index:1	b8m	time:2021-05-25 14:41:19.354488
+finish_swap_out	index:2	b8v	time:2021-05-25 14:41:19.354646
+finish_swap_out	index:3	X	time:2021-05-25 14:41:19.357073
+finish_swap_out	index:4	W1_1	time:2021-05-25 14:41:19.358428
+finish_swap_out	index:7	W1_2	time:2021-05-25 14:41:19.367016
+finish_swap_out	index:11	W2_1	time:2021-05-25 14:41:19.368644
+finish_swap_out	index:14	W2_2	time:2021-05-25 14:41:19.371258
+finish_swap_out	index:18	W3_1	time:2021-05-25 14:41:19.377402
+finish_swap_out	index:21	W3_2	time:2021-05-25 14:41:19.381218
+finish_swap_out	index:24	W3_3	time:2021-05-25 14:41:19.384592
+finish_swap_out	index:28	W4_1	time:2021-05-25 14:41:19.389467
+finish_swap_out	index:31	W4_2	time:2021-05-25 14:41:19.393724
+finish_swap_out	index:34	W4_3	time:2021-05-25 14:41:19.397712
+finish_swap_out	index:38	W5_1	time:2021-05-25 14:41:19.403242
+finish_swap_out	index:41	W5_2	time:2021-05-25 14:41:19.406744
+finish_swap_out	index:44	W5_3	time:2021-05-25 14:41:19.410053
+finish_swap_out	index:49	W6	time:2021-05-25 14:41:19.515586
+finish_swap_out	index:51	b6	time:2021-05-25 14:41:19.515784
+finish_swap_out	index:56	W7	time:2021-05-25 14:41:19.533339
+finish_swap_out	index:58	b7	time:2021-05-25 14:41:19.533528
+finish_swap_out	index:63	W8	time:2021-05-25 14:41:19.538665
+finish_swap_out	index:69	y_	time:2021-05-25 14:41:19.539786
+finish_swap_out	index:79	W8m	time:2021-05-25 14:41:19.544810
+finish_swap_out	index:80	W8v	time:2021-05-25 14:41:19.549905
+finish_swap_out	index:84	b7m	time:2021-05-25 14:41:19.550983
+finish_swap_out	index:85	b7v	time:2021-05-25 14:41:19.551151
+finish_swap_out	index:92	W7m	time:2021-05-25 14:41:19.569016
+finish_swap_out	index:93	W7v	time:2021-05-25 14:41:19.586833
+finish_swap_out	index:97	b6m	time:2021-05-25 14:41:19.589368
+finish_swap_out	index:98	b6v	time:2021-05-25 14:41:19.589521
+finish_swap_out	index:105	W6m	time:2021-05-25 14:41:19.691524
+finish_swap_out	index:106	W6v	time:2021-05-25 14:41:19.799474
+finish_swap_out	index:110	W5_3m	time:2021-05-25 14:41:19.810721
+finish_swap_out	index:111	W5_3v	time:2021-05-25 14:41:19.818117
+finish_swap_out	index:118	W5_2m	time:2021-05-25 14:41:19.826574
+finish_swap_out	index:119	W5_2v	time:2021-05-25 14:41:19.829771
+finish_swap_out	index:124	W5_1m	time:2021-05-25 14:41:19.834087
+finish_swap_out	index:125	W5_1v	time:2021-05-25 14:41:19.837397
+finish_swap_out	index:130	W4_3m	time:2021-05-25 14:41:19.841912
+finish_swap_out	index:131	W4_3v	time:2021-05-25 14:41:19.845210
+finish_swap_out	index:137	W4_2m	time:2021-05-25 14:41:19.850835
+finish_swap_out	index:138	W4_2v	time:2021-05-25 14:41:19.854195
+finish_swap_out	index:143	W4_1m	time:2021-05-25 14:41:19.858520
+finish_swap_out	index:144	W4_1v	time:2021-05-25 14:41:19.860715
+finish_swap_out	index:149	W3_3m	time:2021-05-25 14:41:19.864132
+finish_swap_out	index:150	W3_3v	time:2021-05-25 14:41:19.865660
+finish_swap_out	index:156	W3_2m	time:2021-05-25 14:41:19.870117
+finish_swap_out	index:157	W3_2v	time:2021-05-25 14:41:19.871572
+finish_swap_out	index:162	W3_1m	time:2021-05-25 14:41:19.874043
+finish_swap_out	index:163	W3_1v	time:2021-05-25 14:41:19.875121
+finish_swap_out	index:168	W2_2m	time:2021-05-25 14:41:19.877850
+finish_swap_out	index:169	W2_2v	time:2021-05-25 14:41:19.878088
+finish_swap_out	index:175	W2_1m	time:2021-05-25 14:41:19.883978
+finish_swap_out	index:176	W2_1v	time:2021-05-25 14:41:19.884153
+finish_swap_out	index:181	W1_2m	time:2021-05-25 14:41:19.888580
+finish_swap_out	index:182	W1_2v	time:2021-05-25 14:41:19.888763
+finish_swap_out	index:188	W1_1m	time:2021-05-25 14:41:19.894960
+finish_swap_out	index:189	W1_1v	time:2021-05-25 14:41:19.895159
+
+run:
+index:0	b8	time:2021-05-25 14:41:19.924999
+index:1	b8m	time:2021-05-25 14:41:19.925197
+index:2	b8v	time:2021-05-25 14:41:19.925299
+index:3	X	time:2021-05-25 14:41:19.925892
+index:4	W1_1	time:2021-05-25 14:41:19.930013
+index:5	Convolution2DForward	time:2021-05-25 14:41:19.930130
+swap_out	index:4	W1_1	time:2021-05-25 14:41:19.930729
+index:6	ActivationForward	time:2021-05-25 14:41:19.932255
+index:7	W1_2	time:2021-05-25 14:41:19.934739
+index:8	Convolution2DForward	time:2021-05-25 14:41:19.935309
+swap_out	index:3	X	time:2021-05-25 14:41:19.935842
+index:9	ActivationForward	time:2021-05-25 14:41:19.942760
+index:10	Pooling2DForward	time:2021-05-25 14:41:19.947338
+swap_out	index:5	Convolution2DForward	time:2021-05-25 14:41:19.947919
+index:11	W2_1	time:2021-05-25 14:41:19.949042
+index:12	Convolution2DForward	time:2021-05-25 14:41:19.982762
+index:13	ActivationForward	time:2021-05-25 14:41:19.986537
+index:14	W2_2	time:2021-05-25 14:41:19.988155
+index:15	Convolution2DForward	time:2021-05-25 14:41:19.988430
+index:16	ActivationForward	time:2021-05-25 14:41:19.994781
+index:17	Pooling2DForward	time:2021-05-25 14:41:19.996167
+swap_out	index:7	W1_2	time:2021-05-25 14:41:19.996675
+index:18	W3_1	time:2021-05-25 14:41:19.997249
+index:19	Convolution2DForward	time:2021-05-25 14:41:20.001212
+swap_out	index:6	ActivationForward	time:2021-05-25 14:41:20.001780
+index:20	ActivationForward	time:2021-05-25 14:41:20.008503
+index:21	W3_2	time:2021-05-25 14:41:20.033271
+index:22	Convolution2DForward	time:2021-05-25 14:41:20.044635
+index:23	ActivationForward	time:2021-05-25 14:41:20.052418
+index:24	W3_3	time:2021-05-25 14:41:20.053376
+index:25	Convolution2DForward	time:2021-05-25 14:41:20.055109
+swap_out	index:11	W2_1	time:2021-05-25 14:41:20.055748
+index:26	ActivationForward	time:2021-05-25 14:41:20.063687
+index:27	Pooling2DForward	time:2021-05-25 14:41:20.066033
+swap_out	index:8	Convolution2DForward	time:2021-05-25 14:41:20.066588
+index:28	W4_1	time:2021-05-25 14:41:20.066913
+index:29	Convolution2DForward	time:2021-05-25 14:41:20.103660
+index:30	ActivationForward	time:2021-05-25 14:41:20.108788
+index:31	W4_2	time:2021-05-25 14:41:20.109811
+index:32	Convolution2DForward	time:2021-05-25 14:41:20.115058
+swap_out	index:10	Pooling2DForward	time:2021-05-25 14:41:20.115725
+index:33	ActivationForward	time:2021-05-25 14:41:20.124837
+index:34	W4_3	time:2021-05-25 14:41:20.125806
+index:35	Convolution2DForward	time:2021-05-25 14:41:20.133401
+swap_out	index:9	ActivationForward	time:2021-05-25 14:41:20.134549
+index:36	ActivationForward	time:2021-05-25 14:41:20.142500
+index:37	Pooling2DForward	time:2021-05-25 14:41:20.169101
+index:38	W5_1	time:2021-05-25 14:41:20.170000
+index:39	Convolution2DForward	time:2021-05-25 14:41:20.183865
+swap_out	index:12	Convolution2DForward	time:2021-05-25 14:41:20.184531
+index:40	ActivationForward	time:2021-05-25 14:41:20.187477
+index:41	W5_2	time:2021-05-25 14:41:20.187646
+index:42	Convolution2DForward	time:2021-05-25 14:41:20.208439
+swap_out	index:14	W2_2	time:2021-05-25 14:41:20.208547
+index:43	ActivationForward	time:2021-05-25 14:41:20.211737
+index:44	W5_3	time:2021-05-25 14:41:20.211866
+index:45	Convolution2DForward	time:2021-05-25 14:41:20.216380
+swap_out	index:13	ActivationForward	time:2021-05-25 14:41:20.216444
+index:46	ActivationForward	time:2021-05-25 14:41:20.218642
+index:47	Pooling2DForward	time:2021-05-25 14:41:20.231040
+index:48	Flatten	time:2021-05-25 14:41:20.231182
+index:49	W6	time:2021-05-25 14:41:20.231269
+index:50	MatMul	time:2021-05-25 14:41:20.456793
+index:51	b6	time:2021-05-25 14:41:20.460360
+index:52	BroadcastTo	time:2021-05-25 14:41:20.461119
+index:53	+	time:2021-05-25 14:41:20.461183
+index:54	FullyActivationForward	time:2021-05-25 14:41:20.461237
+index:55	FullyDropoutForward	time:2021-05-25 14:41:20.461289
+index:56	W7	time:2021-05-25 14:41:20.466893
+index:57	MatMul	time:2021-05-25 14:41:20.504600
+index:58	b7	time:2021-05-25 14:41:20.505154
+index:59	BroadcastTo	time:2021-05-25 14:41:20.505389
+index:60	+	time:2021-05-25 14:41:20.505446
+index:61	FullyActivationForward	time:2021-05-25 14:41:20.505507
+index:62	FullyDropoutForward	time:2021-05-25 14:41:20.505563
+index:63	W8	time:2021-05-25 14:41:20.510942
+index:64	MatMul	time:2021-05-25 14:41:20.518436
+index:65	BroadcastTo	time:2021-05-25 14:41:20.518648
+index:66	+	time:2021-05-25 14:41:20.518710
+index:67	FullyBNForward	time:2021-05-25 14:41:20.518767
+index:68	FullyActivationForward	time:2021-05-25 14:41:20.518899
+index:69	y_	time:2021-05-25 14:41:20.518959
+index:70	CrossOp	time:2021-05-25 14:41:20.519532
+index:71	ReduceSumOp	time:2021-05-25 14:41:20.519609
+index:72	Oneslike	time:2021-05-25 14:41:20.519691
+index:73	BroadcastTo	time:2021-05-25 14:41:20.519747
+index:74	CrossBackwardOp	time:2021-05-25 14:41:20.519797
+index:75	FullyActivationBackward	time:2021-05-25 14:41:20.519861
+index:76	FullyBNBackward	time:2021-05-25 14:41:20.519916
+index:77	BroadcastToGradient	time:2021-05-25 14:41:20.520063
+index:78	AdamOp	time:2021-05-25 14:41:20.520161
+index:79	W8m	time:2021-05-25 14:41:20.520219
+index:80	W8v	time:2021-05-25 14:41:20.528273
+index:81	Zeroslike	time:2021-05-25 14:41:20.536161
+index:82	+	time:2021-05-25 14:41:20.536234
+index:83	MatMul	time:2021-05-25 14:41:20.536292
+index:84	b7m	time:2021-05-25 14:41:20.536977
+index:85	b7v	time:2021-05-25 14:41:20.537114
+index:86	MatMul	time:2021-05-25 14:41:20.537229
+index:87	AdamOp	time:2021-05-25 14:41:20.537412
+index:88	FullyDropoutBackward	time:2021-05-25 14:41:20.542860
+index:89	FullyActivationBackward	time:2021-05-25 14:41:20.542940
+index:90	BroadcastToGradient	time:2021-05-25 14:41:20.543470
+index:91	AdamOp	time:2021-05-25 14:41:20.543587
+index:92	W7m	time:2021-05-25 14:41:20.543646
+index:93	W7v	time:2021-05-25 14:41:20.580991
+index:94	Zeroslike	time:2021-05-25 14:41:20.618673
+index:95	+	time:2021-05-25 14:41:20.618768
+index:96	MatMul	time:2021-05-25 14:41:20.618825
+index:97	b6m	time:2021-05-25 14:41:20.619935
+index:98	b6v	time:2021-05-25 14:41:20.620069
+index:99	MatMul	time:2021-05-25 14:41:20.620191
+index:100	AdamOp	time:2021-05-25 14:41:20.620719
+index:101	FullyDropoutBackward	time:2021-05-25 14:41:20.643289
+index:102	FullyActivationBackward	time:2021-05-25 14:41:20.643361
+index:103	BroadcastToGradient	time:2021-05-25 14:41:20.643419
+index:104	AdamOp	time:2021-05-25 14:41:20.643511
+index:105	W6m	time:2021-05-25 14:41:20.643604
+index:106	W6v	time:2021-05-25 14:41:20.865802
+index:107	Zeroslike	time:2021-05-25 14:41:21.086658
+index:108	+	time:2021-05-25 14:41:21.086787
+index:109	MatMul	time:2021-05-25 14:41:21.086857
+index:110	W5_3m	time:2021-05-25 14:41:21.090408
+index:111	W5_3v	time:2021-05-25 14:41:21.095589
+index:112	MatMul	time:2021-05-25 14:41:21.100396
+index:113	AdamOp	time:2021-05-25 14:41:21.103130
+index:114	FlattenGradient	time:2021-05-25 14:41:21.241824
+index:115	Pooling2DBackward	time:2021-05-25 14:41:21.241904
+index:116	ActivationBackward	time:2021-05-25 14:41:21.242065
+index:117	Convolution2DBackward	time:2021-05-25 14:41:21.242679
+index:118	W5_2m	time:2021-05-25 14:41:21.246650
+index:119	W5_2v	time:2021-05-25 14:41:21.252701
+index:120	Convolution2DBackward	time:2021-05-25 14:41:21.257462
+index:121	AdamOp	time:2021-05-25 14:41:21.260659
+index:122	ActivationBackward	time:2021-05-25 14:41:21.264108
+index:123	Convolution2DBackward	time:2021-05-25 14:41:21.265429
+index:124	W5_1m	time:2021-05-25 14:41:21.269468
+index:125	W5_1v	time:2021-05-25 14:41:21.274315
+index:126	Convolution2DBackward	time:2021-05-25 14:41:21.279275
+index:127	AdamOp	time:2021-05-25 14:41:21.282655
+index:128	ActivationBackward	time:2021-05-25 14:41:21.286095
+index:129	Convolution2DBackward	time:2021-05-25 14:41:21.286639
+index:130	W4_3m	time:2021-05-25 14:41:21.290713
+index:131	W4_3v	time:2021-05-25 14:41:21.295558
+index:132	Convolution2DBackward	time:2021-05-25 14:41:21.300382
+index:133	AdamOp	time:2021-05-25 14:41:21.303637
+index:134	Pooling2DBackward	time:2021-05-25 14:41:21.307080
+index:135	ActivationBackward	time:2021-05-25 14:41:21.307913
+index:136	Convolution2DBackward	time:2021-05-25 14:41:21.308763
+index:137	W4_2m	time:2021-05-25 14:41:21.320663
+index:138	W4_2v	time:2021-05-25 14:41:21.325869
+index:139	Convolution2DBackward	time:2021-05-25 14:41:21.334291
+index:140	AdamOp	time:2021-05-25 14:41:21.342769
+index:141	ActivationBackward	time:2021-05-25 14:41:21.346382
+index:142	Convolution2DBackward	time:2021-05-25 14:41:21.348624
+index:143	W4_1m	time:2021-05-25 14:41:21.360670
+index:144	W4_1v	time:2021-05-25 14:41:21.363817
+index:145	Convolution2DBackward	time:2021-05-25 14:41:21.366694
+index:146	AdamOp	time:2021-05-25 14:41:21.374777
+index:147	ActivationBackward	time:2021-05-25 14:41:21.378542
+index:148	Convolution2DBackward	time:2021-05-25 14:41:21.379357
+index:149	W3_3m	time:2021-05-25 14:41:21.385991
+index:150	W3_3v	time:2021-05-25 14:41:21.387594
+index:151	Convolution2DBackward	time:2021-05-25 14:41:21.390161
+index:152	AdamOp	time:2021-05-25 14:41:21.394824
+index:153	Pooling2DBackward	time:2021-05-25 14:41:21.396785
+index:154	ActivationBackward	time:2021-05-25 14:41:21.398326
+index:155	Convolution2DBackward	time:2021-05-25 14:41:21.399478
+index:156	W3_2m	time:2021-05-25 14:41:21.411296
+index:157	W3_2v	time:2021-05-25 14:41:21.412863
+index:158	Convolution2DBackward	time:2021-05-25 14:41:21.414381
+finish_swap_out	index:4	W1_1	time:2021-05-25 14:41:21.414873
+finish_swap_out	index:3	X	time:2021-05-25 14:41:21.414887
+finish_swap_out	index:5	Convolution2DForward	time:2021-05-25 14:41:21.414896
+finish_swap_out	index:7	W1_2	time:2021-05-25 14:41:21.414904
+finish_swap_out	index:6	ActivationForward	time:2021-05-25 14:41:21.414911
+finish_swap_out	index:11	W2_1	time:2021-05-25 14:41:21.414919
+finish_swap_out	index:8	Convolution2DForward	time:2021-05-25 14:41:21.414926
+finish_swap_out	index:10	Pooling2DForward	time:2021-05-25 14:41:21.414933
+finish_swap_out	index:9	ActivationForward	time:2021-05-25 14:41:21.414941
+finish_swap_out	index:12	Convolution2DForward	time:2021-05-25 14:41:21.414948
+finish_swap_out	index:14	W2_2	time:2021-05-25 14:41:21.414954
+finish_swap_out	index:13	ActivationForward	time:2021-05-25 14:41:21.414961
+swap_in	index:13	ActivationForward	time:2021-05-25 14:41:21.414974
+index:159	AdamOp	time:2021-05-25 14:41:21.422487
+index:160	ActivationBackward	time:2021-05-25 14:41:21.424293
+index:161	Convolution2DBackward	time:2021-05-25 14:41:21.427233
+swap_in	index:14	W2_2	time:2021-05-25 14:41:21.428564
+index:162	W3_1m	time:2021-05-25 14:41:21.439958
+index:163	W3_1v	time:2021-05-25 14:41:21.440478
+index:164	Convolution2DBackward	time:2021-05-25 14:41:21.440813
+swap_in	index:12	Convolution2DForward	time:2021-05-25 14:41:21.441503
+index:165	AdamOp	time:2021-05-25 14:41:21.449555
+index:166	ActivationBackward	time:2021-05-25 14:41:21.450616
+index:167	Convolution2DBackward	time:2021-05-25 14:41:21.453673
+swap_in	index:9	ActivationForward	time:2021-05-25 14:41:21.453814
+index:168	W2_2m	time:2021-05-25 14:41:21.460559
+index:169	W2_2v	time:2021-05-25 14:41:21.461557
+index:170	Convolution2DBackward	time:2021-05-25 14:41:21.471970
+index:171	AdamOp	time:2021-05-25 14:41:21.476448
+index:172	Pooling2DBackward	time:2021-05-25 14:41:21.477019
+swap_in	index:10	Pooling2DForward	time:2021-05-25 14:41:21.477577
+index:173	ActivationBackward	time:2021-05-25 14:41:21.479346
+index:174	Convolution2DBackward	time:2021-05-25 14:41:21.482367
+swap_in	index:8	Convolution2DForward	time:2021-05-25 14:41:21.482409
+finish_swap_in	index:13	ActivationForward	time:2021-05-25 14:41:21.488973
+finish_swap_in	index:14	W2_2	time:2021-05-25 14:41:21.489862
+index:175	W2_1m	time:2021-05-25 14:41:21.500927
+index:176	W2_1v	time:2021-05-25 14:41:21.501613
+index:177	Convolution2DBackward	time:2021-05-25 14:41:21.502151
+index:178	AdamOp	time:2021-05-25 14:41:21.508520
+index:179	ActivationBackward	time:2021-05-25 14:41:21.508813
+swap_in	index:11	W2_1	time:2021-05-25 14:41:21.510228
+finish_swap_in	index:12	Convolution2DForward	time:2021-05-25 14:41:21.515944
+index:180	Convolution2DBackward	time:2021-05-25 14:41:21.517229
+swap_in	index:6	ActivationForward	time:2021-05-25 14:41:21.517284
+finish_swap_in	index:9	ActivationForward	time:2021-05-25 14:41:21.529171
+finish_swap_in	index:10	Pooling2DForward	time:2021-05-25 14:41:21.533296
+finish_swap_in	index:8	Convolution2DForward	time:2021-05-25 14:41:21.555086
+finish_swap_in	index:11	W2_1	time:2021-05-25 14:41:21.555575
+index:181	W1_2m	time:2021-05-25 14:41:21.561689
+index:182	W1_2v	time:2021-05-25 14:41:21.561865
+index:183	Convolution2DBackward	time:2021-05-25 14:41:21.561997
+index:184	AdamOp	time:2021-05-25 14:41:21.565581
+index:185	Pooling2DBackward	time:2021-05-25 14:41:21.565757
+index:186	ActivationBackward	time:2021-05-25 14:41:21.570569
+swap_in	index:7	W1_2	time:2021-05-25 14:41:21.571152
+index:187	Convolution2DBackward	time:2021-05-25 14:41:21.573677
+swap_in	index:5	Convolution2DForward	time:2021-05-25 14:41:21.573732
+finish_swap_in	index:6	ActivationForward	time:2021-05-25 14:41:21.585985
+finish_swap_in	index:7	W1_2	time:2021-05-25 14:41:21.587222
+index:188	W1_1m	time:2021-05-25 14:41:21.603804
+index:189	W1_1v	time:2021-05-25 14:41:21.603934
+index:190	Convolution2DBackward	time:2021-05-25 14:41:21.604095
+index:191	AdamOp	time:2021-05-25 14:41:21.611354
+swap_in	index:3	X	time:2021-05-25 14:41:21.611378
+index:192	ActivationBackward	time:2021-05-25 14:41:21.612184
+swap_in	index:4	W1_1	time:2021-05-25 14:41:21.612750
+finish_swap_in	index:5	Convolution2DForward	time:2021-05-25 14:41:21.624943
+index:193	Convolution2DBackward	time:2021-05-25 14:41:21.627464
+finish_swap_in	index:3	X	time:2021-05-25 14:41:21.628320
+finish_swap_in	index:4	W1_1	time:2021-05-25 14:41:21.628337
+index:194	AdamOp	time:2021-05-25 14:41:21.632008
+finish_swap_out	index:0	b8	time:2021-05-25 14:41:21.633866
+finish_swap_out	index:1	b8m	time:2021-05-25 14:41:21.634075
+finish_swap_out	index:2	b8v	time:2021-05-25 14:41:21.634239
+finish_swap_out	index:3	X	time:2021-05-25 14:41:21.636458
+finish_swap_out	index:4	W1_1	time:2021-05-25 14:41:21.637762
+finish_swap_out	index:7	W1_2	time:2021-05-25 14:41:21.645162
+finish_swap_out	index:11	W2_1	time:2021-05-25 14:41:21.647509
+finish_swap_out	index:14	W2_2	time:2021-05-25 14:41:21.653483
+finish_swap_out	index:18	W3_1	time:2021-05-25 14:41:21.659385
+finish_swap_out	index:21	W3_2	time:2021-05-25 14:41:21.662405
+finish_swap_out	index:24	W3_3	time:2021-05-25 14:41:21.665008
+finish_swap_out	index:28	W4_1	time:2021-05-25 14:41:21.669975
+finish_swap_out	index:31	W4_2	time:2021-05-25 14:41:21.674814
+finish_swap_out	index:34	W4_3	time:2021-05-25 14:41:21.679823
+finish_swap_out	index:38	W5_1	time:2021-05-25 14:41:21.685210
+finish_swap_out	index:41	W5_2	time:2021-05-25 14:41:21.689681
+finish_swap_out	index:44	W5_3	time:2021-05-25 14:41:21.693126
+finish_swap_out	index:49	W6	time:2021-05-25 14:41:21.803049
+finish_swap_out	index:51	b6	time:2021-05-25 14:41:21.803241
+finish_swap_out	index:56	W7	time:2021-05-25 14:41:21.821870
+finish_swap_out	index:58	b7	time:2021-05-25 14:41:21.822061
+finish_swap_out	index:63	W8	time:2021-05-25 14:41:21.827085
+finish_swap_out	index:69	y_	time:2021-05-25 14:41:21.828161
+finish_swap_out	index:79	W8m	time:2021-05-25 14:41:21.833274
+finish_swap_out	index:80	W8v	time:2021-05-25 14:41:21.838440
+finish_swap_out	index:84	b7m	time:2021-05-25 14:41:21.839718
+finish_swap_out	index:85	b7v	time:2021-05-25 14:41:21.839926
+finish_swap_out	index:92	W7m	time:2021-05-25 14:41:21.858234
+finish_swap_out	index:93	W7v	time:2021-05-25 14:41:21.876002
+finish_swap_out	index:97	b6m	time:2021-05-25 14:41:21.878485
+finish_swap_out	index:98	b6v	time:2021-05-25 14:41:21.878658
+finish_swap_out	index:105	W6m	time:2021-05-25 14:41:21.981641
+finish_swap_out	index:106	W6v	time:2021-05-25 14:41:22.084463
+finish_swap_out	index:110	W5_3m	time:2021-05-25 14:41:22.095707
+finish_swap_out	index:111	W5_3v	time:2021-05-25 14:41:22.103053
+finish_swap_out	index:118	W5_2m	time:2021-05-25 14:41:22.110223
+finish_swap_out	index:119	W5_2v	time:2021-05-25 14:41:22.113403
+finish_swap_out	index:124	W5_1m	time:2021-05-25 14:41:22.117790
+finish_swap_out	index:125	W5_1v	time:2021-05-25 14:41:22.121110
+finish_swap_out	index:130	W4_3m	time:2021-05-25 14:41:22.125608
+finish_swap_out	index:131	W4_3v	time:2021-05-25 14:41:22.129047
+finish_swap_out	index:137	W4_2m	time:2021-05-25 14:41:22.134453
+finish_swap_out	index:138	W4_2v	time:2021-05-25 14:41:22.137820
+finish_swap_out	index:143	W4_1m	time:2021-05-25 14:41:22.141469
+finish_swap_out	index:144	W4_1v	time:2021-05-25 14:41:22.143451
+finish_swap_out	index:149	W3_3m	time:2021-05-25 14:41:22.146711
+finish_swap_out	index:150	W3_3v	time:2021-05-25 14:41:22.148145
+finish_swap_out	index:156	W3_2m	time:2021-05-25 14:41:22.152577
+finish_swap_out	index:157	W3_2v	time:2021-05-25 14:41:22.153986
+finish_swap_out	index:162	W3_1m	time:2021-05-25 14:41:22.156235
+finish_swap_out	index:163	W3_1v	time:2021-05-25 14:41:22.157316
+finish_swap_out	index:168	W2_2m	time:2021-05-25 14:41:22.159823
+finish_swap_out	index:169	W2_2v	time:2021-05-25 14:41:22.159987
+finish_swap_out	index:175	W2_1m	time:2021-05-25 14:41:22.165178
+finish_swap_out	index:176	W2_1v	time:2021-05-25 14:41:22.165318
+finish_swap_out	index:181	W1_2m	time:2021-05-25 14:41:22.169610
+finish_swap_out	index:182	W1_2v	time:2021-05-25 14:41:22.169771
+finish_swap_out	index:188	W1_1m	time:2021-05-25 14:41:22.175973
+finish_swap_out	index:189	W1_1v	time:2021-05-25 14:41:22.176067
+
+run:
+index:0	b8	time:2021-05-25 14:41:22.203500
+index:1	b8m	time:2021-05-25 14:41:22.203703
+index:2	b8v	time:2021-05-25 14:41:22.203805
+index:3	X	time:2021-05-25 14:41:22.204347
+index:4	W1_1	time:2021-05-25 14:41:22.208456
+index:5	Convolution2DForward	time:2021-05-25 14:41:22.208578
+swap_out	index:4	W1_1	time:2021-05-25 14:41:22.209239
+index:6	ActivationForward	time:2021-05-25 14:41:22.210674
+index:7	W1_2	time:2021-05-25 14:41:22.213077
+index:8	Convolution2DForward	time:2021-05-25 14:41:22.213688
+swap_out	index:3	X	time:2021-05-25 14:41:22.214262
+index:9	ActivationForward	time:2021-05-25 14:41:22.220387
+index:10	Pooling2DForward	time:2021-05-25 14:41:22.225466
+swap_out	index:5	Convolution2DForward	time:2021-05-25 14:41:22.226258
+index:11	W2_1	time:2021-05-25 14:41:22.227401
+index:12	Convolution2DForward	time:2021-05-25 14:41:22.262513
+index:13	ActivationForward	time:2021-05-25 14:41:22.266580
+index:14	W2_2	time:2021-05-25 14:41:22.268476
+index:15	Convolution2DForward	time:2021-05-25 14:41:22.268824
+index:16	ActivationForward	time:2021-05-25 14:41:22.275658
+index:17	Pooling2DForward	time:2021-05-25 14:41:22.277134
+swap_out	index:7	W1_2	time:2021-05-25 14:41:22.277685
+index:18	W3_1	time:2021-05-25 14:41:22.278259
+index:19	Convolution2DForward	time:2021-05-25 14:41:22.282445
+swap_out	index:6	ActivationForward	time:2021-05-25 14:41:22.283132
+index:20	ActivationForward	time:2021-05-25 14:41:22.288072
+index:21	W3_2	time:2021-05-25 14:41:22.314911
+index:22	Convolution2DForward	time:2021-05-25 14:41:22.326025
+index:23	ActivationForward	time:2021-05-25 14:41:22.334144
+index:24	W3_3	time:2021-05-25 14:41:22.335175
+index:25	Convolution2DForward	time:2021-05-25 14:41:22.336844
+swap_out	index:11	W2_1	time:2021-05-25 14:41:22.337480
+index:26	ActivationForward	time:2021-05-25 14:41:22.344696
+index:27	Pooling2DForward	time:2021-05-25 14:41:22.346978
+swap_out	index:8	Convolution2DForward	time:2021-05-25 14:41:22.347434
+index:28	W4_1	time:2021-05-25 14:41:22.347761
+index:29	Convolution2DForward	time:2021-05-25 14:41:22.384659
+index:30	ActivationForward	time:2021-05-25 14:41:22.389595
+index:31	W4_2	time:2021-05-25 14:41:22.390424
+index:32	Convolution2DForward	time:2021-05-25 14:41:22.395693
+swap_out	index:10	Pooling2DForward	time:2021-05-25 14:41:22.396317
+index:33	ActivationForward	time:2021-05-25 14:41:22.405422
+index:34	W4_3	time:2021-05-25 14:41:22.414481
+index:35	Convolution2DForward	time:2021-05-25 14:41:22.421445
+swap_out	index:9	ActivationForward	time:2021-05-25 14:41:22.422205
+index:36	ActivationForward	time:2021-05-25 14:41:22.458841
+index:37	Pooling2DForward	time:2021-05-25 14:41:22.459878
+index:38	W5_1	time:2021-05-25 14:41:22.460688
+index:39	Convolution2DForward	time:2021-05-25 14:41:22.465710
+swap_out	index:12	Convolution2DForward	time:2021-05-25 14:41:22.466381
+index:40	ActivationForward	time:2021-05-25 14:41:22.470626
+index:41	W5_2	time:2021-05-25 14:41:22.482833
+index:42	Convolution2DForward	time:2021-05-25 14:41:22.492629
+swap_out	index:14	W2_2	time:2021-05-25 14:41:22.492698
+index:43	ActivationForward	time:2021-05-25 14:41:22.495651
+index:44	W5_3	time:2021-05-25 14:41:22.495847
+index:45	Convolution2DForward	time:2021-05-25 14:41:22.500553
+swap_out	index:13	ActivationForward	time:2021-05-25 14:41:22.500669
+index:46	ActivationForward	time:2021-05-25 14:41:22.502796
+index:47	Pooling2DForward	time:2021-05-25 14:41:22.516085
+index:48	Flatten	time:2021-05-25 14:41:22.516239
+index:49	W6	time:2021-05-25 14:41:22.516322
+index:50	MatMul	time:2021-05-25 14:41:22.742145
+index:51	b6	time:2021-05-25 14:41:22.745580
+index:52	BroadcastTo	time:2021-05-25 14:41:22.746292
+index:53	+	time:2021-05-25 14:41:22.746412
+index:54	FullyActivationForward	time:2021-05-25 14:41:22.746489
+index:55	FullyDropoutForward	time:2021-05-25 14:41:22.746548
+index:56	W7	time:2021-05-25 14:41:22.752050
+index:57	MatMul	time:2021-05-25 14:41:22.788933
+index:58	b7	time:2021-05-25 14:41:22.789522
+index:59	BroadcastTo	time:2021-05-25 14:41:22.789655
+index:60	+	time:2021-05-25 14:41:22.789719
+index:61	FullyActivationForward	time:2021-05-25 14:41:22.789778
+index:62	FullyDropoutForward	time:2021-05-25 14:41:22.789829
+index:63	W8	time:2021-05-25 14:41:22.795321
+index:64	MatMul	time:2021-05-25 14:41:22.802609
+index:65	BroadcastTo	time:2021-05-25 14:41:22.802831
+index:66	+	time:2021-05-25 14:41:22.802892
+index:67	FullyBNForward	time:2021-05-25 14:41:22.802944
+index:68	FullyActivationForward	time:2021-05-25 14:41:22.803071
+index:69	y_	time:2021-05-25 14:41:22.803130
+index:70	CrossOp	time:2021-05-25 14:41:22.803630
+index:71	ReduceSumOp	time:2021-05-25 14:41:22.803706
+index:72	Oneslike	time:2021-05-25 14:41:22.803784
+index:73	BroadcastTo	time:2021-05-25 14:41:22.803838
+index:74	CrossBackwardOp	time:2021-05-25 14:41:22.803909
+index:75	FullyActivationBackward	time:2021-05-25 14:41:22.803986
+index:76	FullyBNBackward	time:2021-05-25 14:41:22.804042
+index:77	BroadcastToGradient	time:2021-05-25 14:41:22.804158
+index:78	AdamOp	time:2021-05-25 14:41:22.804230
+index:79	W8m	time:2021-05-25 14:41:22.804303
+index:80	W8v	time:2021-05-25 14:41:22.812028
+index:81	Zeroslike	time:2021-05-25 14:41:22.823262
+index:82	+	time:2021-05-25 14:41:22.823339
+index:83	MatMul	time:2021-05-25 14:41:22.823398
+index:84	b7m	time:2021-05-25 14:41:22.824149
+index:85	b7v	time:2021-05-25 14:41:22.824298
+index:86	MatMul	time:2021-05-25 14:41:22.824432
+index:87	AdamOp	time:2021-05-25 14:41:22.824618
+index:88	FullyDropoutBackward	time:2021-05-25 14:41:22.830088
+index:89	FullyActivationBackward	time:2021-05-25 14:41:22.830145
+index:90	BroadcastToGradient	time:2021-05-25 14:41:22.830645
+index:91	AdamOp	time:2021-05-25 14:41:22.830745
+index:92	W7m	time:2021-05-25 14:41:22.830802
+index:93	W7v	time:2021-05-25 14:41:22.868058
+index:94	Zeroslike	time:2021-05-25 14:41:22.905213
+index:95	+	time:2021-05-25 14:41:22.905291
+index:96	MatMul	time:2021-05-25 14:41:22.905344
+index:97	b6m	time:2021-05-25 14:41:22.906533
+index:98	b6v	time:2021-05-25 14:41:22.906685
+index:99	MatMul	time:2021-05-25 14:41:22.906795
+index:100	AdamOp	time:2021-05-25 14:41:22.907323
+index:101	FullyDropoutBackward	time:2021-05-25 14:41:22.929884
+index:102	FullyActivationBackward	time:2021-05-25 14:41:22.929941
+index:103	BroadcastToGradient	time:2021-05-25 14:41:22.929996
+index:104	AdamOp	time:2021-05-25 14:41:22.930101
+index:105	W6m	time:2021-05-25 14:41:22.930158
+index:106	W6v	time:2021-05-25 14:41:23.149523
+index:107	Zeroslike	time:2021-05-25 14:41:23.370124
+index:108	+	time:2021-05-25 14:41:23.370254
+index:109	MatMul	time:2021-05-25 14:41:23.370324
+index:110	W5_3m	time:2021-05-25 14:41:23.373896
+index:111	W5_3v	time:2021-05-25 14:41:23.379064
+index:112	MatMul	time:2021-05-25 14:41:23.383890
+index:113	AdamOp	time:2021-05-25 14:41:23.386653
+index:114	FlattenGradient	time:2021-05-25 14:41:23.524189
+index:115	Pooling2DBackward	time:2021-05-25 14:41:23.524270
+index:116	ActivationBackward	time:2021-05-25 14:41:23.524433
+index:117	Convolution2DBackward	time:2021-05-25 14:41:23.525042
+index:118	W5_2m	time:2021-05-25 14:41:23.529098
+index:119	W5_2v	time:2021-05-25 14:41:23.537613
+index:120	Convolution2DBackward	time:2021-05-25 14:41:23.542503
+index:121	AdamOp	time:2021-05-25 14:41:23.545581
+index:122	ActivationBackward	time:2021-05-25 14:41:23.549068
+index:123	Convolution2DBackward	time:2021-05-25 14:41:23.550554
+index:124	W5_1m	time:2021-05-25 14:41:23.554642
+index:125	W5_1v	time:2021-05-25 14:41:23.559671
+index:126	Convolution2DBackward	time:2021-05-25 14:41:23.564545
+index:127	AdamOp	time:2021-05-25 14:41:23.567906
+index:128	ActivationBackward	time:2021-05-25 14:41:23.571388
+index:129	Convolution2DBackward	time:2021-05-25 14:41:23.571929
+index:130	W4_3m	time:2021-05-25 14:41:23.575908
+index:131	W4_3v	time:2021-05-25 14:41:23.580752
+index:132	Convolution2DBackward	time:2021-05-25 14:41:23.585645
+index:133	AdamOp	time:2021-05-25 14:41:23.589533
+index:134	Pooling2DBackward	time:2021-05-25 14:41:23.593004
+index:135	ActivationBackward	time:2021-05-25 14:41:23.593784
+index:136	Convolution2DBackward	time:2021-05-25 14:41:23.594615
+index:137	W4_2m	time:2021-05-25 14:41:23.606375
+index:138	W4_2v	time:2021-05-25 14:41:23.611106
+index:139	Convolution2DBackward	time:2021-05-25 14:41:23.619014
+index:140	AdamOp	time:2021-05-25 14:41:23.628415
+index:141	ActivationBackward	time:2021-05-25 14:41:23.632027
+index:142	Convolution2DBackward	time:2021-05-25 14:41:23.632811
+index:143	W4_1m	time:2021-05-25 14:41:23.645098
+index:144	W4_1v	time:2021-05-25 14:41:23.647877
+index:145	Convolution2DBackward	time:2021-05-25 14:41:23.650633
+index:146	AdamOp	time:2021-05-25 14:41:23.660580
+index:147	ActivationBackward	time:2021-05-25 14:41:23.664396
+index:148	Convolution2DBackward	time:2021-05-25 14:41:23.665376
+index:149	W3_3m	time:2021-05-25 14:41:23.672077
+index:150	W3_3v	time:2021-05-25 14:41:23.674733
+index:151	Convolution2DBackward	time:2021-05-25 14:41:23.676566
+index:152	AdamOp	time:2021-05-25 14:41:23.681193
+index:153	Pooling2DBackward	time:2021-05-25 14:41:23.683172
+index:154	ActivationBackward	time:2021-05-25 14:41:23.684520
+index:155	Convolution2DBackward	time:2021-05-25 14:41:23.685701
+index:156	W3_2m	time:2021-05-25 14:41:23.697466
+index:157	W3_2v	time:2021-05-25 14:41:23.699101
+index:158	Convolution2DBackward	time:2021-05-25 14:41:23.700666
+finish_swap_out	index:4	W1_1	time:2021-05-25 14:41:23.701260
+finish_swap_out	index:3	X	time:2021-05-25 14:41:23.701277
+finish_swap_out	index:5	Convolution2DForward	time:2021-05-25 14:41:23.701287
+finish_swap_out	index:7	W1_2	time:2021-05-25 14:41:23.701295
+finish_swap_out	index:6	ActivationForward	time:2021-05-25 14:41:23.701304
+finish_swap_out	index:11	W2_1	time:2021-05-25 14:41:23.701312
+finish_swap_out	index:8	Convolution2DForward	time:2021-05-25 14:41:23.701320
+finish_swap_out	index:10	Pooling2DForward	time:2021-05-25 14:41:23.701328
+finish_swap_out	index:9	ActivationForward	time:2021-05-25 14:41:23.701336
+finish_swap_out	index:12	Convolution2DForward	time:2021-05-25 14:41:23.701343
+finish_swap_out	index:14	W2_2	time:2021-05-25 14:41:23.701351
+finish_swap_out	index:13	ActivationForward	time:2021-05-25 14:41:23.701359
+swap_in	index:13	ActivationForward	time:2021-05-25 14:41:23.701372
+index:159	AdamOp	time:2021-05-25 14:41:23.709259
+index:160	ActivationBackward	time:2021-05-25 14:41:23.710943
+index:161	Convolution2DBackward	time:2021-05-25 14:41:23.713836
+swap_in	index:14	W2_2	time:2021-05-25 14:41:23.715226
+index:162	W3_1m	time:2021-05-25 14:41:23.727425
+index:163	W3_1v	time:2021-05-25 14:41:23.728009
+index:164	Convolution2DBackward	time:2021-05-25 14:41:23.728377
+swap_in	index:12	Convolution2DForward	time:2021-05-25 14:41:23.728881
+index:165	AdamOp	time:2021-05-25 14:41:23.737374
+index:166	ActivationBackward	time:2021-05-25 14:41:23.738392
+index:167	Convolution2DBackward	time:2021-05-25 14:41:23.739567
+swap_in	index:9	ActivationForward	time:2021-05-25 14:41:23.739613
+index:168	W2_2m	time:2021-05-25 14:41:23.745383
+index:169	W2_2v	time:2021-05-25 14:41:23.756544
+index:170	Convolution2DBackward	time:2021-05-25 14:41:23.756796
+index:171	AdamOp	time:2021-05-25 14:41:23.764123
+index:172	Pooling2DBackward	time:2021-05-25 14:41:23.764666
+swap_in	index:10	Pooling2DForward	time:2021-05-25 14:41:23.765373
+index:173	ActivationBackward	time:2021-05-25 14:41:23.767137
+index:174	Convolution2DBackward	time:2021-05-25 14:41:23.770084
+swap_in	index:8	Convolution2DForward	time:2021-05-25 14:41:23.770131
+finish_swap_in	index:13	ActivationForward	time:2021-05-25 14:41:23.777215
+finish_swap_in	index:14	W2_2	time:2021-05-25 14:41:23.778059
+index:175	W2_1m	time:2021-05-25 14:41:23.789556
+index:176	W2_1v	time:2021-05-25 14:41:23.790180
+index:177	Convolution2DBackward	time:2021-05-25 14:41:23.790781
+index:178	AdamOp	time:2021-05-25 14:41:23.797271
+index:179	ActivationBackward	time:2021-05-25 14:41:23.797593
+swap_in	index:11	W2_1	time:2021-05-25 14:41:23.798191
+finish_swap_in	index:12	Convolution2DForward	time:2021-05-25 14:41:23.805191
+index:180	Convolution2DBackward	time:2021-05-25 14:41:23.806475
+swap_in	index:6	ActivationForward	time:2021-05-25 14:41:23.806523
+finish_swap_in	index:9	ActivationForward	time:2021-05-25 14:41:23.818978
+finish_swap_in	index:10	Pooling2DForward	time:2021-05-25 14:41:23.823564
+finish_swap_in	index:8	Convolution2DForward	time:2021-05-25 14:41:23.845676
+finish_swap_in	index:11	W2_1	time:2021-05-25 14:41:23.846356
+index:181	W1_2m	time:2021-05-25 14:41:23.852130
+index:182	W1_2v	time:2021-05-25 14:41:23.852344
+index:183	Convolution2DBackward	time:2021-05-25 14:41:23.852480
+index:184	AdamOp	time:2021-05-25 14:41:23.855990
+index:185	Pooling2DBackward	time:2021-05-25 14:41:23.856162
+index:186	ActivationBackward	time:2021-05-25 14:41:23.860315
+swap_in	index:7	W1_2	time:2021-05-25 14:41:23.860866
+index:187	Convolution2DBackward	time:2021-05-25 14:41:23.863468
+swap_in	index:5	Convolution2DForward	time:2021-05-25 14:41:23.863527
+finish_swap_in	index:6	ActivationForward	time:2021-05-25 14:41:23.875577
+finish_swap_in	index:7	W1_2	time:2021-05-25 14:41:23.876852
+index:188	W1_1m	time:2021-05-25 14:41:23.892843
+index:189	W1_1v	time:2021-05-25 14:41:23.893058
+index:190	Convolution2DBackward	time:2021-05-25 14:41:23.893182
+index:191	AdamOp	time:2021-05-25 14:41:23.900101
+swap_in	index:3	X	time:2021-05-25 14:41:23.900127
+index:192	ActivationBackward	time:2021-05-25 14:41:23.900294
+swap_in	index:4	W1_1	time:2021-05-25 14:41:23.901538
+finish_swap_in	index:5	Convolution2DForward	time:2021-05-25 14:41:23.914699
+index:193	Convolution2DBackward	time:2021-05-25 14:41:23.917225
+finish_swap_in	index:3	X	time:2021-05-25 14:41:23.918296
+finish_swap_in	index:4	W1_1	time:2021-05-25 14:41:23.918315
+index:194	AdamOp	time:2021-05-25 14:41:23.921979
+finish_swap_out	index:0	b8	time:2021-05-25 14:41:23.924140
+finish_swap_out	index:1	b8m	time:2021-05-25 14:41:23.924281
+finish_swap_out	index:2	b8v	time:2021-05-25 14:41:23.924423
+finish_swap_out	index:3	X	time:2021-05-25 14:41:23.926887
+finish_swap_out	index:4	W1_1	time:2021-05-25 14:41:23.928620
+finish_swap_out	index:7	W1_2	time:2021-05-25 14:41:23.935868
+finish_swap_out	index:11	W2_1	time:2021-05-25 14:41:23.937480
+finish_swap_out	index:14	W2_2	time:2021-05-25 14:41:23.940101
+finish_swap_out	index:18	W3_1	time:2021-05-25 14:41:23.945833
+finish_swap_out	index:21	W3_2	time:2021-05-25 14:41:23.948812
+finish_swap_out	index:24	W3_3	time:2021-05-25 14:41:23.952120
+finish_swap_out	index:28	W4_1	time:2021-05-25 14:41:23.957106
+finish_swap_out	index:31	W4_2	time:2021-05-25 14:41:23.962002
+finish_swap_out	index:34	W4_3	time:2021-05-25 14:41:23.966366
+finish_swap_out	index:38	W5_1	time:2021-05-25 14:41:23.971994
+finish_swap_out	index:41	W5_2	time:2021-05-25 14:41:23.975632
+finish_swap_out	index:44	W5_3	time:2021-05-25 14:41:23.979156
+finish_swap_out	index:49	W6	time:2021-05-25 14:41:24.084886
+finish_swap_out	index:51	b6	time:2021-05-25 14:41:24.085201
+finish_swap_out	index:56	W7	time:2021-05-25 14:41:24.103522
+finish_swap_out	index:58	b7	time:2021-05-25 14:41:24.103748
+finish_swap_out	index:63	W8	time:2021-05-25 14:41:24.108855
+finish_swap_out	index:69	y_	time:2021-05-25 14:41:24.110017
+finish_swap_out	index:79	W8m	time:2021-05-25 14:41:24.115688
+finish_swap_out	index:80	W8v	time:2021-05-25 14:41:24.121130
+finish_swap_out	index:84	b7m	time:2021-05-25 14:41:24.122421
+finish_swap_out	index:85	b7v	time:2021-05-25 14:41:24.122621
+finish_swap_out	index:92	W7m	time:2021-05-25 14:41:24.141003
+finish_swap_out	index:93	W7v	time:2021-05-25 14:41:24.159515
+finish_swap_out	index:97	b6m	time:2021-05-25 14:41:24.162101
+finish_swap_out	index:98	b6v	time:2021-05-25 14:41:24.162305
+finish_swap_out	index:105	W6m	time:2021-05-25 14:41:24.267250
+finish_swap_out	index:106	W6v	time:2021-05-25 14:41:24.369517
+finish_swap_out	index:110	W5_3m	time:2021-05-25 14:41:24.380770
+finish_swap_out	index:111	W5_3v	time:2021-05-25 14:41:24.389191
+finish_swap_out	index:118	W5_2m	time:2021-05-25 14:41:24.395138
+finish_swap_out	index:119	W5_2v	time:2021-05-25 14:41:24.398659
+finish_swap_out	index:124	W5_1m	time:2021-05-25 14:41:24.403561
+finish_swap_out	index:125	W5_1v	time:2021-05-25 14:41:24.407098
+finish_swap_out	index:130	W4_3m	time:2021-05-25 14:41:24.411964
+finish_swap_out	index:131	W4_3v	time:2021-05-25 14:41:24.415365
+finish_swap_out	index:137	W4_2m	time:2021-05-25 14:41:24.421323
+finish_swap_out	index:138	W4_2v	time:2021-05-25 14:41:24.424835
+finish_swap_out	index:143	W4_1m	time:2021-05-25 14:41:24.428943
+finish_swap_out	index:144	W4_1v	time:2021-05-25 14:41:24.431115
+finish_swap_out	index:149	W3_3m	time:2021-05-25 14:41:24.434156
+finish_swap_out	index:150	W3_3v	time:2021-05-25 14:41:24.435528
+finish_swap_out	index:156	W3_2m	time:2021-05-25 14:41:24.439688
+finish_swap_out	index:157	W3_2v	time:2021-05-25 14:41:24.441075
+finish_swap_out	index:162	W3_1m	time:2021-05-25 14:41:24.443304
+finish_swap_out	index:163	W3_1v	time:2021-05-25 14:41:24.444417
+finish_swap_out	index:168	W2_2m	time:2021-05-25 14:41:24.446911
+finish_swap_out	index:169	W2_2v	time:2021-05-25 14:41:24.447183
+finish_swap_out	index:175	W2_1m	time:2021-05-25 14:41:24.452096
+finish_swap_out	index:176	W2_1v	time:2021-05-25 14:41:24.452355
+finish_swap_out	index:181	W1_2m	time:2021-05-25 14:41:24.456702
+finish_swap_out	index:182	W1_2v	time:2021-05-25 14:41:24.456936
+finish_swap_out	index:188	W1_1m	time:2021-05-25 14:41:24.463529
+finish_swap_out	index:189	W1_1v	time:2021-05-25 14:41:24.463669
+
+run:
+index:0	b8	time:2021-05-25 14:41:24.489831
+index:1	b8m	time:2021-05-25 14:41:24.490031
+index:2	b8v	time:2021-05-25 14:41:24.490133
+index:3	X	time:2021-05-25 14:41:24.490677
+index:4	W1_1	time:2021-05-25 14:41:24.494870
+index:5	Convolution2DForward	time:2021-05-25 14:41:24.494984
+swap_out	index:4	W1_1	time:2021-05-25 14:41:24.495619
+index:6	ActivationForward	time:2021-05-25 14:41:24.497049
+index:7	W1_2	time:2021-05-25 14:41:24.499400
+index:8	Convolution2DForward	time:2021-05-25 14:41:24.499971
+swap_out	index:3	X	time:2021-05-25 14:41:24.500523
+index:9	ActivationForward	time:2021-05-25 14:41:24.506510
+index:10	Pooling2DForward	time:2021-05-25 14:41:24.511443
+swap_out	index:5	Convolution2DForward	time:2021-05-25 14:41:24.512149
+index:11	W2_1	time:2021-05-25 14:41:24.513240
+index:12	Convolution2DForward	time:2021-05-25 14:41:24.547418
+index:13	ActivationForward	time:2021-05-25 14:41:24.551496
+index:14	W2_2	time:2021-05-25 14:41:24.553113
+index:15	Convolution2DForward	time:2021-05-25 14:41:24.553401
+index:16	ActivationForward	time:2021-05-25 14:41:24.560486
+index:17	Pooling2DForward	time:2021-05-25 14:41:24.561925
+swap_out	index:7	W1_2	time:2021-05-25 14:41:24.562394
+index:18	W3_1	time:2021-05-25 14:41:24.562973
+index:19	Convolution2DForward	time:2021-05-25 14:41:24.567381
+swap_out	index:6	ActivationForward	time:2021-05-25 14:41:24.568194
+index:20	ActivationForward	time:2021-05-25 14:41:24.572923
+index:21	W3_2	time:2021-05-25 14:41:24.597628
+index:22	Convolution2DForward	time:2021-05-25 14:41:24.608555
+index:23	ActivationForward	time:2021-05-25 14:41:24.616140
+index:24	W3_3	time:2021-05-25 14:41:24.617080
+index:25	Convolution2DForward	time:2021-05-25 14:41:24.618753
+swap_out	index:11	W2_1	time:2021-05-25 14:41:24.619269
+index:26	ActivationForward	time:2021-05-25 14:41:24.626832
+index:27	Pooling2DForward	time:2021-05-25 14:41:24.628904
+swap_out	index:8	Convolution2DForward	time:2021-05-25 14:41:24.629484
+index:28	W4_1	time:2021-05-25 14:41:24.629824
+index:29	Convolution2DForward	time:2021-05-25 14:41:24.667396
+index:30	ActivationForward	time:2021-05-25 14:41:24.672583
+index:31	W4_2	time:2021-05-25 14:41:24.673405
+index:32	Convolution2DForward	time:2021-05-25 14:41:24.678663
+swap_out	index:10	Pooling2DForward	time:2021-05-25 14:41:24.679241
+index:33	ActivationForward	time:2021-05-25 14:41:24.688211
+index:34	W4_3	time:2021-05-25 14:41:24.698057
+index:35	Convolution2DForward	time:2021-05-25 14:41:24.704825
+swap_out	index:9	ActivationForward	time:2021-05-25 14:41:24.705484
+index:36	ActivationForward	time:2021-05-25 14:41:24.714673
+index:37	Pooling2DForward	time:2021-05-25 14:41:24.740656
+index:38	W5_1	time:2021-05-25 14:41:24.741549
+index:39	Convolution2DForward	time:2021-05-25 14:41:24.755192
+swap_out	index:12	Convolution2DForward	time:2021-05-25 14:41:24.755805
+index:40	ActivationForward	time:2021-05-25 14:41:24.758707
+index:41	W5_2	time:2021-05-25 14:41:24.771098
+index:42	Convolution2DForward	time:2021-05-25 14:41:24.780767
+swap_out	index:14	W2_2	time:2021-05-25 14:41:24.780855
+index:43	ActivationForward	time:2021-05-25 14:41:24.783742
+index:44	W5_3	time:2021-05-25 14:41:24.783889
+index:45	Convolution2DForward	time:2021-05-25 14:41:24.788496
+swap_out	index:13	ActivationForward	time:2021-05-25 14:41:24.788560
+index:46	ActivationForward	time:2021-05-25 14:41:24.790759
+index:47	Pooling2DForward	time:2021-05-25 14:41:24.803026
+index:48	Flatten	time:2021-05-25 14:41:24.803199
+index:49	W6	time:2021-05-25 14:41:24.803275
+index:50	MatMul	time:2021-05-25 14:41:25.027152
+index:51	b6	time:2021-05-25 14:41:25.030540
+index:52	BroadcastTo	time:2021-05-25 14:41:25.031161
+index:53	+	time:2021-05-25 14:41:25.031215
+index:54	FullyActivationForward	time:2021-05-25 14:41:25.031271
+index:55	FullyDropoutForward	time:2021-05-25 14:41:25.031329
+index:56	W7	time:2021-05-25 14:41:25.036793
+index:57	MatMul	time:2021-05-25 14:41:25.073473
+index:58	b7	time:2021-05-25 14:41:25.074022
+index:59	BroadcastTo	time:2021-05-25 14:41:25.074137
+index:60	+	time:2021-05-25 14:41:25.074197
+index:61	FullyActivationForward	time:2021-05-25 14:41:25.074248
+index:62	FullyDropoutForward	time:2021-05-25 14:41:25.074297
+index:63	W8	time:2021-05-25 14:41:25.079676
+index:64	MatMul	time:2021-05-25 14:41:25.087034
+index:65	BroadcastTo	time:2021-05-25 14:41:25.087241
+index:66	+	time:2021-05-25 14:41:25.087291
+index:67	FullyBNForward	time:2021-05-25 14:41:25.087352
+index:68	FullyActivationForward	time:2021-05-25 14:41:25.087482
+index:69	y_	time:2021-05-25 14:41:25.087534
+index:70	CrossOp	time:2021-05-25 14:41:25.088073
+index:71	ReduceSumOp	time:2021-05-25 14:41:25.088140
+index:72	Oneslike	time:2021-05-25 14:41:25.088217
+index:73	BroadcastTo	time:2021-05-25 14:41:25.088271
+index:74	CrossBackwardOp	time:2021-05-25 14:41:25.088315
+index:75	FullyActivationBackward	time:2021-05-25 14:41:25.088373
+index:76	FullyBNBackward	time:2021-05-25 14:41:25.088427
+index:77	BroadcastToGradient	time:2021-05-25 14:41:25.088540
+index:78	AdamOp	time:2021-05-25 14:41:25.088611
+index:79	W8m	time:2021-05-25 14:41:25.088667
+index:80	W8v	time:2021-05-25 14:41:25.096389
+index:81	Zeroslike	time:2021-05-25 14:41:25.104175
+index:82	+	time:2021-05-25 14:41:25.104243
+index:83	MatMul	time:2021-05-25 14:41:25.104297
+index:84	b7m	time:2021-05-25 14:41:25.104908
+index:85	b7v	time:2021-05-25 14:41:25.105047
+index:86	MatMul	time:2021-05-25 14:41:25.105137
+index:87	AdamOp	time:2021-05-25 14:41:25.105330
+index:88	FullyDropoutBackward	time:2021-05-25 14:41:25.111024
+index:89	FullyActivationBackward	time:2021-05-25 14:41:25.111081
+index:90	BroadcastToGradient	time:2021-05-25 14:41:25.111600
+index:91	AdamOp	time:2021-05-25 14:41:25.111692
+index:92	W7m	time:2021-05-25 14:41:25.111748
+index:93	W7v	time:2021-05-25 14:41:25.147828
+index:94	Zeroslike	time:2021-05-25 14:41:25.184035
+index:95	+	time:2021-05-25 14:41:25.184114
+index:96	MatMul	time:2021-05-25 14:41:25.184172
+index:97	b6m	time:2021-05-25 14:41:25.185265
+index:98	b6v	time:2021-05-25 14:41:25.185400
+index:99	MatMul	time:2021-05-25 14:41:25.185502
+index:100	AdamOp	time:2021-05-25 14:41:25.186034
+index:101	FullyDropoutBackward	time:2021-05-25 14:41:25.209645
+index:102	FullyActivationBackward	time:2021-05-25 14:41:25.209716
+index:103	BroadcastToGradient	time:2021-05-25 14:41:25.209768
+index:104	AdamOp	time:2021-05-25 14:41:25.209868
+index:105	W6m	time:2021-05-25 14:41:25.209945
+index:106	W6v	time:2021-05-25 14:41:25.427234
+index:107	Zeroslike	time:2021-05-25 14:41:25.642641
+index:108	+	time:2021-05-25 14:41:25.642790
+index:109	MatMul	time:2021-05-25 14:41:25.642872
+index:110	W5_3m	time:2021-05-25 14:41:25.646449
+index:111	W5_3v	time:2021-05-25 14:41:25.651486
+index:112	MatMul	time:2021-05-25 14:41:25.656342
+index:113	AdamOp	time:2021-05-25 14:41:25.659083
+index:114	FlattenGradient	time:2021-05-25 14:41:25.797900
+index:115	Pooling2DBackward	time:2021-05-25 14:41:25.797995
+index:116	ActivationBackward	time:2021-05-25 14:41:25.798160
+index:117	Convolution2DBackward	time:2021-05-25 14:41:25.798794
+index:118	W5_2m	time:2021-05-25 14:41:25.802774
+index:119	W5_2v	time:2021-05-25 14:41:25.807592
+index:120	Convolution2DBackward	time:2021-05-25 14:41:25.812421
+index:121	AdamOp	time:2021-05-25 14:41:25.816748
+index:122	ActivationBackward	time:2021-05-25 14:41:25.820147
+index:123	Convolution2DBackward	time:2021-05-25 14:41:25.820718
+index:124	W5_1m	time:2021-05-25 14:41:25.825067
+index:125	W5_1v	time:2021-05-25 14:41:25.829943
+index:126	Convolution2DBackward	time:2021-05-25 14:41:25.834989
+index:127	AdamOp	time:2021-05-25 14:41:25.838251
+index:128	ActivationBackward	time:2021-05-25 14:41:25.841644
+index:129	Convolution2DBackward	time:2021-05-25 14:41:25.842224
+index:130	W4_3m	time:2021-05-25 14:41:25.846161
+index:131	W4_3v	time:2021-05-25 14:41:25.850890
+index:132	Convolution2DBackward	time:2021-05-25 14:41:25.855843
+index:133	AdamOp	time:2021-05-25 14:41:25.859216
+index:134	Pooling2DBackward	time:2021-05-25 14:41:25.862608
+index:135	ActivationBackward	time:2021-05-25 14:41:25.863382
+index:136	Convolution2DBackward	time:2021-05-25 14:41:25.864177
+index:137	W4_2m	time:2021-05-25 14:41:25.875786
+index:138	W4_2v	time:2021-05-25 14:41:25.881971
+index:139	Convolution2DBackward	time:2021-05-25 14:41:25.886995
+index:140	AdamOp	time:2021-05-25 14:41:25.895294
+index:141	ActivationBackward	time:2021-05-25 14:41:25.898733
+index:142	Convolution2DBackward	time:2021-05-25 14:41:25.899577
+index:143	W4_1m	time:2021-05-25 14:41:25.911326
+index:144	W4_1v	time:2021-05-25 14:41:25.914264
+index:145	Convolution2DBackward	time:2021-05-25 14:41:25.917077
+index:146	AdamOp	time:2021-05-25 14:41:25.925199
+index:147	ActivationBackward	time:2021-05-25 14:41:25.928956
+index:148	Convolution2DBackward	time:2021-05-25 14:41:25.929798
+index:149	W3_3m	time:2021-05-25 14:41:25.936540
+index:150	W3_3v	time:2021-05-25 14:41:25.938334
+index:151	Convolution2DBackward	time:2021-05-25 14:41:25.943131
+index:152	AdamOp	time:2021-05-25 14:41:25.947813
+index:153	Pooling2DBackward	time:2021-05-25 14:41:25.949775
+index:154	ActivationBackward	time:2021-05-25 14:41:25.951090
+index:155	Convolution2DBackward	time:2021-05-25 14:41:25.952362
+index:156	W3_2m	time:2021-05-25 14:41:25.964238
+index:157	W3_2v	time:2021-05-25 14:41:25.966127
+index:158	Convolution2DBackward	time:2021-05-25 14:41:25.967740
+finish_swap_out	index:4	W1_1	time:2021-05-25 14:41:25.968266
+finish_swap_out	index:3	X	time:2021-05-25 14:41:25.968282
+finish_swap_out	index:5	Convolution2DForward	time:2021-05-25 14:41:25.968296
+finish_swap_out	index:7	W1_2	time:2021-05-25 14:41:25.968304
+finish_swap_out	index:6	ActivationForward	time:2021-05-25 14:41:25.968311
+finish_swap_out	index:11	W2_1	time:2021-05-25 14:41:25.968319
+finish_swap_out	index:8	Convolution2DForward	time:2021-05-25 14:41:25.968326
+finish_swap_out	index:10	Pooling2DForward	time:2021-05-25 14:41:25.968333
+finish_swap_out	index:9	ActivationForward	time:2021-05-25 14:41:25.968341
+finish_swap_out	index:12	Convolution2DForward	time:2021-05-25 14:41:25.968348
+finish_swap_out	index:14	W2_2	time:2021-05-25 14:41:25.968355
+finish_swap_out	index:13	ActivationForward	time:2021-05-25 14:41:25.968362
+swap_in	index:13	ActivationForward	time:2021-05-25 14:41:25.968376
+index:159	AdamOp	time:2021-05-25 14:41:25.976947
+index:160	ActivationBackward	time:2021-05-25 14:41:25.978720
+index:161	Convolution2DBackward	time:2021-05-25 14:41:25.981679
+swap_in	index:14	W2_2	time:2021-05-25 14:41:25.983052
+index:162	W3_1m	time:2021-05-25 14:41:25.994390
+index:163	W3_1v	time:2021-05-25 14:41:25.994887
+index:164	Convolution2DBackward	time:2021-05-25 14:41:25.995215
+swap_in	index:12	Convolution2DForward	time:2021-05-25 14:41:25.995745
+index:165	AdamOp	time:2021-05-25 14:41:26.008635
+index:166	ActivationBackward	time:2021-05-25 14:41:26.009672
+index:167	Convolution2DBackward	time:2021-05-25 14:41:26.012738
+swap_in	index:9	ActivationForward	time:2021-05-25 14:41:26.012789
+index:168	W2_2m	time:2021-05-25 14:41:26.019706
+index:169	W2_2v	time:2021-05-25 14:41:26.021131
+index:170	Convolution2DBackward	time:2021-05-25 14:41:26.031516
+index:171	AdamOp	time:2021-05-25 14:41:26.036056
+index:172	Pooling2DBackward	time:2021-05-25 14:41:26.036586
+swap_in	index:10	Pooling2DForward	time:2021-05-25 14:41:26.037257
+index:173	ActivationBackward	time:2021-05-25 14:41:26.039010
+index:174	Convolution2DBackward	time:2021-05-25 14:41:26.042011
+swap_in	index:8	Convolution2DForward	time:2021-05-25 14:41:26.042066
+finish_swap_in	index:13	ActivationForward	time:2021-05-25 14:41:26.047942
+finish_swap_in	index:14	W2_2	time:2021-05-25 14:41:26.048634
+index:175	W2_1m	time:2021-05-25 14:41:26.059626
+index:176	W2_1v	time:2021-05-25 14:41:26.060322
+index:177	Convolution2DBackward	time:2021-05-25 14:41:26.060882
+index:178	AdamOp	time:2021-05-25 14:41:26.067094
+index:179	ActivationBackward	time:2021-05-25 14:41:26.067396
+swap_in	index:11	W2_1	time:2021-05-25 14:41:26.067851
+finish_swap_in	index:12	Convolution2DForward	time:2021-05-25 14:41:26.073671
+index:180	Convolution2DBackward	time:2021-05-25 14:41:26.074963
+swap_in	index:6	ActivationForward	time:2021-05-25 14:41:26.075004
+finish_swap_in	index:9	ActivationForward	time:2021-05-25 14:41:26.086638
+finish_swap_in	index:10	Pooling2DForward	time:2021-05-25 14:41:26.090804
+finish_swap_in	index:8	Convolution2DForward	time:2021-05-25 14:41:26.112613
+finish_swap_in	index:11	W2_1	time:2021-05-25 14:41:26.113160
+index:181	W1_2m	time:2021-05-25 14:41:26.119169
+index:182	W1_2v	time:2021-05-25 14:41:26.119357
+index:183	Convolution2DBackward	time:2021-05-25 14:41:26.119506
+index:184	AdamOp	time:2021-05-25 14:41:26.123076
+index:185	Pooling2DBackward	time:2021-05-25 14:41:26.123255
+index:186	ActivationBackward	time:2021-05-25 14:41:26.127379
+swap_in	index:7	W1_2	time:2021-05-25 14:41:26.127889
+index:187	Convolution2DBackward	time:2021-05-25 14:41:26.130410
+swap_in	index:5	Convolution2DForward	time:2021-05-25 14:41:26.130453
+finish_swap_in	index:6	ActivationForward	time:2021-05-25 14:41:26.142538
+finish_swap_in	index:7	W1_2	time:2021-05-25 14:41:26.143983
+index:188	W1_1m	time:2021-05-25 14:41:26.160434
+index:189	W1_1v	time:2021-05-25 14:41:26.160563
+index:190	Convolution2DBackward	time:2021-05-25 14:41:26.160681
+index:191	AdamOp	time:2021-05-25 14:41:26.167671
+swap_in	index:3	X	time:2021-05-25 14:41:26.167696
+index:192	ActivationBackward	time:2021-05-25 14:41:26.168515
+swap_in	index:4	W1_1	time:2021-05-25 14:41:26.169344
+finish_swap_in	index:5	Convolution2DForward	time:2021-05-25 14:41:26.181847
+index:193	Convolution2DBackward	time:2021-05-25 14:41:26.184362
+finish_swap_in	index:3	X	time:2021-05-25 14:41:26.185483
+finish_swap_in	index:4	W1_1	time:2021-05-25 14:41:26.185502
+index:194	AdamOp	time:2021-05-25 14:41:26.189107
+finish_swap_out	index:0	b8	time:2021-05-25 14:41:26.191213
+finish_swap_out	index:1	b8m	time:2021-05-25 14:41:26.191389
+finish_swap_out	index:2	b8v	time:2021-05-25 14:41:26.191667
+finish_swap_out	index:3	X	time:2021-05-25 14:41:26.194101
+finish_swap_out	index:4	W1_1	time:2021-05-25 14:41:26.196550
+finish_swap_out	index:7	W1_2	time:2021-05-25 14:41:26.203344
+finish_swap_out	index:11	W2_1	time:2021-05-25 14:41:26.205278
+finish_swap_out	index:14	W2_2	time:2021-05-25 14:41:26.208056
+finish_swap_out	index:18	W3_1	time:2021-05-25 14:41:26.213735
+finish_swap_out	index:21	W3_2	time:2021-05-25 14:41:26.217793
+finish_swap_out	index:24	W3_3	time:2021-05-25 14:41:26.220852
+finish_swap_out	index:28	W4_1	time:2021-05-25 14:41:26.225294
+finish_swap_out	index:31	W4_2	time:2021-05-25 14:41:26.230480
+finish_swap_out	index:34	W4_3	time:2021-05-25 14:41:26.235265
+finish_swap_out	index:38	W5_1	time:2021-05-25 14:41:26.241572
+finish_swap_out	index:41	W5_2	time:2021-05-25 14:41:26.245175
+finish_swap_out	index:44	W5_3	time:2021-05-25 14:41:26.248296
+finish_swap_out	index:49	W6	time:2021-05-25 14:41:26.355399
+finish_swap_out	index:51	b6	time:2021-05-25 14:41:26.355732
+finish_swap_out	index:56	W7	time:2021-05-25 14:41:26.374227
+finish_swap_out	index:58	b7	time:2021-05-25 14:41:26.374457
+finish_swap_out	index:63	W8	time:2021-05-25 14:41:26.379614
+finish_swap_out	index:69	y_	time:2021-05-25 14:41:26.380770
+finish_swap_out	index:79	W8m	time:2021-05-25 14:41:26.386007
+finish_swap_out	index:80	W8v	time:2021-05-25 14:41:26.391356
+finish_swap_out	index:84	b7m	time:2021-05-25 14:41:26.392722
+finish_swap_out	index:85	b7v	time:2021-05-25 14:41:26.392911
+finish_swap_out	index:92	W7m	time:2021-05-25 14:41:26.411295
+finish_swap_out	index:93	W7v	time:2021-05-25 14:41:26.429049
+finish_swap_out	index:97	b6m	time:2021-05-25 14:41:26.431580
+finish_swap_out	index:98	b6v	time:2021-05-25 14:41:26.431734
+finish_swap_out	index:105	W6m	time:2021-05-25 14:41:26.534912
+finish_swap_out	index:106	W6v	time:2021-05-25 14:41:26.637718
+finish_swap_out	index:110	W5_3m	time:2021-05-25 14:41:26.648980
+finish_swap_out	index:111	W5_3v	time:2021-05-25 14:41:26.656427
+finish_swap_out	index:118	W5_2m	time:2021-05-25 14:41:26.663985
+finish_swap_out	index:119	W5_2v	time:2021-05-25 14:41:26.667373
+finish_swap_out	index:124	W5_1m	time:2021-05-25 14:41:26.671927
+finish_swap_out	index:125	W5_1v	time:2021-05-25 14:41:26.675340
+finish_swap_out	index:130	W4_3m	time:2021-05-25 14:41:26.679766
+finish_swap_out	index:131	W4_3v	time:2021-05-25 14:41:26.683117
+finish_swap_out	index:137	W4_2m	time:2021-05-25 14:41:26.688590
+finish_swap_out	index:138	W4_2v	time:2021-05-25 14:41:26.692100
+finish_swap_out	index:143	W4_1m	time:2021-05-25 14:41:26.696285
+finish_swap_out	index:144	W4_1v	time:2021-05-25 14:41:26.698502
+finish_swap_out	index:149	W3_3m	time:2021-05-25 14:41:26.701883
+finish_swap_out	index:150	W3_3v	time:2021-05-25 14:41:26.703366
+finish_swap_out	index:156	W3_2m	time:2021-05-25 14:41:26.708092
+finish_swap_out	index:157	W3_2v	time:2021-05-25 14:41:26.709487
+finish_swap_out	index:162	W3_1m	time:2021-05-25 14:41:26.711687
+finish_swap_out	index:163	W3_1v	time:2021-05-25 14:41:26.712786
+finish_swap_out	index:168	W2_2m	time:2021-05-25 14:41:26.715376
+finish_swap_out	index:169	W2_2v	time:2021-05-25 14:41:26.715536
+finish_swap_out	index:175	W2_1m	time:2021-05-25 14:41:26.720996
+finish_swap_out	index:176	W2_1v	time:2021-05-25 14:41:26.721134
+finish_swap_out	index:181	W1_2m	time:2021-05-25 14:41:26.725427
+finish_swap_out	index:182	W1_2v	time:2021-05-25 14:41:26.725542
+finish_swap_out	index:188	W1_1m	time:2021-05-25 14:41:26.732247
+finish_swap_out	index:189	W1_1v	time:2021-05-25 14:41:26.732386
+
+run:
+index:0	b8	time:2021-05-25 14:41:26.760195
+index:1	b8m	time:2021-05-25 14:41:26.760408
+index:2	b8v	time:2021-05-25 14:41:26.760512
+index:3	X	time:2021-05-25 14:41:26.761105
+index:4	W1_1	time:2021-05-25 14:41:26.765286
+index:5	Convolution2DForward	time:2021-05-25 14:41:26.765416
+swap_out	index:4	W1_1	time:2021-05-25 14:41:26.765974
+index:6	ActivationForward	time:2021-05-25 14:41:26.767404
+index:7	W1_2	time:2021-05-25 14:41:26.769748
+index:8	Convolution2DForward	time:2021-05-25 14:41:26.770258
+swap_out	index:3	X	time:2021-05-25 14:41:26.770777
+index:9	ActivationForward	time:2021-05-25 14:41:26.776916
+index:10	Pooling2DForward	time:2021-05-25 14:41:26.781420
+swap_out	index:5	Convolution2DForward	time:2021-05-25 14:41:26.782164
+index:11	W2_1	time:2021-05-25 14:41:26.783258
+index:12	Convolution2DForward	time:2021-05-25 14:41:26.816853
+index:13	ActivationForward	time:2021-05-25 14:41:26.820766
+index:14	W2_2	time:2021-05-25 14:41:26.822473
+index:15	Convolution2DForward	time:2021-05-25 14:41:26.822750
+index:16	ActivationForward	time:2021-05-25 14:41:26.829357
+index:17	Pooling2DForward	time:2021-05-25 14:41:26.830712
+swap_out	index:7	W1_2	time:2021-05-25 14:41:26.831202
+index:18	W3_1	time:2021-05-25 14:41:26.831776
+index:19	Convolution2DForward	time:2021-05-25 14:41:26.839661
+swap_out	index:6	ActivationForward	time:2021-05-25 14:41:26.840374
+index:20	ActivationForward	time:2021-05-25 14:41:26.846743
+index:21	W3_2	time:2021-05-25 14:41:26.848012
+index:22	Convolution2DForward	time:2021-05-25 14:41:26.882559
+index:23	ActivationForward	time:2021-05-25 14:41:26.889904
+index:24	W3_3	time:2021-05-25 14:41:26.890815
+index:25	Convolution2DForward	time:2021-05-25 14:41:26.892510
+swap_out	index:11	W2_1	time:2021-05-25 14:41:26.893121
+index:26	ActivationForward	time:2021-05-25 14:41:26.900567
+index:27	Pooling2DForward	time:2021-05-25 14:41:26.903154
+swap_out	index:8	Convolution2DForward	time:2021-05-25 14:41:26.903686
+index:28	W4_1	time:2021-05-25 14:41:26.904029
+index:29	Convolution2DForward	time:2021-05-25 14:41:26.939629
+index:30	ActivationForward	time:2021-05-25 14:41:26.944717
+index:31	W4_2	time:2021-05-25 14:41:26.945474
+index:32	Convolution2DForward	time:2021-05-25 14:41:26.950485
+swap_out	index:10	Pooling2DForward	time:2021-05-25 14:41:26.950976
+index:33	ActivationForward	time:2021-05-25 14:41:26.959927
+index:34	W4_3	time:2021-05-25 14:41:26.968921
+index:35	Convolution2DForward	time:2021-05-25 14:41:26.976128
+swap_out	index:9	ActivationForward	time:2021-05-25 14:41:26.976737
+index:36	ActivationForward	time:2021-05-25 14:41:27.009238
+index:37	Pooling2DForward	time:2021-05-25 14:41:27.010330
+index:38	W5_1	time:2021-05-25 14:41:27.011116
+index:39	Convolution2DForward	time:2021-05-25 14:41:27.023926
+swap_out	index:12	Convolution2DForward	time:2021-05-25 14:41:27.024393
+index:40	ActivationForward	time:2021-05-25 14:41:27.027289
+index:41	W5_2	time:2021-05-25 14:41:27.039348
+index:42	Convolution2DForward	time:2021-05-25 14:41:27.048824
+swap_out	index:14	W2_2	time:2021-05-25 14:41:27.048917
+index:43	ActivationForward	time:2021-05-25 14:41:27.051896
+index:44	W5_3	time:2021-05-25 14:41:27.052014
+index:45	Convolution2DForward	time:2021-05-25 14:41:27.056471
+swap_out	index:13	ActivationForward	time:2021-05-25 14:41:27.056526
+index:46	ActivationForward	time:2021-05-25 14:41:27.058617
+index:47	Pooling2DForward	time:2021-05-25 14:41:27.070648
+index:48	Flatten	time:2021-05-25 14:41:27.070797
+index:49	W6	time:2021-05-25 14:41:27.070867
+index:50	MatMul	time:2021-05-25 14:41:27.298708
+index:51	b6	time:2021-05-25 14:41:27.302225
+index:52	BroadcastTo	time:2021-05-25 14:41:27.303074
+index:53	+	time:2021-05-25 14:41:27.303131
+index:54	FullyActivationForward	time:2021-05-25 14:41:27.303184
+index:55	FullyDropoutForward	time:2021-05-25 14:41:27.303236
+index:56	W7	time:2021-05-25 14:41:27.308663
+index:57	MatMul	time:2021-05-25 14:41:27.347250
+index:58	b7	time:2021-05-25 14:41:27.347807
+index:59	BroadcastTo	time:2021-05-25 14:41:27.347940
+index:60	+	time:2021-05-25 14:41:27.347999
+index:61	FullyActivationForward	time:2021-05-25 14:41:27.348078
+index:62	FullyDropoutForward	time:2021-05-25 14:41:27.348145
+index:63	W8	time:2021-05-25 14:41:27.353512
+index:64	MatMul	time:2021-05-25 14:41:27.361014
+index:65	BroadcastTo	time:2021-05-25 14:41:27.361222
+index:66	+	time:2021-05-25 14:41:27.361282
+index:67	FullyBNForward	time:2021-05-25 14:41:27.361341
+index:68	FullyActivationForward	time:2021-05-25 14:41:27.361468
+index:69	y_	time:2021-05-25 14:41:27.361520
+index:70	CrossOp	time:2021-05-25 14:41:27.362054
+index:71	ReduceSumOp	time:2021-05-25 14:41:27.362114
+index:72	Oneslike	time:2021-05-25 14:41:27.362188
+index:73	BroadcastTo	time:2021-05-25 14:41:27.362234
+index:74	CrossBackwardOp	time:2021-05-25 14:41:27.362279
+index:75	FullyActivationBackward	time:2021-05-25 14:41:27.362345
+index:76	FullyBNBackward	time:2021-05-25 14:41:27.362397
+index:77	BroadcastToGradient	time:2021-05-25 14:41:27.362514
+index:78	AdamOp	time:2021-05-25 14:41:27.362587
+index:79	W8m	time:2021-05-25 14:41:27.362644
+index:80	W8v	time:2021-05-25 14:41:27.370399
+index:81	Zeroslike	time:2021-05-25 14:41:27.378253
+index:82	+	time:2021-05-25 14:41:27.378322
+index:83	MatMul	time:2021-05-25 14:41:27.378378
+index:84	b7m	time:2021-05-25 14:41:27.378986
+index:85	b7v	time:2021-05-25 14:41:27.379105
+index:86	MatMul	time:2021-05-25 14:41:27.379203
+index:87	AdamOp	time:2021-05-25 14:41:27.379389
+index:88	FullyDropoutBackward	time:2021-05-25 14:41:27.384857
+index:89	FullyActivationBackward	time:2021-05-25 14:41:27.384924
+index:90	BroadcastToGradient	time:2021-05-25 14:41:27.385472
+index:91	AdamOp	time:2021-05-25 14:41:27.385587
+index:92	W7m	time:2021-05-25 14:41:27.385643
+index:93	W7v	time:2021-05-25 14:41:27.423303
+index:94	Zeroslike	time:2021-05-25 14:41:27.460379
+index:95	+	time:2021-05-25 14:41:27.460479
+index:96	MatMul	time:2021-05-25 14:41:27.460533
+index:97	b6m	time:2021-05-25 14:41:27.461763
+index:98	b6v	time:2021-05-25 14:41:27.461898
+index:99	MatMul	time:2021-05-25 14:41:27.462000
+index:100	AdamOp	time:2021-05-25 14:41:27.462523
+index:101	FullyDropoutBackward	time:2021-05-25 14:41:27.485095
+index:102	FullyActivationBackward	time:2021-05-25 14:41:27.485158
+index:103	BroadcastToGradient	time:2021-05-25 14:41:27.485212
+index:104	AdamOp	time:2021-05-25 14:41:27.485321
+index:105	W6m	time:2021-05-25 14:41:27.485375
+index:106	W6v	time:2021-05-25 14:41:27.705673
+index:107	Zeroslike	time:2021-05-25 14:41:27.926747
+index:108	+	time:2021-05-25 14:41:27.926946
+index:109	MatMul	time:2021-05-25 14:41:27.927003
+index:110	W5_3m	time:2021-05-25 14:41:27.930628
+index:111	W5_3v	time:2021-05-25 14:41:27.935697
+index:112	MatMul	time:2021-05-25 14:41:27.940553
+index:113	AdamOp	time:2021-05-25 14:41:27.943319
+index:114	FlattenGradient	time:2021-05-25 14:41:28.080842
+index:115	Pooling2DBackward	time:2021-05-25 14:41:28.080959
+index:116	ActivationBackward	time:2021-05-25 14:41:28.081151
+index:117	Convolution2DBackward	time:2021-05-25 14:41:28.085103
+index:118	W5_2m	time:2021-05-25 14:41:28.089188
+index:119	W5_2v	time:2021-05-25 14:41:28.094117
+index:120	Convolution2DBackward	time:2021-05-25 14:41:28.098867
+index:121	AdamOp	time:2021-05-25 14:41:28.103357
+index:122	ActivationBackward	time:2021-05-25 14:41:28.106779
+index:123	Convolution2DBackward	time:2021-05-25 14:41:28.107339
+index:124	W5_1m	time:2021-05-25 14:41:28.111530
+index:125	W5_1v	time:2021-05-25 14:41:28.116334
+index:126	Convolution2DBackward	time:2021-05-25 14:41:28.121668
+index:127	AdamOp	time:2021-05-25 14:41:28.124954
+index:128	ActivationBackward	time:2021-05-25 14:41:28.128388
+index:129	Convolution2DBackward	time:2021-05-25 14:41:28.128944
+index:130	W4_3m	time:2021-05-25 14:41:28.132991
+index:131	W4_3v	time:2021-05-25 14:41:28.137746
+index:132	Convolution2DBackward	time:2021-05-25 14:41:28.142535
+index:133	AdamOp	time:2021-05-25 14:41:28.145682
+index:134	Pooling2DBackward	time:2021-05-25 14:41:28.149111
+index:135	ActivationBackward	time:2021-05-25 14:41:28.149869
+index:136	Convolution2DBackward	time:2021-05-25 14:41:28.150704
+index:137	W4_2m	time:2021-05-25 14:41:28.162169
+index:138	W4_2v	time:2021-05-25 14:41:28.169322
+index:139	Convolution2DBackward	time:2021-05-25 14:41:28.174063
+index:140	AdamOp	time:2021-05-25 14:41:28.182646
+index:141	ActivationBackward	time:2021-05-25 14:41:28.186087
+index:142	Convolution2DBackward	time:2021-05-25 14:41:28.186890
+index:143	W4_1m	time:2021-05-25 14:41:28.198603
+index:144	W4_1v	time:2021-05-25 14:41:28.201391
+index:145	Convolution2DBackward	time:2021-05-25 14:41:28.204148
+index:146	AdamOp	time:2021-05-25 14:41:28.213187
+index:147	ActivationBackward	time:2021-05-25 14:41:28.216939
+index:148	Convolution2DBackward	time:2021-05-25 14:41:28.218013
+index:149	W3_3m	time:2021-05-25 14:41:28.224561
+index:150	W3_3v	time:2021-05-25 14:41:28.227528
+index:151	Convolution2DBackward	time:2021-05-25 14:41:28.229375
+index:152	AdamOp	time:2021-05-25 14:41:28.234788
+index:153	Pooling2DBackward	time:2021-05-25 14:41:28.236748
+index:154	ActivationBackward	time:2021-05-25 14:41:28.238367
+index:155	Convolution2DBackward	time:2021-05-25 14:41:28.239590
+index:156	W3_2m	time:2021-05-25 14:41:28.251850
+index:157	W3_2v	time:2021-05-25 14:41:28.253693
+index:158	Convolution2DBackward	time:2021-05-25 14:41:28.255214
+finish_swap_out	index:4	W1_1	time:2021-05-25 14:41:28.255764
+finish_swap_out	index:3	X	time:2021-05-25 14:41:28.255779
+finish_swap_out	index:5	Convolution2DForward	time:2021-05-25 14:41:28.255787
+finish_swap_out	index:7	W1_2	time:2021-05-25 14:41:28.255795
+finish_swap_out	index:6	ActivationForward	time:2021-05-25 14:41:28.255802
+finish_swap_out	index:11	W2_1	time:2021-05-25 14:41:28.255809
+finish_swap_out	index:8	Convolution2DForward	time:2021-05-25 14:41:28.255816
+finish_swap_out	index:10	Pooling2DForward	time:2021-05-25 14:41:28.255822
+finish_swap_out	index:9	ActivationForward	time:2021-05-25 14:41:28.255829
+finish_swap_out	index:12	Convolution2DForward	time:2021-05-25 14:41:28.255835
+finish_swap_out	index:14	W2_2	time:2021-05-25 14:41:28.255842
+finish_swap_out	index:13	ActivationForward	time:2021-05-25 14:41:28.255848
+swap_in	index:13	ActivationForward	time:2021-05-25 14:41:28.255861
+index:159	AdamOp	time:2021-05-25 14:41:28.263878
+index:160	ActivationBackward	time:2021-05-25 14:41:28.264999
+index:161	Convolution2DBackward	time:2021-05-25 14:41:28.267541
+swap_in	index:14	W2_2	time:2021-05-25 14:41:28.269953
+index:162	W3_1m	time:2021-05-25 14:41:28.281300
+index:163	W3_1v	time:2021-05-25 14:41:28.281737
+index:164	Convolution2DBackward	time:2021-05-25 14:41:28.282108
+swap_in	index:12	Convolution2DForward	time:2021-05-25 14:41:28.282590
+index:165	AdamOp	time:2021-05-25 14:41:28.290431
+index:166	ActivationBackward	time:2021-05-25 14:41:28.291475
+index:167	Convolution2DBackward	time:2021-05-25 14:41:28.294526
+swap_in	index:9	ActivationForward	time:2021-05-25 14:41:28.294571
+index:168	W2_2m	time:2021-05-25 14:41:28.301385
+index:169	W2_2v	time:2021-05-25 14:41:28.312441
+index:170	Convolution2DBackward	time:2021-05-25 14:41:28.312682
+index:171	AdamOp	time:2021-05-25 14:41:28.317329
+index:172	Pooling2DBackward	time:2021-05-25 14:41:28.317846
+swap_in	index:10	Pooling2DForward	time:2021-05-25 14:41:28.318377
+index:173	ActivationBackward	time:2021-05-25 14:41:28.320111
+index:174	Convolution2DBackward	time:2021-05-25 14:41:28.323114
+swap_in	index:8	Convolution2DForward	time:2021-05-25 14:41:28.323167
+finish_swap_in	index:13	ActivationForward	time:2021-05-25 14:41:28.329134
+finish_swap_in	index:14	W2_2	time:2021-05-25 14:41:28.329991
+index:175	W2_1m	time:2021-05-25 14:41:28.341028
+index:176	W2_1v	time:2021-05-25 14:41:28.346466
+index:177	Convolution2DBackward	time:2021-05-25 14:41:28.347874
+index:178	AdamOp	time:2021-05-25 14:41:28.353865
+index:179	ActivationBackward	time:2021-05-25 14:41:28.354140
+swap_in	index:11	W2_1	time:2021-05-25 14:41:28.354802
+finish_swap_in	index:12	Convolution2DForward	time:2021-05-25 14:41:28.360766
+index:180	Convolution2DBackward	time:2021-05-25 14:41:28.362068
+swap_in	index:6	ActivationForward	time:2021-05-25 14:41:28.362112
+finish_swap_in	index:9	ActivationForward	time:2021-05-25 14:41:28.374306
+finish_swap_in	index:10	Pooling2DForward	time:2021-05-25 14:41:28.378625
+finish_swap_in	index:8	Convolution2DForward	time:2021-05-25 14:41:28.400202
+finish_swap_in	index:11	W2_1	time:2021-05-25 14:41:28.400785
+index:181	W1_2m	time:2021-05-25 14:41:28.406482
+index:182	W1_2v	time:2021-05-25 14:41:28.406685
+index:183	Convolution2DBackward	time:2021-05-25 14:41:28.406823
+index:184	AdamOp	time:2021-05-25 14:41:28.410173
+index:185	Pooling2DBackward	time:2021-05-25 14:41:28.410342
+index:186	ActivationBackward	time:2021-05-25 14:41:28.414586
+swap_in	index:7	W1_2	time:2021-05-25 14:41:28.415089
+index:187	Convolution2DBackward	time:2021-05-25 14:41:28.417610
+swap_in	index:5	Convolution2DForward	time:2021-05-25 14:41:28.417652
+finish_swap_in	index:6	ActivationForward	time:2021-05-25 14:41:28.429685
+finish_swap_in	index:7	W1_2	time:2021-05-25 14:41:28.430856
+index:188	W1_1m	time:2021-05-25 14:41:28.446706
+index:189	W1_1v	time:2021-05-25 14:41:28.446846
+index:190	Convolution2DBackward	time:2021-05-25 14:41:28.446956
+index:191	AdamOp	time:2021-05-25 14:41:28.453642
+swap_in	index:3	X	time:2021-05-25 14:41:28.453665
+index:192	ActivationBackward	time:2021-05-25 14:41:28.453832
+swap_in	index:4	W1_1	time:2021-05-25 14:41:28.455055
+finish_swap_in	index:5	Convolution2DForward	time:2021-05-25 14:41:28.467456
+index:193	Convolution2DBackward	time:2021-05-25 14:41:28.470002
+finish_swap_in	index:3	X	time:2021-05-25 14:41:28.471770
+finish_swap_in	index:4	W1_1	time:2021-05-25 14:41:28.471811
+index:194	AdamOp	time:2021-05-25 14:41:28.475505
+finish_swap_out	index:0	b8	time:2021-05-25 14:41:28.477436
+finish_swap_out	index:1	b8m	time:2021-05-25 14:41:28.477659
+finish_swap_out	index:2	b8v	time:2021-05-25 14:41:28.477887
+finish_swap_out	index:3	X	time:2021-05-25 14:41:28.479973
+finish_swap_out	index:4	W1_1	time:2021-05-25 14:41:28.482171
+finish_swap_out	index:7	W1_2	time:2021-05-25 14:41:28.489637
+finish_swap_out	index:11	W2_1	time:2021-05-25 14:41:28.491520
+finish_swap_out	index:14	W2_2	time:2021-05-25 14:41:28.494410
+finish_swap_out	index:18	W3_1	time:2021-05-25 14:41:28.500402
+finish_swap_out	index:21	W3_2	time:2021-05-25 14:41:28.503836
+finish_swap_out	index:24	W3_3	time:2021-05-25 14:41:28.506600
+finish_swap_out	index:28	W4_1	time:2021-05-25 14:41:28.514213
+finish_swap_out	index:31	W4_2	time:2021-05-25 14:41:28.518407
+finish_swap_out	index:34	W4_3	time:2021-05-25 14:41:28.523621
+finish_swap_out	index:38	W5_1	time:2021-05-25 14:41:28.528385
+finish_swap_out	index:41	W5_2	time:2021-05-25 14:41:28.532030
+finish_swap_out	index:44	W5_3	time:2021-05-25 14:41:28.535460
+finish_swap_out	index:49	W6	time:2021-05-25 14:41:28.641329
+finish_swap_out	index:51	b6	time:2021-05-25 14:41:28.641519
+finish_swap_out	index:56	W7	time:2021-05-25 14:41:28.659711
+finish_swap_out	index:58	b7	time:2021-05-25 14:41:28.659888
+finish_swap_out	index:63	W8	time:2021-05-25 14:41:28.665057
+finish_swap_out	index:69	y_	time:2021-05-25 14:41:28.666128
+finish_swap_out	index:79	W8m	time:2021-05-25 14:41:28.671411
+finish_swap_out	index:80	W8v	time:2021-05-25 14:41:28.676370
+finish_swap_out	index:84	b7m	time:2021-05-25 14:41:28.677402
+finish_swap_out	index:85	b7v	time:2021-05-25 14:41:28.677561
+finish_swap_out	index:92	W7m	time:2021-05-25 14:41:28.695236
+finish_swap_out	index:93	W7v	time:2021-05-25 14:41:28.712958
+finish_swap_out	index:97	b6m	time:2021-05-25 14:41:28.715366
+finish_swap_out	index:98	b6v	time:2021-05-25 14:41:28.715524
+finish_swap_out	index:105	W6m	time:2021-05-25 14:41:28.819183
+finish_swap_out	index:106	W6v	time:2021-05-25 14:41:28.921872
+finish_swap_out	index:110	W5_3m	time:2021-05-25 14:41:28.933084
+finish_swap_out	index:111	W5_3v	time:2021-05-25 14:41:28.941525
+finish_swap_out	index:118	W5_2m	time:2021-05-25 14:41:28.947428
+finish_swap_out	index:119	W5_2v	time:2021-05-25 14:41:28.950675
+finish_swap_out	index:124	W5_1m	time:2021-05-25 14:41:28.955157
+finish_swap_out	index:125	W5_1v	time:2021-05-25 14:41:28.958622
+finish_swap_out	index:130	W4_3m	time:2021-05-25 14:41:28.963151
+finish_swap_out	index:131	W4_3v	time:2021-05-25 14:41:28.966416
+finish_swap_out	index:137	W4_2m	time:2021-05-25 14:41:28.971856
+finish_swap_out	index:138	W4_2v	time:2021-05-25 14:41:28.975325
+finish_swap_out	index:143	W4_1m	time:2021-05-25 14:41:28.979183
+finish_swap_out	index:144	W4_1v	time:2021-05-25 14:41:28.981225
+finish_swap_out	index:149	W3_3m	time:2021-05-25 14:41:28.984219
+finish_swap_out	index:150	W3_3v	time:2021-05-25 14:41:28.985608
+finish_swap_out	index:156	W3_2m	time:2021-05-25 14:41:28.989718
+finish_swap_out	index:157	W3_2v	time:2021-05-25 14:41:28.991210
+finish_swap_out	index:162	W3_1m	time:2021-05-25 14:41:28.993492
+finish_swap_out	index:163	W3_1v	time:2021-05-25 14:41:28.994561
+finish_swap_out	index:168	W2_2m	time:2021-05-25 14:41:28.997143
+finish_swap_out	index:169	W2_2v	time:2021-05-25 14:41:28.997340
+finish_swap_out	index:175	W2_1m	time:2021-05-25 14:41:29.002527
+finish_swap_out	index:176	W2_1v	time:2021-05-25 14:41:29.002775
+finish_swap_out	index:181	W1_2m	time:2021-05-25 14:41:29.007096
+finish_swap_out	index:182	W1_2v	time:2021-05-25 14:41:29.007292
+finish_swap_out	index:188	W1_1m	time:2021-05-25 14:41:29.014009
+finish_swap_out	index:189	W1_1v	time:2021-05-25 14:41:29.014158
+
+run:
+index:0	b8	time:2021-05-25 14:41:29.040693
+index:1	b8m	time:2021-05-25 14:41:29.040864
+index:2	b8v	time:2021-05-25 14:41:29.040965
+index:3	X	time:2021-05-25 14:41:29.041517
+index:4	W1_1	time:2021-05-25 14:41:29.045633
+index:5	Convolution2DForward	time:2021-05-25 14:41:29.045747
+swap_out	index:4	W1_1	time:2021-05-25 14:41:29.046347
+index:6	ActivationForward	time:2021-05-25 14:41:29.047779
+index:7	W1_2	time:2021-05-25 14:41:29.050172
+index:8	Convolution2DForward	time:2021-05-25 14:41:29.050752
+swap_out	index:3	X	time:2021-05-25 14:41:29.051353
+index:9	ActivationForward	time:2021-05-25 14:41:29.057727
+index:10	Pooling2DForward	time:2021-05-25 14:41:29.061723
+swap_out	index:5	Convolution2DForward	time:2021-05-25 14:41:29.062437
+index:11	W2_1	time:2021-05-25 14:41:29.063541
+index:12	Convolution2DForward	time:2021-05-25 14:41:29.098254
+index:13	ActivationForward	time:2021-05-25 14:41:29.102134
+index:14	W2_2	time:2021-05-25 14:41:29.104513
+index:15	Convolution2DForward	time:2021-05-25 14:41:29.104785
+index:16	ActivationForward	time:2021-05-25 14:41:29.111630
+index:17	Pooling2DForward	time:2021-05-25 14:41:29.112993
+swap_out	index:7	W1_2	time:2021-05-25 14:41:29.113449
+index:18	W3_1	time:2021-05-25 14:41:29.114024
+index:19	Convolution2DForward	time:2021-05-25 14:41:29.118298
+swap_out	index:6	ActivationForward	time:2021-05-25 14:41:29.119045
+index:20	ActivationForward	time:2021-05-25 14:41:29.124110
+index:21	W3_2	time:2021-05-25 14:41:29.148539
+index:22	Convolution2DForward	time:2021-05-25 14:41:29.159426
+index:23	ActivationForward	time:2021-05-25 14:41:29.166751
+index:24	W3_3	time:2021-05-25 14:41:29.167722
+index:25	Convolution2DForward	time:2021-05-25 14:41:29.169438
+swap_out	index:11	W2_1	time:2021-05-25 14:41:29.170105
+index:26	ActivationForward	time:2021-05-25 14:41:29.183399
+index:27	Pooling2DForward	time:2021-05-25 14:41:29.185718
+swap_out	index:8	Convolution2DForward	time:2021-05-25 14:41:29.186384
+index:28	W4_1	time:2021-05-25 14:41:29.186720
+index:29	Convolution2DForward	time:2021-05-25 14:41:29.223380
+index:30	ActivationForward	time:2021-05-25 14:41:29.229136
+index:31	W4_2	time:2021-05-25 14:41:29.229854
+index:32	Convolution2DForward	time:2021-05-25 14:41:29.235583
+swap_out	index:10	Pooling2DForward	time:2021-05-25 14:41:29.236184
+index:33	ActivationForward	time:2021-05-25 14:41:29.245748
+index:34	W4_3	time:2021-05-25 14:41:29.254880
+index:35	Convolution2DForward	time:2021-05-25 14:41:29.261750
+swap_out	index:9	ActivationForward	time:2021-05-25 14:41:29.262227
+index:36	ActivationForward	time:2021-05-25 14:41:29.271776
+index:37	Pooling2DForward	time:2021-05-25 14:41:29.296536
+index:38	W5_1	time:2021-05-25 14:41:29.297378
+index:39	Convolution2DForward	time:2021-05-25 14:41:29.310714
+swap_out	index:12	Convolution2DForward	time:2021-05-25 14:41:29.311171
+index:40	ActivationForward	time:2021-05-25 14:41:29.313963
+index:41	W5_2	time:2021-05-25 14:41:29.326086
+index:42	Convolution2DForward	time:2021-05-25 14:41:29.335657
+swap_out	index:14	W2_2	time:2021-05-25 14:41:29.335728
+index:43	ActivationForward	time:2021-05-25 14:41:29.337845
+index:44	W5_3	time:2021-05-25 14:41:29.338527
+index:45	Convolution2DForward	time:2021-05-25 14:41:29.343046
+swap_out	index:13	ActivationForward	time:2021-05-25 14:41:29.343101
+index:46	ActivationForward	time:2021-05-25 14:41:29.345211
+index:47	Pooling2DForward	time:2021-05-25 14:41:29.357219
+index:48	Flatten	time:2021-05-25 14:41:29.357372
+index:49	W6	time:2021-05-25 14:41:29.357457
+index:50	MatMul	time:2021-05-25 14:41:29.581837
+index:51	b6	time:2021-05-25 14:41:29.585261
+index:52	BroadcastTo	time:2021-05-25 14:41:29.585903
+index:53	+	time:2021-05-25 14:41:29.585963
+index:54	FullyActivationForward	time:2021-05-25 14:41:29.586015
+index:55	FullyDropoutForward	time:2021-05-25 14:41:29.586067
+index:56	W7	time:2021-05-25 14:41:29.591350
+index:57	MatMul	time:2021-05-25 14:41:29.628125
+index:58	b7	time:2021-05-25 14:41:29.628670
+index:59	BroadcastTo	time:2021-05-25 14:41:29.628795
+index:60	+	time:2021-05-25 14:41:29.628851
+index:61	FullyActivationForward	time:2021-05-25 14:41:29.628932
+index:62	FullyDropoutForward	time:2021-05-25 14:41:29.628999
+index:63	W8	time:2021-05-25 14:41:29.634430
+index:64	MatMul	time:2021-05-25 14:41:29.642082
+index:65	BroadcastTo	time:2021-05-25 14:41:29.642287
+index:66	+	time:2021-05-25 14:41:29.642346
+index:67	FullyBNForward	time:2021-05-25 14:41:29.642401
+index:68	FullyActivationForward	time:2021-05-25 14:41:29.642528
+index:69	y_	time:2021-05-25 14:41:29.642589
+index:70	CrossOp	time:2021-05-25 14:41:29.643122
+index:71	ReduceSumOp	time:2021-05-25 14:41:29.643194
+index:72	Oneslike	time:2021-05-25 14:41:29.643272
+index:73	BroadcastTo	time:2021-05-25 14:41:29.643330
+index:74	CrossBackwardOp	time:2021-05-25 14:41:29.643376
+index:75	FullyActivationBackward	time:2021-05-25 14:41:29.643423
+index:76	FullyBNBackward	time:2021-05-25 14:41:29.643488
+index:77	BroadcastToGradient	time:2021-05-25 14:41:29.643608
+index:78	AdamOp	time:2021-05-25 14:41:29.643678
+index:79	W8m	time:2021-05-25 14:41:29.643731
+index:80	W8v	time:2021-05-25 14:41:29.651531
+index:81	Zeroslike	time:2021-05-25 14:41:29.659436
+index:82	+	time:2021-05-25 14:41:29.659519
+index:83	MatMul	time:2021-05-25 14:41:29.659577
+index:84	b7m	time:2021-05-25 14:41:29.660237
+index:85	b7v	time:2021-05-25 14:41:29.660357
+index:86	MatMul	time:2021-05-25 14:41:29.660549
+index:87	AdamOp	time:2021-05-25 14:41:29.660729
+index:88	FullyDropoutBackward	time:2021-05-25 14:41:29.666283
+index:89	FullyActivationBackward	time:2021-05-25 14:41:29.666345
+index:90	BroadcastToGradient	time:2021-05-25 14:41:29.666782
+index:91	AdamOp	time:2021-05-25 14:41:29.666900
+index:92	W7m	time:2021-05-25 14:41:29.666961
+index:93	W7v	time:2021-05-25 14:41:29.705717
+index:94	Zeroslike	time:2021-05-25 14:41:29.743558
+index:95	+	time:2021-05-25 14:41:29.743682
+index:96	MatMul	time:2021-05-25 14:41:29.743737
+index:97	b6m	time:2021-05-25 14:41:29.744730
+index:98	b6v	time:2021-05-25 14:41:29.744870
+index:99	MatMul	time:2021-05-25 14:41:29.745018
+index:100	AdamOp	time:2021-05-25 14:41:29.745547
+index:101	FullyDropoutBackward	time:2021-05-25 14:41:29.768420
+index:102	FullyActivationBackward	time:2021-05-25 14:41:29.768481
+index:103	BroadcastToGradient	time:2021-05-25 14:41:29.768532
+index:104	AdamOp	time:2021-05-25 14:41:29.768637
+index:105	W6m	time:2021-05-25 14:41:29.768692
+index:106	W6v	time:2021-05-25 14:41:29.991056
+index:107	Zeroslike	time:2021-05-25 14:41:30.212554
+index:108	+	time:2021-05-25 14:41:30.212717
+index:109	MatMul	time:2021-05-25 14:41:30.212775
+index:110	W5_3m	time:2021-05-25 14:41:30.216476
+index:111	W5_3v	time:2021-05-25 14:41:30.221733
+index:112	MatMul	time:2021-05-25 14:41:30.226746
+index:113	AdamOp	time:2021-05-25 14:41:30.229508
+index:114	FlattenGradient	time:2021-05-25 14:41:30.368065
+index:115	Pooling2DBackward	time:2021-05-25 14:41:30.368159
+index:116	ActivationBackward	time:2021-05-25 14:41:30.368340
+index:117	Convolution2DBackward	time:2021-05-25 14:41:30.369114
+index:118	W5_2m	time:2021-05-25 14:41:30.373706
+index:119	W5_2v	time:2021-05-25 14:41:30.379075
+index:120	Convolution2DBackward	time:2021-05-25 14:41:30.384182
+index:121	AdamOp	time:2021-05-25 14:41:30.387700
+index:122	ActivationBackward	time:2021-05-25 14:41:30.391101
+index:123	Convolution2DBackward	time:2021-05-25 14:41:30.391722
+index:124	W5_1m	time:2021-05-25 14:41:30.396005
+index:125	W5_1v	time:2021-05-25 14:41:30.401018
+index:126	Convolution2DBackward	time:2021-05-25 14:41:30.406316
+index:127	AdamOp	time:2021-05-25 14:41:30.410737
+index:128	ActivationBackward	time:2021-05-25 14:41:30.414149
+index:129	Convolution2DBackward	time:2021-05-25 14:41:30.414766
+index:130	W4_3m	time:2021-05-25 14:41:30.419033
+index:131	W4_3v	time:2021-05-25 14:41:30.423981
+index:132	Convolution2DBackward	time:2021-05-25 14:41:30.430142
+index:133	AdamOp	time:2021-05-25 14:41:30.433599
+index:134	Pooling2DBackward	time:2021-05-25 14:41:30.436998
+index:135	ActivationBackward	time:2021-05-25 14:41:30.437779
+index:136	Convolution2DBackward	time:2021-05-25 14:41:30.438636
+index:137	W4_2m	time:2021-05-25 14:41:30.450797
+index:138	W4_2v	time:2021-05-25 14:41:30.455959
+index:139	Convolution2DBackward	time:2021-05-25 14:41:30.461126
+index:140	AdamOp	time:2021-05-25 14:41:30.469411
+index:141	ActivationBackward	time:2021-05-25 14:41:30.472805
+index:142	Convolution2DBackward	time:2021-05-25 14:41:30.473736
+index:143	W4_1m	time:2021-05-25 14:41:30.485100
+index:144	W4_1v	time:2021-05-25 14:41:30.487999
+index:145	Convolution2DBackward	time:2021-05-25 14:41:30.490805
+index:146	AdamOp	time:2021-05-25 14:41:30.502403
+index:147	ActivationBackward	time:2021-05-25 14:41:30.506159
+index:148	Convolution2DBackward	time:2021-05-25 14:41:30.507129
+index:149	W3_3m	time:2021-05-25 14:41:30.513603
+index:150	W3_3v	time:2021-05-25 14:41:30.517706
+index:151	Convolution2DBackward	time:2021-05-25 14:41:30.519623
+index:152	AdamOp	time:2021-05-25 14:41:30.524233
+index:153	Pooling2DBackward	time:2021-05-25 14:41:30.526225
+index:154	ActivationBackward	time:2021-05-25 14:41:30.527536
+index:155	Convolution2DBackward	time:2021-05-25 14:41:30.528672
+index:156	W3_2m	time:2021-05-25 14:41:30.540500
+index:157	W3_2v	time:2021-05-25 14:41:30.542391
+index:158	Convolution2DBackward	time:2021-05-25 14:41:30.543956
+finish_swap_out	index:4	W1_1	time:2021-05-25 14:41:30.544511
+finish_swap_out	index:3	X	time:2021-05-25 14:41:30.544526
+finish_swap_out	index:5	Convolution2DForward	time:2021-05-25 14:41:30.544536
+finish_swap_out	index:7	W1_2	time:2021-05-25 14:41:30.544544
+finish_swap_out	index:6	ActivationForward	time:2021-05-25 14:41:30.544551
+finish_swap_out	index:11	W2_1	time:2021-05-25 14:41:30.544558
+finish_swap_out	index:8	Convolution2DForward	time:2021-05-25 14:41:30.544566
+finish_swap_out	index:10	Pooling2DForward	time:2021-05-25 14:41:30.544573
+finish_swap_out	index:9	ActivationForward	time:2021-05-25 14:41:30.544580
+finish_swap_out	index:12	Convolution2DForward	time:2021-05-25 14:41:30.544587
+finish_swap_out	index:14	W2_2	time:2021-05-25 14:41:30.544594
+finish_swap_out	index:13	ActivationForward	time:2021-05-25 14:41:30.544601
+swap_in	index:13	ActivationForward	time:2021-05-25 14:41:30.544614
+index:159	AdamOp	time:2021-05-25 14:41:30.552752
+index:160	ActivationBackward	time:2021-05-25 14:41:30.554563
+index:161	Convolution2DBackward	time:2021-05-25 14:41:30.557511
+swap_in	index:14	W2_2	time:2021-05-25 14:41:30.558770
+index:162	W3_1m	time:2021-05-25 14:41:30.570251
+index:163	W3_1v	time:2021-05-25 14:41:30.570788
+index:164	Convolution2DBackward	time:2021-05-25 14:41:30.571135
+swap_in	index:12	Convolution2DForward	time:2021-05-25 14:41:30.571782
+index:165	AdamOp	time:2021-05-25 14:41:30.579819
+index:166	ActivationBackward	time:2021-05-25 14:41:30.580865
+index:167	Convolution2DBackward	time:2021-05-25 14:41:30.582104
+swap_in	index:9	ActivationForward	time:2021-05-25 14:41:30.582149
+index:168	W2_2m	time:2021-05-25 14:41:30.587942
+index:169	W2_2v	time:2021-05-25 14:41:30.598943
+index:170	Convolution2DBackward	time:2021-05-25 14:41:30.599169
+index:171	AdamOp	time:2021-05-25 14:41:30.603729
+index:172	Pooling2DBackward	time:2021-05-25 14:41:30.604261
+swap_in	index:10	Pooling2DForward	time:2021-05-25 14:41:30.604869
+index:173	ActivationBackward	time:2021-05-25 14:41:30.606616
+index:174	Convolution2DBackward	time:2021-05-25 14:41:30.609521
+swap_in	index:8	Convolution2DForward	time:2021-05-25 14:41:30.609567
+finish_swap_in	index:13	ActivationForward	time:2021-05-25 14:41:30.615884
+finish_swap_in	index:14	W2_2	time:2021-05-25 14:41:30.616677
+index:175	W2_1m	time:2021-05-25 14:41:30.627830
+index:176	W2_1v	time:2021-05-25 14:41:30.628529
+index:177	Convolution2DBackward	time:2021-05-25 14:41:30.629193
+index:178	AdamOp	time:2021-05-25 14:41:30.636511
+index:179	ActivationBackward	time:2021-05-25 14:41:30.636807
+swap_in	index:11	W2_1	time:2021-05-25 14:41:30.637472
+finish_swap_in	index:12	Convolution2DForward	time:2021-05-25 14:41:30.643628
+index:180	Convolution2DBackward	time:2021-05-25 14:41:30.644959
+swap_in	index:6	ActivationForward	time:2021-05-25 14:41:30.645019
+finish_swap_in	index:9	ActivationForward	time:2021-05-25 14:41:30.656871
+finish_swap_in	index:10	Pooling2DForward	time:2021-05-25 14:41:30.661354
+finish_swap_in	index:8	Convolution2DForward	time:2021-05-25 14:41:30.683442
+finish_swap_in	index:11	W2_1	time:2021-05-25 14:41:30.689465
+index:181	W1_2m	time:2021-05-25 14:41:30.695172
+index:182	W1_2v	time:2021-05-25 14:41:30.695374
+index:183	Convolution2DBackward	time:2021-05-25 14:41:30.695600
+index:184	AdamOp	time:2021-05-25 14:41:30.699042
+index:185	Pooling2DBackward	time:2021-05-25 14:41:30.699212
+index:186	ActivationBackward	time:2021-05-25 14:41:30.703405
+swap_in	index:7	W1_2	time:2021-05-25 14:41:30.703955
+index:187	Convolution2DBackward	time:2021-05-25 14:41:30.706485
+swap_in	index:5	Convolution2DForward	time:2021-05-25 14:41:30.706554
+finish_swap_in	index:6	ActivationForward	time:2021-05-25 14:41:30.718813
+finish_swap_in	index:7	W1_2	time:2021-05-25 14:41:30.720077
+index:188	W1_1m	time:2021-05-25 14:41:30.736537
+index:189	W1_1v	time:2021-05-25 14:41:30.736691
+index:190	Convolution2DBackward	time:2021-05-25 14:41:30.736809
+index:191	AdamOp	time:2021-05-25 14:41:30.743604
+swap_in	index:3	X	time:2021-05-25 14:41:30.743633
+index:192	ActivationBackward	time:2021-05-25 14:41:30.744941
+swap_in	index:4	W1_1	time:2021-05-25 14:41:30.745773
+finish_swap_in	index:5	Convolution2DForward	time:2021-05-25 14:41:30.758255
+index:193	Convolution2DBackward	time:2021-05-25 14:41:30.760795
+finish_swap_in	index:3	X	time:2021-05-25 14:41:30.762008
+finish_swap_in	index:4	W1_1	time:2021-05-25 14:41:30.762027
+index:194	AdamOp	time:2021-05-25 14:41:30.765833
+finish_swap_out	index:0	b8	time:2021-05-25 14:41:30.768026
+finish_swap_out	index:1	b8m	time:2021-05-25 14:41:30.768189
+finish_swap_out	index:2	b8v	time:2021-05-25 14:41:30.768318
+finish_swap_out	index:3	X	time:2021-05-25 14:41:30.771965
+finish_swap_out	index:4	W1_1	time:2021-05-25 14:41:30.773598
+finish_swap_out	index:7	W1_2	time:2021-05-25 14:41:30.781639
+finish_swap_out	index:11	W2_1	time:2021-05-25 14:41:30.783519
+finish_swap_out	index:14	W2_2	time:2021-05-25 14:41:30.786476
+finish_swap_out	index:18	W3_1	time:2021-05-25 14:41:30.793691
+finish_swap_out	index:21	W3_2	time:2021-05-25 14:41:30.797199
+finish_swap_out	index:24	W3_3	time:2021-05-25 14:41:30.800510
+finish_swap_out	index:28	W4_1	time:2021-05-25 14:41:30.805106
+finish_swap_out	index:31	W4_2	time:2021-05-25 14:41:30.810022
+finish_swap_out	index:34	W4_3	time:2021-05-25 14:41:30.814804
+finish_swap_out	index:38	W5_1	time:2021-05-25 14:41:30.820007
+finish_swap_out	index:41	W5_2	time:2021-05-25 14:41:30.823777
+finish_swap_out	index:44	W5_3	time:2021-05-25 14:41:30.827179
+finish_swap_out	index:49	W6	time:2021-05-25 14:41:30.936782
+finish_swap_out	index:51	b6	time:2021-05-25 14:41:30.937136
+finish_swap_out	index:56	W7	time:2021-05-25 14:41:30.955566
+finish_swap_out	index:58	b7	time:2021-05-25 14:41:30.955790
+finish_swap_out	index:63	W8	time:2021-05-25 14:41:30.960977
+finish_swap_out	index:69	y_	time:2021-05-25 14:41:30.962156
+finish_swap_out	index:79	W8m	time:2021-05-25 14:41:30.967420
+finish_swap_out	index:80	W8v	time:2021-05-25 14:41:30.973190
+finish_swap_out	index:84	b7m	time:2021-05-25 14:41:30.974654
+finish_swap_out	index:85	b7v	time:2021-05-25 14:41:30.974907
+finish_swap_out	index:92	W7m	time:2021-05-25 14:41:30.993779
+finish_swap_out	index:93	W7v	time:2021-05-25 14:41:31.012696
+finish_swap_out	index:97	b6m	time:2021-05-25 14:41:31.015526
+finish_swap_out	index:98	b6v	time:2021-05-25 14:41:31.015747
+finish_swap_out	index:105	W6m	time:2021-05-25 14:41:31.124331
+finish_swap_out	index:106	W6v	time:2021-05-25 14:41:31.233491
+finish_swap_out	index:110	W5_3m	time:2021-05-25 14:41:31.245367
+finish_swap_out	index:111	W5_3v	time:2021-05-25 14:41:31.253500
+finish_swap_out	index:118	W5_2m	time:2021-05-25 14:41:31.263036
+finish_swap_out	index:119	W5_2v	time:2021-05-25 14:41:31.266796
+finish_swap_out	index:124	W5_1m	time:2021-05-25 14:41:31.271726
+finish_swap_out	index:125	W5_1v	time:2021-05-25 14:41:31.275309
+finish_swap_out	index:130	W4_3m	time:2021-05-25 14:41:31.280085
+finish_swap_out	index:131	W4_3v	time:2021-05-25 14:41:31.283355
+finish_swap_out	index:137	W4_2m	time:2021-05-25 14:41:31.289679
+finish_swap_out	index:138	W4_2v	time:2021-05-25 14:41:31.293246
+finish_swap_out	index:143	W4_1m	time:2021-05-25 14:41:31.297313
+finish_swap_out	index:144	W4_1v	time:2021-05-25 14:41:31.299440
+finish_swap_out	index:149	W3_3m	time:2021-05-25 14:41:31.302774
+finish_swap_out	index:150	W3_3v	time:2021-05-25 14:41:31.304070
+finish_swap_out	index:156	W3_2m	time:2021-05-25 14:41:31.308606
+finish_swap_out	index:157	W3_2v	time:2021-05-25 14:41:31.310177
+finish_swap_out	index:162	W3_1m	time:2021-05-25 14:41:31.312613
+finish_swap_out	index:163	W3_1v	time:2021-05-25 14:41:31.313901
+finish_swap_out	index:168	W2_2m	time:2021-05-25 14:41:31.316807
+finish_swap_out	index:169	W2_2v	time:2021-05-25 14:41:31.317049
+finish_swap_out	index:175	W2_1m	time:2021-05-25 14:41:31.322655
+finish_swap_out	index:176	W2_1v	time:2021-05-25 14:41:31.322773
+finish_swap_out	index:181	W1_2m	time:2021-05-25 14:41:31.327272
+finish_swap_out	index:182	W1_2v	time:2021-05-25 14:41:31.327533
+finish_swap_out	index:188	W1_1m	time:2021-05-25 14:41:31.333693
+finish_swap_out	index:189	W1_1v	time:2021-05-25 14:41:31.333885
+
+run:
+index:0	b8	time:2021-05-25 14:41:31.365278
+index:1	b8m	time:2021-05-25 14:41:31.365448
+index:2	b8v	time:2021-05-25 14:41:31.365546
+index:3	X	time:2021-05-25 14:41:31.366218
+index:4	W1_1	time:2021-05-25 14:41:31.370457
+index:5	Convolution2DForward	time:2021-05-25 14:41:31.370572
+swap_out	index:4	W1_1	time:2021-05-25 14:41:31.371375
+index:6	ActivationForward	time:2021-05-25 14:41:31.372908
+index:7	W1_2	time:2021-05-25 14:41:31.375547
+index:8	Convolution2DForward	time:2021-05-25 14:41:31.376331
+swap_out	index:3	X	time:2021-05-25 14:41:31.376876
+index:9	ActivationForward	time:2021-05-25 14:41:31.383248
+index:10	Pooling2DForward	time:2021-05-25 14:41:31.388103
+swap_out	index:5	Convolution2DForward	time:2021-05-25 14:41:31.388836
+index:11	W2_1	time:2021-05-25 14:41:31.389925
+index:12	Convolution2DForward	time:2021-05-25 14:41:31.423673
+index:13	ActivationForward	time:2021-05-25 14:41:31.427691
+index:14	W2_2	time:2021-05-25 14:41:31.429290
+index:15	Convolution2DForward	time:2021-05-25 14:41:31.429557
+index:16	ActivationForward	time:2021-05-25 14:41:31.436339
+index:17	Pooling2DForward	time:2021-05-25 14:41:31.437832
+swap_out	index:7	W1_2	time:2021-05-25 14:41:31.438299
+index:18	W3_1	time:2021-05-25 14:41:31.438878
+index:19	Convolution2DForward	time:2021-05-25 14:41:31.443109
+swap_out	index:6	ActivationForward	time:2021-05-25 14:41:31.443874
+index:20	ActivationForward	time:2021-05-25 14:41:31.471714
+index:21	W3_2	time:2021-05-25 14:41:31.473081
+index:22	Convolution2DForward	time:2021-05-25 14:41:31.483281
+index:23	ActivationForward	time:2021-05-25 14:41:31.490969
+index:24	W3_3	time:2021-05-25 14:41:31.491887
+index:25	Convolution2DForward	time:2021-05-25 14:41:31.493619
+swap_out	index:11	W2_1	time:2021-05-25 14:41:31.494261
+index:26	ActivationForward	time:2021-05-25 14:41:31.501964
+index:27	Pooling2DForward	time:2021-05-25 14:41:31.504142
+swap_out	index:8	Convolution2DForward	time:2021-05-25 14:41:31.504646
+index:28	W4_1	time:2021-05-25 14:41:31.504990
+index:29	Convolution2DForward	time:2021-05-25 14:41:31.542773
+index:30	ActivationForward	time:2021-05-25 14:41:31.547720
+index:31	W4_2	time:2021-05-25 14:41:31.548494
+index:32	Convolution2DForward	time:2021-05-25 14:41:31.553817
+swap_out	index:10	Pooling2DForward	time:2021-05-25 14:41:31.554427
+index:33	ActivationForward	time:2021-05-25 14:41:31.563421
+index:34	W4_3	time:2021-05-25 14:41:31.573416
+index:35	Convolution2DForward	time:2021-05-25 14:41:31.580163
+swap_out	index:9	ActivationForward	time:2021-05-25 14:41:31.580681
+index:36	ActivationForward	time:2021-05-25 14:41:31.606920
+index:37	Pooling2DForward	time:2021-05-25 14:41:31.608013
+index:38	W5_1	time:2021-05-25 14:41:31.608640
+index:39	Convolution2DForward	time:2021-05-25 14:41:31.621679
+swap_out	index:12	Convolution2DForward	time:2021-05-25 14:41:31.622261
+index:40	ActivationForward	time:2021-05-25 14:41:31.625145
+index:41	W5_2	time:2021-05-25 14:41:31.637523
+index:42	Convolution2DForward	time:2021-05-25 14:41:31.647070
+swap_out	index:14	W2_2	time:2021-05-25 14:41:31.647129
+index:43	ActivationForward	time:2021-05-25 14:41:31.649276
+index:44	W5_3	time:2021-05-25 14:41:31.650779
+index:45	Convolution2DForward	time:2021-05-25 14:41:31.655597
+swap_out	index:13	ActivationForward	time:2021-05-25 14:41:31.655656
+index:46	ActivationForward	time:2021-05-25 14:41:31.657767
+index:47	Pooling2DForward	time:2021-05-25 14:41:31.657878
+index:48	Flatten	time:2021-05-25 14:41:31.658052
+index:49	W6	time:2021-05-25 14:41:31.671261
+index:50	MatMul	time:2021-05-25 14:41:31.899438
+index:51	b6	time:2021-05-25 14:41:31.902854
+index:52	BroadcastTo	time:2021-05-25 14:41:31.903440
+index:53	+	time:2021-05-25 14:41:31.903500
+index:54	FullyActivationForward	time:2021-05-25 14:41:31.903552
+index:55	FullyDropoutForward	time:2021-05-25 14:41:31.903606
+index:56	W7	time:2021-05-25 14:41:31.909100
+index:57	MatMul	time:2021-05-25 14:41:31.946655
+index:58	b7	time:2021-05-25 14:41:31.947231
+index:59	BroadcastTo	time:2021-05-25 14:41:31.947353
+index:60	+	time:2021-05-25 14:41:31.947416
+index:61	FullyActivationForward	time:2021-05-25 14:41:31.947488
+index:62	FullyDropoutForward	time:2021-05-25 14:41:31.947564
+index:63	W8	time:2021-05-25 14:41:31.953043
+index:64	MatMul	time:2021-05-25 14:41:31.960353
+index:65	BroadcastTo	time:2021-05-25 14:41:31.960563
+index:66	+	time:2021-05-25 14:41:31.960615
+index:67	FullyBNForward	time:2021-05-25 14:41:31.960676
+index:68	FullyActivationForward	time:2021-05-25 14:41:31.960809
+index:69	y_	time:2021-05-25 14:41:31.960863
+index:70	CrossOp	time:2021-05-25 14:41:31.961381
+index:71	ReduceSumOp	time:2021-05-25 14:41:31.961441
+index:72	Oneslike	time:2021-05-25 14:41:31.961530
+index:73	BroadcastTo	time:2021-05-25 14:41:31.961579
+index:74	CrossBackwardOp	time:2021-05-25 14:41:31.961622
+index:75	FullyActivationBackward	time:2021-05-25 14:41:31.961679
+index:76	FullyBNBackward	time:2021-05-25 14:41:31.961733
+index:77	BroadcastToGradient	time:2021-05-25 14:41:31.961850
+index:78	AdamOp	time:2021-05-25 14:41:31.961925
+index:79	W8m	time:2021-05-25 14:41:31.961982
+index:80	W8v	time:2021-05-25 14:41:31.969889
+index:81	Zeroslike	time:2021-05-25 14:41:31.977890
+index:82	+	time:2021-05-25 14:41:31.977969
+index:83	MatMul	time:2021-05-25 14:41:31.978029
+index:84	b7m	time:2021-05-25 14:41:31.978668
+index:85	b7v	time:2021-05-25 14:41:31.978791
+index:86	MatMul	time:2021-05-25 14:41:31.978892
+index:87	AdamOp	time:2021-05-25 14:41:31.979082
+index:88	FullyDropoutBackward	time:2021-05-25 14:41:31.984935
+index:89	FullyActivationBackward	time:2021-05-25 14:41:31.985048
+index:90	BroadcastToGradient	time:2021-05-25 14:41:31.985524
+index:91	AdamOp	time:2021-05-25 14:41:31.985618
+index:92	W7m	time:2021-05-25 14:41:31.985676
+index:93	W7v	time:2021-05-25 14:41:32.023360
+index:94	Zeroslike	time:2021-05-25 14:41:32.061135
+index:95	+	time:2021-05-25 14:41:32.061221
+index:96	MatMul	time:2021-05-25 14:41:32.061278
+index:97	b6m	time:2021-05-25 14:41:32.062439
+index:98	b6v	time:2021-05-25 14:41:32.062577
+index:99	MatMul	time:2021-05-25 14:41:32.062679
+index:100	AdamOp	time:2021-05-25 14:41:32.063208
+index:101	FullyDropoutBackward	time:2021-05-25 14:41:32.087402
+index:102	FullyActivationBackward	time:2021-05-25 14:41:32.087462
+index:103	BroadcastToGradient	time:2021-05-25 14:41:32.087514
+index:104	AdamOp	time:2021-05-25 14:41:32.087603
+index:105	W6m	time:2021-05-25 14:41:32.087669
+index:106	W6v	time:2021-05-25 14:41:32.311736
+index:107	Zeroslike	time:2021-05-25 14:41:32.535165
+index:108	+	time:2021-05-25 14:41:32.535351
+index:109	MatMul	time:2021-05-25 14:41:32.535445
+index:110	W5_3m	time:2021-05-25 14:41:32.539069
+index:111	W5_3v	time:2021-05-25 14:41:32.544047
+index:112	MatMul	time:2021-05-25 14:41:32.549081
+index:113	AdamOp	time:2021-05-25 14:41:32.551855
+index:114	FlattenGradient	time:2021-05-25 14:41:32.689426
+index:115	Pooling2DBackward	time:2021-05-25 14:41:32.689491
+index:116	ActivationBackward	time:2021-05-25 14:41:32.689666
+index:117	Convolution2DBackward	time:2021-05-25 14:41:32.690236
+index:118	W5_2m	time:2021-05-25 14:41:32.694237
+index:119	W5_2v	time:2021-05-25 14:41:32.700395
+index:120	Convolution2DBackward	time:2021-05-25 14:41:32.705485
+index:121	AdamOp	time:2021-05-25 14:41:32.708875
+index:122	ActivationBackward	time:2021-05-25 14:41:32.712376
+index:123	Convolution2DBackward	time:2021-05-25 14:41:32.712930
+index:124	W5_1m	time:2021-05-25 14:41:32.717034
+index:125	W5_1v	time:2021-05-25 14:41:32.721996
+index:126	Convolution2DBackward	time:2021-05-25 14:41:32.726886
+index:127	AdamOp	time:2021-05-25 14:41:32.730146
+index:128	ActivationBackward	time:2021-05-25 14:41:32.733600
+index:129	Convolution2DBackward	time:2021-05-25 14:41:32.734463
+index:130	W4_3m	time:2021-05-25 14:41:32.739361
+index:131	W4_3v	time:2021-05-25 14:41:32.744249
+index:132	Convolution2DBackward	time:2021-05-25 14:41:32.749106
+index:133	AdamOp	time:2021-05-25 14:41:32.752351
+index:134	Pooling2DBackward	time:2021-05-25 14:41:32.756133
+index:135	ActivationBackward	time:2021-05-25 14:41:32.756940
+index:136	Convolution2DBackward	time:2021-05-25 14:41:32.757760
+index:137	W4_2m	time:2021-05-25 14:41:32.769524
+index:138	W4_2v	time:2021-05-25 14:41:32.774554
+index:139	Convolution2DBackward	time:2021-05-25 14:41:32.781415
+index:140	AdamOp	time:2021-05-25 14:41:32.789892
+index:141	ActivationBackward	time:2021-05-25 14:41:32.793456
+index:142	Convolution2DBackward	time:2021-05-25 14:41:32.794260
+index:143	W4_1m	time:2021-05-25 14:41:32.807257
+index:144	W4_1v	time:2021-05-25 14:41:32.810217
+index:145	Convolution2DBackward	time:2021-05-25 14:41:32.813128
+index:146	AdamOp	time:2021-05-25 14:41:32.822277
+index:147	ActivationBackward	time:2021-05-25 14:41:32.826038
+index:148	Convolution2DBackward	time:2021-05-25 14:41:32.826845
+index:149	W3_3m	time:2021-05-25 14:41:32.833447
+index:150	W3_3v	time:2021-05-25 14:41:32.835171
+index:151	Convolution2DBackward	time:2021-05-25 14:41:32.837826
+index:152	AdamOp	time:2021-05-25 14:41:32.842229
+index:153	Pooling2DBackward	time:2021-05-25 14:41:32.844194
+index:154	ActivationBackward	time:2021-05-25 14:41:32.845503
+index:155	Convolution2DBackward	time:2021-05-25 14:41:32.846595
+index:156	W3_2m	time:2021-05-25 14:41:32.858348
+index:157	W3_2v	time:2021-05-25 14:41:32.862662
+index:158	Convolution2DBackward	time:2021-05-25 14:41:32.864403
+finish_swap_out	index:4	W1_1	time:2021-05-25 14:41:32.865029
+finish_swap_out	index:3	X	time:2021-05-25 14:41:32.865045
+finish_swap_out	index:5	Convolution2DForward	time:2021-05-25 14:41:32.865059
+finish_swap_out	index:7	W1_2	time:2021-05-25 14:41:32.865066
+finish_swap_out	index:6	ActivationForward	time:2021-05-25 14:41:32.865074
+finish_swap_out	index:11	W2_1	time:2021-05-25 14:41:32.865081
+finish_swap_out	index:8	Convolution2DForward	time:2021-05-25 14:41:32.865088
+finish_swap_out	index:10	Pooling2DForward	time:2021-05-25 14:41:32.865096
+finish_swap_out	index:9	ActivationForward	time:2021-05-25 14:41:32.865103
+finish_swap_out	index:12	Convolution2DForward	time:2021-05-25 14:41:32.865110
+finish_swap_out	index:14	W2_2	time:2021-05-25 14:41:32.865117
+finish_swap_out	index:13	ActivationForward	time:2021-05-25 14:41:32.865124
+swap_in	index:13	ActivationForward	time:2021-05-25 14:41:32.865138
+index:159	AdamOp	time:2021-05-25 14:41:32.873612
+index:160	ActivationBackward	time:2021-05-25 14:41:32.875329
+index:161	Convolution2DBackward	time:2021-05-25 14:41:32.878371
+swap_in	index:14	W2_2	time:2021-05-25 14:41:32.879772
+index:162	W3_1m	time:2021-05-25 14:41:32.890805
+index:163	W3_1v	time:2021-05-25 14:41:32.891337
+index:164	Convolution2DBackward	time:2021-05-25 14:41:32.891691
+swap_in	index:12	Convolution2DForward	time:2021-05-25 14:41:32.892160
+index:165	AdamOp	time:2021-05-25 14:41:32.899984
+index:166	ActivationBackward	time:2021-05-25 14:41:32.901015
+index:167	Convolution2DBackward	time:2021-05-25 14:41:32.904066
+swap_in	index:9	ActivationForward	time:2021-05-25 14:41:32.904133
+index:168	W2_2m	time:2021-05-25 14:41:32.910945
+index:169	W2_2v	time:2021-05-25 14:41:32.922169
+index:170	Convolution2DBackward	time:2021-05-25 14:41:32.922408
+index:171	AdamOp	time:2021-05-25 14:41:32.926438
+index:172	Pooling2DBackward	time:2021-05-25 14:41:32.926958
+swap_in	index:10	Pooling2DForward	time:2021-05-25 14:41:32.927436
+index:173	ActivationBackward	time:2021-05-25 14:41:32.929172
+index:174	Convolution2DBackward	time:2021-05-25 14:41:32.932104
+swap_in	index:8	Convolution2DForward	time:2021-05-25 14:41:32.932143
+finish_swap_in	index:13	ActivationForward	time:2021-05-25 14:41:32.938387
+finish_swap_in	index:14	W2_2	time:2021-05-25 14:41:32.939086
+index:175	W2_1m	time:2021-05-25 14:41:32.949856
+index:176	W2_1v	time:2021-05-25 14:41:32.950516
+index:177	Convolution2DBackward	time:2021-05-25 14:41:32.951147
+index:178	AdamOp	time:2021-05-25 14:41:32.957223
+index:179	ActivationBackward	time:2021-05-25 14:41:32.957509
+swap_in	index:11	W2_1	time:2021-05-25 14:41:32.958026
+finish_swap_in	index:12	Convolution2DForward	time:2021-05-25 14:41:32.964039
+index:180	Convolution2DBackward	time:2021-05-25 14:41:32.965331
+swap_in	index:6	ActivationForward	time:2021-05-25 14:41:32.965396
+finish_swap_in	index:9	ActivationForward	time:2021-05-25 14:41:32.977260
+finish_swap_in	index:10	Pooling2DForward	time:2021-05-25 14:41:32.981680
+finish_swap_in	index:8	Convolution2DForward	time:2021-05-25 14:41:33.004561
+finish_swap_in	index:11	W2_1	time:2021-05-25 14:41:33.005129
+index:181	W1_2m	time:2021-05-25 14:41:33.011070
+index:182	W1_2v	time:2021-05-25 14:41:33.011288
+index:183	Convolution2DBackward	time:2021-05-25 14:41:33.011470
+index:184	AdamOp	time:2021-05-25 14:41:33.015927
+index:185	Pooling2DBackward	time:2021-05-25 14:41:33.016102
+index:186	ActivationBackward	time:2021-05-25 14:41:33.020249
+swap_in	index:7	W1_2	time:2021-05-25 14:41:33.020945
+index:187	Convolution2DBackward	time:2021-05-25 14:41:33.023461
+swap_in	index:5	Convolution2DForward	time:2021-05-25 14:41:33.023507
+finish_swap_in	index:6	ActivationForward	time:2021-05-25 14:41:33.035436
+finish_swap_in	index:7	W1_2	time:2021-05-25 14:41:33.036073
+index:188	W1_1m	time:2021-05-25 14:41:33.052193
+index:189	W1_1v	time:2021-05-25 14:41:33.052326
+index:190	Convolution2DBackward	time:2021-05-25 14:41:33.052434
+index:191	AdamOp	time:2021-05-25 14:41:33.058942
+swap_in	index:3	X	time:2021-05-25 14:41:33.058969
+index:192	ActivationBackward	time:2021-05-25 14:41:33.060478
+swap_in	index:4	W1_1	time:2021-05-25 14:41:33.061272
+finish_swap_in	index:5	Convolution2DForward	time:2021-05-25 14:41:33.073769
+index:193	Convolution2DBackward	time:2021-05-25 14:41:33.076287
+finish_swap_in	index:3	X	time:2021-05-25 14:41:33.078273
+finish_swap_in	index:4	W1_1	time:2021-05-25 14:41:33.078295
+index:194	AdamOp	time:2021-05-25 14:41:33.081918
+finish_swap_out	index:0	b8	time:2021-05-25 14:41:33.083845
+finish_swap_out	index:1	b8m	time:2021-05-25 14:41:33.084046
+finish_swap_out	index:2	b8v	time:2021-05-25 14:41:33.084238
+finish_swap_out	index:3	X	time:2021-05-25 14:41:33.086489
+finish_swap_out	index:4	W1_1	time:2021-05-25 14:41:33.087821
+finish_swap_out	index:7	W1_2	time:2021-05-25 14:41:33.095112
+finish_swap_out	index:11	W2_1	time:2021-05-25 14:41:33.096805
+finish_swap_out	index:14	W2_2	time:2021-05-25 14:41:33.099547
+finish_swap_out	index:18	W3_1	time:2021-05-25 14:41:33.105649
+finish_swap_out	index:21	W3_2	time:2021-05-25 14:41:33.108796
+finish_swap_out	index:24	W3_3	time:2021-05-25 14:41:33.111655
+finish_swap_out	index:28	W4_1	time:2021-05-25 14:41:33.116763
+finish_swap_out	index:31	W4_2	time:2021-05-25 14:41:33.121240
+finish_swap_out	index:34	W4_3	time:2021-05-25 14:41:33.125808
+finish_swap_out	index:38	W5_1	time:2021-05-25 14:41:33.131072
+finish_swap_out	index:41	W5_2	time:2021-05-25 14:41:33.134882
+finish_swap_out	index:44	W5_3	time:2021-05-25 14:41:33.138302
+finish_swap_out	index:49	W6	time:2021-05-25 14:41:33.243897
+finish_swap_out	index:51	b6	time:2021-05-25 14:41:33.244101
+finish_swap_out	index:56	W7	time:2021-05-25 14:41:33.262638
+finish_swap_out	index:58	b7	time:2021-05-25 14:41:33.262830
+finish_swap_out	index:63	W8	time:2021-05-25 14:41:33.267989
+finish_swap_out	index:69	y_	time:2021-05-25 14:41:33.269238
+finish_swap_out	index:79	W8m	time:2021-05-25 14:41:33.274892
+finish_swap_out	index:80	W8v	time:2021-05-25 14:41:33.280349
+finish_swap_out	index:84	b7m	time:2021-05-25 14:41:33.281619
+finish_swap_out	index:85	b7v	time:2021-05-25 14:41:33.281913
+finish_swap_out	index:92	W7m	time:2021-05-25 14:41:33.301071
+finish_swap_out	index:93	W7v	time:2021-05-25 14:41:33.320074
+finish_swap_out	index:97	b6m	time:2021-05-25 14:41:33.322773
+finish_swap_out	index:98	b6v	time:2021-05-25 14:41:33.322980
+finish_swap_out	index:105	W6m	time:2021-05-25 14:41:33.426130
+finish_swap_out	index:106	W6v	time:2021-05-25 14:41:33.529976
+finish_swap_out	index:110	W5_3m	time:2021-05-25 14:41:33.541191
+finish_swap_out	index:111	W5_3v	time:2021-05-25 14:41:33.548528
+finish_swap_out	index:118	W5_2m	time:2021-05-25 14:41:33.556696
+finish_swap_out	index:119	W5_2v	time:2021-05-25 14:41:33.560274
+finish_swap_out	index:124	W5_1m	time:2021-05-25 14:41:33.565038
+finish_swap_out	index:125	W5_1v	time:2021-05-25 14:41:33.568324
+finish_swap_out	index:130	W4_3m	time:2021-05-25 14:41:33.572874
+finish_swap_out	index:131	W4_3v	time:2021-05-25 14:41:33.576145
+finish_swap_out	index:137	W4_2m	time:2021-05-25 14:41:33.581549
+finish_swap_out	index:138	W4_2v	time:2021-05-25 14:41:33.585032
+finish_swap_out	index:143	W4_1m	time:2021-05-25 14:41:33.589271
+finish_swap_out	index:144	W4_1v	time:2021-05-25 14:41:33.591323
+finish_swap_out	index:149	W3_3m	time:2021-05-25 14:41:33.594602
+finish_swap_out	index:150	W3_3v	time:2021-05-25 14:41:33.596006
+finish_swap_out	index:156	W3_2m	time:2021-05-25 14:41:33.600494
+finish_swap_out	index:157	W3_2v	time:2021-05-25 14:41:33.601837
+finish_swap_out	index:162	W3_1m	time:2021-05-25 14:41:33.604178
+finish_swap_out	index:163	W3_1v	time:2021-05-25 14:41:33.605269
+finish_swap_out	index:168	W2_2m	time:2021-05-25 14:41:33.607902
+finish_swap_out	index:169	W2_2v	time:2021-05-25 14:41:33.608105
+finish_swap_out	index:175	W2_1m	time:2021-05-25 14:41:33.613451
+finish_swap_out	index:176	W2_1v	time:2021-05-25 14:41:33.613694
+finish_swap_out	index:181	W1_2m	time:2021-05-25 14:41:33.618067
+finish_swap_out	index:182	W1_2v	time:2021-05-25 14:41:33.618300
+finish_swap_out	index:188	W1_1m	time:2021-05-25 14:41:33.624388
+finish_swap_out	index:189	W1_1v	time:2021-05-25 14:41:33.624557
+
+run:
+index:0	b8	time:2021-05-25 14:41:33.653262
+index:1	b8m	time:2021-05-25 14:41:33.653464
+index:2	b8v	time:2021-05-25 14:41:33.653569
+index:3	X	time:2021-05-25 14:41:33.654151
+index:4	W1_1	time:2021-05-25 14:41:33.658221
+index:5	Convolution2DForward	time:2021-05-25 14:41:33.658343
+swap_out	index:4	W1_1	time:2021-05-25 14:41:33.658970
+index:6	ActivationForward	time:2021-05-25 14:41:33.660432
+index:7	W1_2	time:2021-05-25 14:41:33.662786
+index:8	Convolution2DForward	time:2021-05-25 14:41:33.663360
+swap_out	index:3	X	time:2021-05-25 14:41:33.663901
+index:9	ActivationForward	time:2021-05-25 14:41:33.670314
+index:10	Pooling2DForward	time:2021-05-25 14:41:33.674974
+swap_out	index:5	Convolution2DForward	time:2021-05-25 14:41:33.675760
+index:11	W2_1	time:2021-05-25 14:41:33.676876
+index:12	Convolution2DForward	time:2021-05-25 14:41:33.711349
+index:13	ActivationForward	time:2021-05-25 14:41:33.715193
+index:14	W2_2	time:2021-05-25 14:41:33.716837
+index:15	Convolution2DForward	time:2021-05-25 14:41:33.717181
+index:16	ActivationForward	time:2021-05-25 14:41:33.723795
+index:17	Pooling2DForward	time:2021-05-25 14:41:33.725145
+swap_out	index:7	W1_2	time:2021-05-25 14:41:33.725657
+index:18	W3_1	time:2021-05-25 14:41:33.726231
+index:19	Convolution2DForward	time:2021-05-25 14:41:33.730377
+swap_out	index:6	ActivationForward	time:2021-05-25 14:41:33.731140
+index:20	ActivationForward	time:2021-05-25 14:41:33.736160
+index:21	W3_2	time:2021-05-25 14:41:33.762501
+index:22	Convolution2DForward	time:2021-05-25 14:41:33.773485
+index:23	ActivationForward	time:2021-05-25 14:41:33.781885
+index:24	W3_3	time:2021-05-25 14:41:33.782867
+index:25	Convolution2DForward	time:2021-05-25 14:41:33.784503
+swap_out	index:11	W2_1	time:2021-05-25 14:41:33.785056
+index:26	ActivationForward	time:2021-05-25 14:41:33.795364
+index:27	Pooling2DForward	time:2021-05-25 14:41:33.796464
+swap_out	index:8	Convolution2DForward	time:2021-05-25 14:41:33.797001
+index:28	W4_1	time:2021-05-25 14:41:33.797331
+index:29	Convolution2DForward	time:2021-05-25 14:41:33.833758
+index:30	ActivationForward	time:2021-05-25 14:41:33.839391
+index:31	W4_2	time:2021-05-25 14:41:33.840111
+index:32	Convolution2DForward	time:2021-05-25 14:41:33.845232
+swap_out	index:10	Pooling2DForward	time:2021-05-25 14:41:33.845733
+index:33	ActivationForward	time:2021-05-25 14:41:33.856138
+index:34	W4_3	time:2021-05-25 14:41:33.865358
+index:35	Convolution2DForward	time:2021-05-25 14:41:33.871898
+swap_out	index:9	ActivationForward	time:2021-05-25 14:41:33.872453
+index:36	ActivationForward	time:2021-05-25 14:41:33.880962
+index:37	Pooling2DForward	time:2021-05-25 14:41:33.906090
+index:38	W5_1	time:2021-05-25 14:41:33.907239
+index:39	Convolution2DForward	time:2021-05-25 14:41:33.920724
+swap_out	index:12	Convolution2DForward	time:2021-05-25 14:41:33.921423
+index:40	ActivationForward	time:2021-05-25 14:41:33.938302
+index:41	W5_2	time:2021-05-25 14:41:33.938755
+index:42	Convolution2DForward	time:2021-05-25 14:41:33.948131
+swap_out	index:14	W2_2	time:2021-05-25 14:41:33.948195
+index:43	ActivationForward	time:2021-05-25 14:41:33.950352
+index:44	W5_3	time:2021-05-25 14:41:33.951055
+index:45	Convolution2DForward	time:2021-05-25 14:41:33.955977
+swap_out	index:13	ActivationForward	time:2021-05-25 14:41:33.956058
+index:46	ActivationForward	time:2021-05-25 14:41:33.958188
+index:47	Pooling2DForward	time:2021-05-25 14:41:33.971183
+index:48	Flatten	time:2021-05-25 14:41:33.971335
+index:49	W6	time:2021-05-25 14:41:33.971411
+index:50	MatMul	time:2021-05-25 14:41:34.197259
+index:51	b6	time:2021-05-25 14:41:34.202763
+index:52	BroadcastTo	time:2021-05-25 14:41:34.203560
+index:53	+	time:2021-05-25 14:41:34.203639
+index:54	FullyActivationForward	time:2021-05-25 14:41:34.203692
+index:55	FullyDropoutForward	time:2021-05-25 14:41:34.203744
+index:56	W7	time:2021-05-25 14:41:34.209218
+index:57	MatMul	time:2021-05-25 14:41:34.246943
+index:58	b7	time:2021-05-25 14:41:34.247552
+index:59	BroadcastTo	time:2021-05-25 14:41:34.247674
+index:60	+	time:2021-05-25 14:41:34.247754
+index:61	FullyActivationForward	time:2021-05-25 14:41:34.247807
+index:62	FullyDropoutForward	time:2021-05-25 14:41:34.247863
+index:63	W8	time:2021-05-25 14:41:34.254101
+index:64	MatMul	time:2021-05-25 14:41:34.261534
+index:65	BroadcastTo	time:2021-05-25 14:41:34.261745
+index:66	+	time:2021-05-25 14:41:34.261800
+index:67	FullyBNForward	time:2021-05-25 14:41:34.261855
+index:68	FullyActivationForward	time:2021-05-25 14:41:34.261982
+index:69	y_	time:2021-05-25 14:41:34.262035
+index:70	CrossOp	time:2021-05-25 14:41:34.262527
+index:71	ReduceSumOp	time:2021-05-25 14:41:34.262594
+index:72	Oneslike	time:2021-05-25 14:41:34.262671
+index:73	BroadcastTo	time:2021-05-25 14:41:34.262720
+index:74	CrossBackwardOp	time:2021-05-25 14:41:34.262766
+index:75	FullyActivationBackward	time:2021-05-25 14:41:34.262824
+index:76	FullyBNBackward	time:2021-05-25 14:41:34.262881
+index:77	BroadcastToGradient	time:2021-05-25 14:41:34.263000
+index:78	AdamOp	time:2021-05-25 14:41:34.263075
+index:79	W8m	time:2021-05-25 14:41:34.263133
+index:80	W8v	time:2021-05-25 14:41:34.271098
+index:81	Zeroslike	time:2021-05-25 14:41:34.278953
+index:82	+	time:2021-05-25 14:41:34.279023
+index:83	MatMul	time:2021-05-25 14:41:34.279080
+index:84	b7m	time:2021-05-25 14:41:34.279700
+index:85	b7v	time:2021-05-25 14:41:34.279819
+index:86	MatMul	time:2021-05-25 14:41:34.279938
+index:87	AdamOp	time:2021-05-25 14:41:34.280117
+index:88	FullyDropoutBackward	time:2021-05-25 14:41:34.285568
+index:89	FullyActivationBackward	time:2021-05-25 14:41:34.285648
+index:90	BroadcastToGradient	time:2021-05-25 14:41:34.286133
+index:91	AdamOp	time:2021-05-25 14:41:34.286233
+index:92	W7m	time:2021-05-25 14:41:34.286294
+index:93	W7v	time:2021-05-25 14:41:34.323629
+index:94	Zeroslike	time:2021-05-25 14:41:34.360508
+index:95	+	time:2021-05-25 14:41:34.360604
+index:96	MatMul	time:2021-05-25 14:41:34.360660
+index:97	b6m	time:2021-05-25 14:41:34.361807
+index:98	b6v	time:2021-05-25 14:41:34.361950
+index:99	MatMul	time:2021-05-25 14:41:34.362042
+index:100	AdamOp	time:2021-05-25 14:41:34.362573
+index:101	FullyDropoutBackward	time:2021-05-25 14:41:34.385168
+index:102	FullyActivationBackward	time:2021-05-25 14:41:34.385229
+index:103	BroadcastToGradient	time:2021-05-25 14:41:34.385280
+index:104	AdamOp	time:2021-05-25 14:41:34.385368
+index:105	W6m	time:2021-05-25 14:41:34.385433
+index:106	W6v	time:2021-05-25 14:41:34.605069
+index:107	Zeroslike	time:2021-05-25 14:41:34.825626
+index:108	+	time:2021-05-25 14:41:34.825764
+index:109	MatMul	time:2021-05-25 14:41:34.825838
+index:110	W5_3m	time:2021-05-25 14:41:34.829506
+index:111	W5_3v	time:2021-05-25 14:41:34.834521
+index:112	MatMul	time:2021-05-25 14:41:34.839369
+index:113	AdamOp	time:2021-05-25 14:41:34.842099
+index:114	FlattenGradient	time:2021-05-25 14:41:34.979648
+index:115	Pooling2DBackward	time:2021-05-25 14:41:34.979718
+index:116	ActivationBackward	time:2021-05-25 14:41:34.979876
+index:117	Convolution2DBackward	time:2021-05-25 14:41:34.980477
+index:118	W5_2m	time:2021-05-25 14:41:34.984499
+index:119	W5_2v	time:2021-05-25 14:41:34.989436
+index:120	Convolution2DBackward	time:2021-05-25 14:41:34.994169
+index:121	AdamOp	time:2021-05-25 14:41:34.997432
+index:122	ActivationBackward	time:2021-05-25 14:41:35.000824
+index:123	Convolution2DBackward	time:2021-05-25 14:41:35.001384
+index:124	W5_1m	time:2021-05-25 14:41:35.005483
+index:125	W5_1v	time:2021-05-25 14:41:35.010365
+index:126	Convolution2DBackward	time:2021-05-25 14:41:35.015268
+index:127	AdamOp	time:2021-05-25 14:41:35.019679
+index:128	ActivationBackward	time:2021-05-25 14:41:35.023070
+index:129	Convolution2DBackward	time:2021-05-25 14:41:35.023717
+index:130	W4_3m	time:2021-05-25 14:41:35.027842
+index:131	W4_3v	time:2021-05-25 14:41:35.032718
+index:132	Convolution2DBackward	time:2021-05-25 14:41:35.037647
+index:133	AdamOp	time:2021-05-25 14:41:35.040841
+index:134	Pooling2DBackward	time:2021-05-25 14:41:35.044230
+index:135	ActivationBackward	time:2021-05-25 14:41:35.044969
+index:136	Convolution2DBackward	time:2021-05-25 14:41:35.045821
+index:137	W4_2m	time:2021-05-25 14:41:35.057613
+index:138	W4_2v	time:2021-05-25 14:41:35.064616
+index:139	Convolution2DBackward	time:2021-05-25 14:41:35.069633
+index:140	AdamOp	time:2021-05-25 14:41:35.078036
+index:141	ActivationBackward	time:2021-05-25 14:41:35.081481
+index:142	Convolution2DBackward	time:2021-05-25 14:41:35.082350
+index:143	W4_1m	time:2021-05-25 14:41:35.093986
+index:144	W4_1v	time:2021-05-25 14:41:35.096884
+index:145	Convolution2DBackward	time:2021-05-25 14:41:35.099637
+index:146	AdamOp	time:2021-05-25 14:41:35.107649
+index:147	ActivationBackward	time:2021-05-25 14:41:35.111392
+index:148	Convolution2DBackward	time:2021-05-25 14:41:35.112328
+index:149	W3_3m	time:2021-05-25 14:41:35.119046
+index:150	W3_3v	time:2021-05-25 14:41:35.120744
+index:151	Convolution2DBackward	time:2021-05-25 14:41:35.123002
+index:152	AdamOp	time:2021-05-25 14:41:35.127066
+index:153	Pooling2DBackward	time:2021-05-25 14:41:35.129058
+index:154	ActivationBackward	time:2021-05-25 14:41:35.130378
+index:155	Convolution2DBackward	time:2021-05-25 14:41:35.131435
+index:156	W3_2m	time:2021-05-25 14:41:35.143208
+index:157	W3_2v	time:2021-05-25 14:41:35.144795
+index:158	Convolution2DBackward	time:2021-05-25 14:41:35.146337
+finish_swap_out	index:4	W1_1	time:2021-05-25 14:41:35.146851
+finish_swap_out	index:3	X	time:2021-05-25 14:41:35.146867
+finish_swap_out	index:5	Convolution2DForward	time:2021-05-25 14:41:35.146876
+finish_swap_out	index:7	W1_2	time:2021-05-25 14:41:35.146904
+finish_swap_out	index:6	ActivationForward	time:2021-05-25 14:41:35.146914
+finish_swap_out	index:11	W2_1	time:2021-05-25 14:41:35.146927
+finish_swap_out	index:8	Convolution2DForward	time:2021-05-25 14:41:35.146937
+finish_swap_out	index:10	Pooling2DForward	time:2021-05-25 14:41:35.146945
+finish_swap_out	index:9	ActivationForward	time:2021-05-25 14:41:35.146954
+finish_swap_out	index:12	Convolution2DForward	time:2021-05-25 14:41:35.146962
+finish_swap_out	index:14	W2_2	time:2021-05-25 14:41:35.146971
+finish_swap_out	index:13	ActivationForward	time:2021-05-25 14:41:35.146979
+swap_in	index:13	ActivationForward	time:2021-05-25 14:41:35.147008
+index:159	AdamOp	time:2021-05-25 14:41:35.154653
+index:160	ActivationBackward	time:2021-05-25 14:41:35.156317
+index:161	Convolution2DBackward	time:2021-05-25 14:41:35.159262
+swap_in	index:14	W2_2	time:2021-05-25 14:41:35.160517
+index:162	W3_1m	time:2021-05-25 14:41:35.171888
+index:163	W3_1v	time:2021-05-25 14:41:35.172358
+index:164	Convolution2DBackward	time:2021-05-25 14:41:35.172765
+swap_in	index:12	Convolution2DForward	time:2021-05-25 14:41:35.173368
+index:165	AdamOp	time:2021-05-25 14:41:35.181361
+index:166	ActivationBackward	time:2021-05-25 14:41:35.182382
+index:167	Convolution2DBackward	time:2021-05-25 14:41:35.187573
+swap_in	index:9	ActivationForward	time:2021-05-25 14:41:35.187657
+index:168	W2_2m	time:2021-05-25 14:41:35.193464
+index:169	W2_2v	time:2021-05-25 14:41:35.204625
+index:170	Convolution2DBackward	time:2021-05-25 14:41:35.204876
+index:171	AdamOp	time:2021-05-25 14:41:35.209571
+index:172	Pooling2DBackward	time:2021-05-25 14:41:35.210102
+swap_in	index:10	Pooling2DForward	time:2021-05-25 14:41:35.210596
+index:173	ActivationBackward	time:2021-05-25 14:41:35.212325
+index:174	Convolution2DBackward	time:2021-05-25 14:41:35.215218
+swap_in	index:8	Convolution2DForward	time:2021-05-25 14:41:35.215261
+finish_swap_in	index:13	ActivationForward	time:2021-05-25 14:41:35.221239
+finish_swap_in	index:14	W2_2	time:2021-05-25 14:41:35.222046
+index:175	W2_1m	time:2021-05-25 14:41:35.233115
+index:176	W2_1v	time:2021-05-25 14:41:35.233788
+index:177	Convolution2DBackward	time:2021-05-25 14:41:35.234355
+index:178	AdamOp	time:2021-05-25 14:41:35.241540
+index:179	ActivationBackward	time:2021-05-25 14:41:35.241858
+swap_in	index:11	W2_1	time:2021-05-25 14:41:35.242444
+finish_swap_in	index:12	Convolution2DForward	time:2021-05-25 14:41:35.248806
+index:180	Convolution2DBackward	time:2021-05-25 14:41:35.250144
+swap_in	index:6	ActivationForward	time:2021-05-25 14:41:35.250203
+finish_swap_in	index:9	ActivationForward	time:2021-05-25 14:41:35.262340
+finish_swap_in	index:10	Pooling2DForward	time:2021-05-25 14:41:35.266917
+finish_swap_in	index:8	Convolution2DForward	time:2021-05-25 14:41:35.289107
+finish_swap_in	index:11	W2_1	time:2021-05-25 14:41:35.289846
+index:181	W1_2m	time:2021-05-25 14:41:35.296023
+index:182	W1_2v	time:2021-05-25 14:41:35.296209
+index:183	Convolution2DBackward	time:2021-05-25 14:41:35.296403
+index:184	AdamOp	time:2021-05-25 14:41:35.301061
+index:185	Pooling2DBackward	time:2021-05-25 14:41:35.301240
+index:186	ActivationBackward	time:2021-05-25 14:41:35.305475
+swap_in	index:7	W1_2	time:2021-05-25 14:41:35.306144
+index:187	Convolution2DBackward	time:2021-05-25 14:41:35.308669
+swap_in	index:5	Convolution2DForward	time:2021-05-25 14:41:35.308722
+finish_swap_in	index:6	ActivationForward	time:2021-05-25 14:41:35.320937
+finish_swap_in	index:7	W1_2	time:2021-05-25 14:41:35.321545
+index:188	W1_1m	time:2021-05-25 14:41:35.338978
+index:189	W1_1v	time:2021-05-25 14:41:35.339113
+index:190	Convolution2DBackward	time:2021-05-25 14:41:35.339226
+index:191	AdamOp	time:2021-05-25 14:41:35.347354
+swap_in	index:3	X	time:2021-05-25 14:41:35.347378
+index:192	ActivationBackward	time:2021-05-25 14:41:35.347626
+swap_in	index:4	W1_1	time:2021-05-25 14:41:35.348692
+finish_swap_in	index:5	Convolution2DForward	time:2021-05-25 14:41:35.361247
+index:193	Convolution2DBackward	time:2021-05-25 14:41:35.363757
+finish_swap_in	index:3	X	time:2021-05-25 14:41:35.364631
+finish_swap_in	index:4	W1_1	time:2021-05-25 14:41:35.364648
+index:194	AdamOp	time:2021-05-25 14:41:35.368320
+finish_swap_out	index:0	b8	time:2021-05-25 14:41:35.371993
+finish_swap_out	index:1	b8m	time:2021-05-25 14:41:35.372254
+finish_swap_out	index:2	b8v	time:2021-05-25 14:41:35.372387
+finish_swap_out	index:3	X	time:2021-05-25 14:41:35.374726
+finish_swap_out	index:4	W1_1	time:2021-05-25 14:41:35.376022
+finish_swap_out	index:7	W1_2	time:2021-05-25 14:41:35.383101
+finish_swap_out	index:11	W2_1	time:2021-05-25 14:41:35.384684
+finish_swap_out	index:14	W2_2	time:2021-05-25 14:41:35.387283
+finish_swap_out	index:18	W3_1	time:2021-05-25 14:41:35.393236
+finish_swap_out	index:21	W3_2	time:2021-05-25 14:41:35.396289
+finish_swap_out	index:24	W3_3	time:2021-05-25 14:41:35.400371
+finish_swap_out	index:28	W4_1	time:2021-05-25 14:41:35.405162
+finish_swap_out	index:31	W4_2	time:2021-05-25 14:41:35.409540
+finish_swap_out	index:34	W4_3	time:2021-05-25 14:41:35.413793
+finish_swap_out	index:38	W5_1	time:2021-05-25 14:41:35.419273
+finish_swap_out	index:41	W5_2	time:2021-05-25 14:41:35.422978
+finish_swap_out	index:44	W5_3	time:2021-05-25 14:41:35.426348
+finish_swap_out	index:49	W6	time:2021-05-25 14:41:35.531034
+finish_swap_out	index:51	b6	time:2021-05-25 14:41:35.531249
+finish_swap_out	index:56	W7	time:2021-05-25 14:41:35.548941
+finish_swap_out	index:58	b7	time:2021-05-25 14:41:35.549224
+finish_swap_out	index:63	W8	time:2021-05-25 14:41:35.554564
+finish_swap_out	index:69	y_	time:2021-05-25 14:41:35.555669
+finish_swap_out	index:79	W8m	time:2021-05-25 14:41:35.560651
+finish_swap_out	index:80	W8v	time:2021-05-25 14:41:35.565721
+finish_swap_out	index:84	b7m	time:2021-05-25 14:41:35.566794
+finish_swap_out	index:85	b7v	time:2021-05-25 14:41:35.566959
+finish_swap_out	index:92	W7m	time:2021-05-25 14:41:35.584969
+finish_swap_out	index:93	W7v	time:2021-05-25 14:41:35.602744
+finish_swap_out	index:97	b6m	time:2021-05-25 14:41:35.605457
+finish_swap_out	index:98	b6v	time:2021-05-25 14:41:35.605656
+finish_swap_out	index:105	W6m	time:2021-05-25 14:41:35.708356
+finish_swap_out	index:106	W6v	time:2021-05-25 14:41:35.813613
+finish_swap_out	index:110	W5_3m	time:2021-05-25 14:41:35.825102
+finish_swap_out	index:111	W5_3v	time:2021-05-25 14:41:35.832258
+finish_swap_out	index:118	W5_2m	time:2021-05-25 14:41:35.840159
+finish_swap_out	index:119	W5_2v	time:2021-05-25 14:41:35.843505
+finish_swap_out	index:124	W5_1m	time:2021-05-25 14:41:35.848419
+finish_swap_out	index:125	W5_1v	time:2021-05-25 14:41:35.851745
+finish_swap_out	index:130	W4_3m	time:2021-05-25 14:41:35.856872
+finish_swap_out	index:131	W4_3v	time:2021-05-25 14:41:35.860366
+finish_swap_out	index:137	W4_2m	time:2021-05-25 14:41:35.865670
+finish_swap_out	index:138	W4_2v	time:2021-05-25 14:41:35.868872
+finish_swap_out	index:143	W4_1m	time:2021-05-25 14:41:35.872975
+finish_swap_out	index:144	W4_1v	time:2021-05-25 14:41:35.875181
+finish_swap_out	index:149	W3_3m	time:2021-05-25 14:41:35.878863
+finish_swap_out	index:150	W3_3v	time:2021-05-25 14:41:35.880373
+finish_swap_out	index:156	W3_2m	time:2021-05-25 14:41:35.884582
+finish_swap_out	index:157	W3_2v	time:2021-05-25 14:41:35.885979
+finish_swap_out	index:162	W3_1m	time:2021-05-25 14:41:35.888378
+finish_swap_out	index:163	W3_1v	time:2021-05-25 14:41:35.889556
+finish_swap_out	index:168	W2_2m	time:2021-05-25 14:41:35.892202
+finish_swap_out	index:169	W2_2v	time:2021-05-25 14:41:35.892472
+finish_swap_out	index:175	W2_1m	time:2021-05-25 14:41:35.897884
+finish_swap_out	index:176	W2_1v	time:2021-05-25 14:41:35.898064
+finish_swap_out	index:181	W1_2m	time:2021-05-25 14:41:35.902378
+finish_swap_out	index:182	W1_2v	time:2021-05-25 14:41:35.902609
+finish_swap_out	index:188	W1_1m	time:2021-05-25 14:41:35.908751
+finish_swap_out	index:189	W1_1v	time:2021-05-25 14:41:35.908918

@@ -74,7 +74,7 @@ inline size_t GetDataSize(DLArray *arr) {
   for (index_t i = 0; i < arr->ndim; ++i) {
     size *= arr->shape[i];
   }
-  // assume 32-bit float
+  // todo 32位 assume 32-bit float
   size *= 4;
   return size;
 }
@@ -89,8 +89,9 @@ inline size_t GetDataAlignment(DLArray *arr) {
 
 using namespace tinyflow::runtime;
 
+
 int DLArrayAlloc(const index_t *shape, index_t ndim, DLContext ctx,
-                 DLArrayHandle *out) {
+                 DLArrayHandle *out,int *memorytoSaving) {
   DLArray *arr = nullptr;
   API_BEGIN();
   // shape
@@ -105,8 +106,15 @@ int DLArrayAlloc(const index_t *shape, index_t ndim, DLContext ctx,
   size_t size = GetDataSize(arr);
   size_t alignment = GetDataAlignment(arr);
   arr->data = DeviceAPIManager::Get(ctx)->AllocDataSpace(ctx, size, alignment);
+  if(arr->data == nullptr){
+      *memorytoSaving = (int) size;
+      return 0;
+
+  }
   *out = arr;
   API_END_HANDLE_ERROR(DLArrayFree_(arr));
+
+
 }
 
 int DLArrayFree(DLArrayHandle handle) {
@@ -118,12 +126,15 @@ int DLArrayFree(DLArrayHandle handle) {
 
 int DLArrayCopyFromTo(DLArrayHandle from, DLArrayHandle to,
                       DLStreamHandle stream) {
+  // todo 在此处手动选择stream，不使用上层传入值
   API_BEGIN();
   size_t from_size = GetDataSize(from);
   size_t to_size = GetDataSize(to);
   // The size must exactly match
   assert(from_size == to_size);
   DLContext ctx = from->ctx;
+
+
 
   if (ctx.device_type == kCPU) {
     ctx = to->ctx;
@@ -133,7 +144,20 @@ int DLArrayCopyFromTo(DLArrayHandle from, DLArrayHandle to,
            (to->ctx.device_type == from->ctx.device_type));
   }
 
-  DeviceAPIManager::Get(ctx)->CopyDataFromTo(from->data, to->data, from_size,
+  if (stream == NULL) {
+    DeviceAPIManager::Get(ctx)->CopyDataFromTo(from->data, to->data, from_size,
                                              from->ctx, to->ctx, stream);
+  } else {
+        DeviceAPIManager::Get(ctx)->CopyDataFromTo(from->data, to->data, from_size,
+                                                     from->ctx, to->ctx, *(cudaStream_t*)stream);
+        if (from->ctx.device_type == kGPU) {
+            DeviceAPIManager::Get(ctx)->StreamSync(from->ctx, *(cudaStream_t*)stream);
+        } else {
+            DeviceAPIManager::Get(ctx)->StreamSync(to->ctx, *(cudaStream_t*)stream);
+        }
+  }
+
+
+
   API_END();
 }

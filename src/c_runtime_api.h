@@ -51,7 +51,7 @@ TINYFLOW_EXTERN_C {
    * \return 0 when success, -1 when failure happens
    */
   int DLArrayAlloc(const index_t *shape, index_t ndim, DLContext ctx,
-                   DLArrayHandle *out);
+                   DLArrayHandle *out, int *memorytoSaving);
 
   /*!
    * \brief Free the DL Array.
@@ -76,7 +76,7 @@ TINYFLOW_EXTERN_C {
    * \param value The target value.
    * \return 0 when success, -1 when failure happens
    */
-  int DLGpuArraySet(DLArrayHandle arr, float value);
+  int DLGpuArraySet(DLArrayHandle arr, float value, void **cudaStream);
 
   /*!
    * \brief Broadcast input array to output array.
@@ -84,11 +84,11 @@ TINYFLOW_EXTERN_C {
    * \param output The output array.
    * \return 0 when success, -1 when failure happens
    */
-  int DLGpuBroadcastTo0(const DLArrayHandle input, DLArrayHandle output);
+  int DLGpuBroadcastTo0(const DLArrayHandle input, DLArrayHandle output, void **cudaStream);
 
   int DLGpuBroadcastToBackward0(const DLArrayHandle input, DLArrayHandle output);
 
-  int DLGpuBroadcastTo1(const DLArrayHandle input, DLArrayHandle output);
+  int DLGpuBroadcastTo1(const DLArrayHandle input, DLArrayHandle output, void **cudaStream);
 
   int DLGpuBroadcastToBackward1(const DLArrayHandle input, DLArrayHandle output);
 
@@ -108,7 +108,7 @@ TINYFLOW_EXTERN_C {
    * \return 0 when success, -1 when failure happens
    */
   int DLGpuMatrixElementwiseAdd(const DLArrayHandle matA,
-                                const DLArrayHandle matB, DLArrayHandle output);
+                                const DLArrayHandle matB, DLArrayHandle output, void **cudaStream);
 
   /*!
    * \brief Add matrix by const and store to output.
@@ -118,7 +118,7 @@ TINYFLOW_EXTERN_C {
    * \return 0 when success, -1 when failure happens
    */
   int DLGpuMatrixElementwiseAddByConst(const DLArrayHandle input, float val,
-                                       DLArrayHandle output);
+                                       DLArrayHandle output, void **cudaStream);
 
   /*!
    * \brief Elementwise multiply two matrices and store to output.
@@ -128,7 +128,7 @@ TINYFLOW_EXTERN_C {
    * \return 0 when success, -1 when failure happens
    */
   int DLGpuMatrixElementwiseMultiply(
-      const DLArrayHandle matA, const DLArrayHandle matB, DLArrayHandle output);
+      const DLArrayHandle matA, const DLArrayHandle matB, DLArrayHandle output, void **cudaStream);
 
   /*!
    * \brief Multiply matrix by const and store to output.
@@ -138,7 +138,7 @@ TINYFLOW_EXTERN_C {
    * \return 0 when success, -1 when failure happens
    */
   int DLGpuMatrixMultiplyByConst(const DLArrayHandle input, float val,
-                                 DLArrayHandle output);
+                                 DLArrayHandle output, void **cudaStream);
 
   /*!
    * \brief Matrix multiply two matrices and store to output.
@@ -151,7 +151,7 @@ TINYFLOW_EXTERN_C {
    */
   int DLGpuMatrixMultiply(const DLArrayHandle matA, bool transposeA,
                           const DLArrayHandle matB, bool transposeB,
-                          DLArrayHandle matC);
+                          DLArrayHandle matC, void **cublasHandle, void **cudaStream);
 
   /*!
    * \brief Compute relu on all array elements, and store to output.
@@ -177,7 +177,7 @@ TINYFLOW_EXTERN_C {
    * \param output The output value.
    * \return 0 when success, -1 when failure happens
    */
-  int DLGpuSoftmax(const DLArrayHandle input, DLArrayHandle output);
+  int DLGpuSoftmax(const DLArrayHandle input, DLArrayHandle output, void **cudaStream);
 
   /*!
    * \brief Compute softmax_cross_entropy.
@@ -189,7 +189,7 @@ TINYFLOW_EXTERN_C {
    */
   int DLGpuSoftmaxCrossEntropy(const DLArrayHandle input_a,
                                const DLArrayHandle input_b,
-                               DLArrayHandle output);
+                               DLArrayHandle output, void **cudaStream);
 
 
 
@@ -197,7 +197,7 @@ TINYFLOW_EXTERN_C {
   int DLGpuMatrixExp(const DLArrayHandle input, DLArrayHandle output);
 
 
-  int DLGpuMatrixLog(const DLArrayHandle input, DLArrayHandle output);
+  int DLGpuMatrixLog(const DLArrayHandle input, DLArrayHandle output, void **cudaStream);
 
 
   int DLGpuMatrixReverse(const DLArrayHandle input, DLArrayHandle output);
@@ -219,40 +219,64 @@ TINYFLOW_EXTERN_C {
       const int *output_shapes,
       const int sizeofshape,
       cudnnTensorFormat_t dataformat,
-      void *** cudnnlist);
-  int DLGpuReduceSum(const DLArrayHandle input, DLArrayHandle output, void ***cudnnlist);
+      void *** cudnnlist,
+      void **cudnnHandle);
+  int DLGpuReduceSum(const DLArrayHandle input, DLArrayHandle output, void ***cudnnlist, void **cudnnHandle, int *memorytoSaving, void **cudaStream);
 
-  int DLGpuConcatForward(const DLArrayHandle input1,const DLArrayHandle input2,  DLArrayHandle output);
-  int DLGpuConcatBackward(const DLArrayHandle input1,const DLArrayHandle input2,const DLArrayHandle doutput,DLArrayHandle dinput1,DLArrayHandle dinput2);
+  int DLGpuConcatForward(const DLArrayHandle input1,const DLArrayHandle input2,  DLArrayHandle output, void **cudaStream);
+  int DLGpuConcataBackward(const DLArrayHandle input1,const DLArrayHandle input2,const DLArrayHandle doutput,DLArrayHandle dinput1, void **cudaStream);
+  int DLGpuConcatbBackward(const DLArrayHandle input1,const DLArrayHandle input2,const DLArrayHandle doutput,DLArrayHandle dinput2, void **cudaStream);
 
+  int DLGpuCreatecudaStream(void **cudaStream);
+  int DLGpuDestroycudaStream(void **cudaStream);
+  int DLGpuCreatecudnnHandle(void **cudnnHandle, void **cudaStream);
+  int DLGpuDestroycudnnHandle(void **cudnnHandle);
+  int DLGpuCreatecublasHandle(void **cublasHandle, void **cudaStream);
+  int DLGpuDestroycublasHandle(void **cublasHandle);
 //juanji
   int DLGpuConvolution1DForward(const DLArrayHandle input,
       const DLArrayHandle filter,
       DLArrayHandle output,
-      void ***cudnnlist);
+      void ***cudnnlist,
+      void **cudnnHandle, int *memorytoSaving);
 
 
+  int DLGpuConvolutionBackwardFilter(const DLArrayHandle input,
+      const DLArrayHandle doutput,
+      const DLArrayHandle filter,
+      DLArrayHandle dfilter,
+      void*** cudnnlist,
+    void **cudnnHandle, int *memorytoSaving, void **cudaStream);
 
+  int DLGpuConvolutionBackwardData(const DLArrayHandle input,
+      const DLArrayHandle doutput,
+      const DLArrayHandle filter,
+      DLArrayHandle dinput,
+      void*** cudnnlist,
+      void **cudnnHandle, int *memorytoSaving, void **cudaStream);
 
 
 
   int DLGpuConvolution2DForward(const DLArrayHandle input,
       const DLArrayHandle filter,
       DLArrayHandle output,
-      void ***cudnnlist/* horizontal filter stride */);
+      void ***cudnnlist,/* horizontal filter stride */
+      void **cudnnHandle, int *memorytoSaving, void **cudaStream);
 
 
   int DLGpuConvolution3DForward(const DLArrayHandle input,
       const DLArrayHandle filter,
       DLArrayHandle output,
-      void ***cudnnlist);
+      void ***cudnnlist,
+    void **cudnnHandle, int *memorytoSaving);
 
    int DLGpuConvolution1DBackward(const DLArrayHandle input,
       const DLArrayHandle doutput,
       const DLArrayHandle filter,
       DLArrayHandle dfilter,
       DLArrayHandle dinput,
-      void ***cudnnlist);
+      void ***cudnnlist,
+      void **cudnnHandle);
 
 
 
@@ -261,7 +285,8 @@ TINYFLOW_EXTERN_C {
       const DLArrayHandle filter,
       DLArrayHandle dfilter,
       DLArrayHandle dinput,
-      void ***cudnnlist/* horizontal filter stride */);
+      void ***cudnnlist,/* horizontal filter stride */
+      void **cudnnHandle);
 
 
   int DLGpuConvolution3DBackward(const DLArrayHandle input,
@@ -269,21 +294,25 @@ TINYFLOW_EXTERN_C {
       const DLArrayHandle filter,
       DLArrayHandle dfilter,
       DLArrayHandle dinput,
-      void ***cudnnlist);
+      void ***cudnnlist,
+      void **cudnnHandle);
 
 
   int DLGpuPooling1DForward(const DLArrayHandle input,
       DLArrayHandle output,
-      void ***cudnnlist);
+      void ***cudnnlist,
+      void **cudnnHandle);
 
   int DLGpuPooling2DForward(const DLArrayHandle input,
       DLArrayHandle output,
-      void ***cudnnlist);
+      void ***cudnnlist,
+      void **cudnnHandle, void **cudaStream);
 
 
   int DLGpuPooling3DForward(const DLArrayHandle input,
       DLArrayHandle output,
-      void ***cudnnlist);
+      void ***cudnnlist,
+      void **cudnnHandle);
 
 
 
@@ -291,20 +320,23 @@ TINYFLOW_EXTERN_C {
     const DLArrayHandle output,
     const DLArrayHandle doutput,
     DLArrayHandle dinput,
-     void ***cudnnlist);
+     void ***cudnnlist,
+     void **cudnnHandle);
 
   int DLGpuPooling2DBackward(const DLArrayHandle input,
     const DLArrayHandle output,
     const DLArrayHandle doutput,
     DLArrayHandle dinput,
-    void ***cudnnlist);
+    void ***cudnnlist,
+    void **cudnnHandle, void **cudaStream);
 
 
   int DLGpuPooling3DBackward(const DLArrayHandle input,
     const DLArrayHandle output,
     const DLArrayHandle doutput,
     DLArrayHandle dinput,
-    void ***cudnnlist);
+    void ***cudnnlist,
+    void **cudnnHandle);
 
 
   int DLGpuConvolution1DForwardGetOutShape(const int* input_shapes,
@@ -318,14 +350,16 @@ TINYFLOW_EXTERN_C {
   int DLGpuActivationForward(const DLArrayHandle input,
     DLArrayHandle output,
     cudnnActivationMode_t activationMode,
-    void ***cudnnlist);
+    void ***cudnnlist,
+    void **cudnnHandle, void **cudaStream);
 
   int DLGpuActivationBackward(const DLArrayHandle input,
     DLArrayHandle dinput,
     const DLArrayHandle output,
     const DLArrayHandle doutput,
     cudnnActivationMode_t activationMode,
-    void ***cudnnlist);
+    void ***cudnnlist,
+    void **cudnnHandle, void **cudaStream);
 
 
   int DLGpuGetInputDescriptor(const int *input_shapes,
@@ -405,12 +439,14 @@ TINYFLOW_EXTERN_C {
     const int seed,
     void **reserveSpace_p,
     void ***inputd,
-    void ***cudnnlist);
+    void ***cudnnlist,
+    void **cudnnHandle, int *memorytoSaving, void **cudaStream);
 
   int DLGpuDropoutBackward(const DLArrayHandle doutput,
     DLArrayHandle dinput,
     void **reserveSpace_p,
-    void ***cudnnlist);
+    void ***cudnnlist,
+    void **cudnnHandle, void **cudaStream);
 
 
   int DLGpuCrossEntropy(const DLArrayHandle input_a,
@@ -460,7 +496,8 @@ TINYFLOW_EXTERN_C {
     int n,//第n+1次使用
     void **mean_p,
     void **Variance_p,
-    void ***cudnnlist);
+    void ***cudnnlist,
+    void **cudnnHandle, int *memorytoSaving, void **cudaStream);
 
 
   int DLGpuBatchNormalizationBackward(const DLArrayHandle input,
@@ -469,11 +506,12 @@ TINYFLOW_EXTERN_C {
     cudnnBatchNormMode_t batchNormMode,
     void **mean_p,
     void **Variance_p,
-    void ***cudnnlist);
+    void ***cudnnlist,
+    void **cudnnHandle, int *memorytoSaving, void **cudaStream);
   
   int DLGpuAdam(DLArrayHandle output,
                 const DLArrayHandle m, const DLArrayHandle v,
-                float b1t,float b2t,float e,float learning_rate);
+                float b1t,float b2t,float e,float learning_rate, void **cudaStream);
   
 
 
@@ -481,7 +519,7 @@ TINYFLOW_EXTERN_C {
                 DLArrayHandle v,
                 const DLArrayHandle g,
                 float b1,
-                float b2);
+                float b2, void **cudaStream);
 
   int DLGpuAdam_o(void **** n4list,
                 const void ***indexlist,
@@ -502,7 +540,16 @@ TINYFLOW_EXTERN_C {
                     const DLArrayHandle m,
                    // const int* shape_prefix,
                     //const int number,
-                    float b);
+                    float b, void **cudaStream);
+  int DLGpuCross(const DLArrayHandle x,
+                    const DLArrayHandle y,
+                    DLArrayHandle output,
+                    float b, void **cudaStream);
+  int DLGpuCrossBackward(const DLArrayHandle x,
+                    const DLArrayHandle y,
+                    const DLArrayHandle doutput,
+                    DLArrayHandle output,
+                    float b, void **cudaStream);
 
 
   int DLGpuGetIndextoVaribaleNumberCudaPointer(int *index_to_number,
@@ -513,6 +560,9 @@ TINYFLOW_EXTERN_C {
   int DLGpuGetN4CudaPointer(void** output, void** m, void** v, void** g, int number,void **** result);
 
   int DLGpuGetN2CudaPointer(void** output, void** g, int number,void **** result);
+
+  int getInt(int *intp);
+  int testPcie(int *in,int *out);
 
 //  int DLGpuSgdUpdate(DLArrayHandle* output,
 //                    const DLArrayHandle* m,
