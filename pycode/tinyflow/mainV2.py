@@ -674,13 +674,11 @@ def generate_scheduling_plan(logged_times, gpu: int):
     recomputations = []
     recomputation_tensor = set()
     # key：tensor，value：[所有释放这个张量的重计算对应的在recomputations中的index]
-    released_by_recomputation_op = defaultdict(list)
     # 上一轮没有成功的swap_out时为False
     swapped_flag = True
     recomputation_flag = True
     iter = 0
     original_memory_used = 0
-    original_memory_footprint = None
     last_memory_used = 0
     max_memory = 0
     job_id_ordered_by_weights = list(map(lambda x: x[0], sorted([(job_id, weights) for job_id, weights in enumerate(jobs_weights)], key=lambda x: x[1], reverse=True)))
@@ -824,13 +822,11 @@ def generate_scheduling_plan(logged_times, gpu: int):
             recomputation_flag = False
             # 需要重计算
             if max_memory >= total_memory:
-                succeed = False
                 for job_id in job_id_ordered_by_weights:
                     max_tensors_filtered = []
                     for tensor in max_tensors:
-                        # 张量不是参数，没被逐出过，且他的所有源张量从未被swap或recomputation
-                        if not tensor.is_parameter and tensor not in swapped_out_tensor and tensor.source_tensors is not None and len(tensor.source_tensors) > 0 and \
-                                False not in [t not in swapped_out_tensor for t in tensor.source_tensors] and False not in [t not in recomputations for t in tensor.source_tensors]:
+                        # 张量不是参数，没被逐出过
+                        if not tensor.is_parameter and tensor not in swapped_out_tensor:
                             max_tensors_filtered.append(tensor)
                     if len(max_tensors_filtered) == 0:
                         continue
@@ -857,15 +853,15 @@ def generate_scheduling_plan(logged_times, gpu: int):
                                     break
                             break
         iter += 1
-    fig = go.Figure(data=[go.Scatter(x=list(original_memory_footprint[0].keys()), y=list(original_memory_footprint[0].values())), go.Scatter(x=list(foot_prints[0].keys()), y=list(foot_prints[0].values()))])
-    plotly.offline.plot(fig, filename='../../pic/footprint.html')
     if not debug_mod:
         total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
     else:
         total_memory = 6000
+    # fig = go.Figure(data=[go.Scatter(x=list(original_memory_footprint[0].keys()), y=list(original_memory_footprint[0].values())), go.Scatter(x=list(foot_prints[0].keys()), y=list(foot_prints[0].values()))])
+    # plotly.offline.plot(fig, filename='../../pic/footprint.html')
+    # draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
     stats = 'succeed' if max_memory < total_memory else ' failure'
     print(f'scheduling {stats}')
-    draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
     memory_saved_ratio = format((1 - last_memory_used / original_memory_used) * 100, '.2f')
     print(f'memory_saved_ratio:{memory_saved_ratio}%')
     print(f'swap ratio:{len(swap_scheduler[0]) / len(global_tensors)}')
