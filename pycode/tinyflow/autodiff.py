@@ -2564,7 +2564,7 @@ class Executor(object):
                 recompute_inputs = []
 
                 for n in recompute_node.inputs:
-                    assert index_to_gpu_map[n.index] is not None
+                    # assert index_to_gpu_map[n.index] is not None
                     if index_to_gpu_map[n.index] is None:
 
                         global swaping_index
