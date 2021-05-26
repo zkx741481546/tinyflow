@@ -2286,8 +2286,9 @@ class Executor(object):
         self.ctx_cpu = ndarray.cpu(0)
         self.ctx_gpu = ndarray.gpu(0)
         self.total_node = len(self.topo_order)
-
-        self.f = open("./log/hit_rate.txt", 'w')
+        with open('./log_path.txt', 'r') as f:
+            path = f.readlines()[0]
+        self.f = open(f"{path}/hit_rate.txt", 'w')
 
     def infer_shape(self, feed_shapes):
         """Given shapes of feed_dict nodes, infer shape for all nodes in graph.

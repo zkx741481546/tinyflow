@@ -6,6 +6,8 @@ from pycode.tinyflow import ndarray
 import threading, pynvml, multiprocessing, os, datetime, time
 from multiprocessing import Process
 
+with open('./log_path.txt', 'r') as f:
+    log_path = f.readlines()[0]
 GPU = load_gpu()
 os.environ['CUDA_VISIBLE_DEVICES'] = f'{GPU}'
 class VGG16():
@@ -157,7 +159,7 @@ class VGG16():
             feed_dict_mv.update({m_key: m_val, v_key: v_val})
 
         feed_dict.update(feed_dict_mv)
-        f1 = open("./log/gpu_time.txt", "w+")
+        f1 = open(f"{log_path}/gpu_time.txt", "w+")
         for i in range(self.num_step):
             print("step", i)
             if i==5:
@@ -184,7 +186,7 @@ class GPURecord(threading.Thread):
         threading.Thread.__init__(self)
         pynvml.nvmlInit()
         self.handle = pynvml.nvmlDeviceGetHandleByIndex(GPU)
-        self.f = open("./log/gpu_record.txt", "w+")
+        self.f = open(f"{log_path}/gpu_record.txt", "w+")
         # todo 临时用作释放的计数器
         self.times = 0
         self.max_gpu_memory = 0
@@ -242,25 +244,26 @@ if __name__ == '__main__':
     p1 = Process(target=vgg16.vgg16, args=(executor_ctx, top_control_queue, top_message_queue, 1000, X_val, y_val))
     p1.start()
 
-    top_control_queue2 = multiprocessing.Queue()
-    top_control_queue_list.append(top_control_queue2)
-    top_message_queue2 = multiprocessing.Queue()
-    top_message_queue_list.append(top_message_queue2)
-    job_number += 1
+    # top_control_queue2 = multiprocessing.Queue()
+    # top_control_queue_list.append(top_control_queue2)
+    # top_message_queue2 = multiprocessing.Queue()
+    # top_message_queue_list.append(top_message_queue2)
+    # job_number += 1
 
-    gpu_num = GPU
-    batch_size = 2
-    num_step = 20
-    vgg16 = VGG16(num_step=num_step, batch_size=batch_size, gpu_num=gpu_num)
-    X_val = np.random.normal(loc=0, scale=0.1,
-                             size=(batch_size, 3, 224, 224))  # number = batch_size  channel = 3  image_size = 224*224
-    y_val = np.random.randint(low=0, high=1, size=(batch_size, 1000))  # n_class = 1000
-
-    p2 = Process(target=vgg16.vgg16, args=(executor_ctx, top_control_queue2, top_message_queue2, 1000, X_val, y_val))
-    p2.start()
-
-    scheduler = Process(target=mp.multiprocess_init, args=(global_message_queue, global_control_queue))
-    scheduler.start()
+    # gpu_num = GPU
+    # batch_size = 2
+    # num_step = 20
+    # vgg16 = VGG16(num_step=num_step, batch_size=batch_size, gpu_num=gpu_num)
+    # X_val = np.random.normal(loc=0, scale=0.1,
+    #                          size=(batch_size, 3, 224, 224))  # number = batch_size  channel = 3  image_size = 224*224
+    # y_val = np.random.randint(low=0, high=1, size=(batch_size, 1000))  # n_class = 1000
+    #
+    # p2 = Process(target=vgg16.vgg16, args=(executor_ctx, top_control_queue2, top_message_queue2, 1000, X_val, y_val))
+    # p2.start()
+    #
+    if 'scheduled' in log_path:
+        scheduler = Process(target=mp.multiprocess_init, args=(global_message_queue, global_control_queue))
+        scheduler.start()
 
 
     while True:

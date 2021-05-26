@@ -1,0 +1,7 @@
+saved_ratio:0.25505156703714826
+extra_overhead:0.10018561524192426
+vanilla_max_memory_used:6241.875
+schedule_max_memory_used:4649.875
+vanilla_time_cost:8.086030960083008
+schedule_time_cost:8.986332178115845
+efficiency:2.545790295555503
