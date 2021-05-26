@@ -5,7 +5,8 @@ from tests.Experiment import record_GPU
 tinyflow_path = "../../pycode/tinyflow/"
 
 class Inceptionv4(threading.Thread):
-    def __init__(self, num_step, type, batch_size, gpu_num, file_name):
+    def __init__(self, num_step, type, batch_size, gpu_num, file_name, need_tosave=None):
+        self.need_tosave = need_tosave
         os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_num)
         self.gpu_num = gpu_num
 
@@ -335,8 +336,8 @@ class Inceptionv4(threading.Thread):
 
 
         aph = 0.001
-        if self.is_capu == True:
-            t = self.TrainExecute.TrainExecutor(loss, aph, self.gpu_num)
+        if self.is_capu == True and self.need_tosave != None:
+            t = self.TrainExecute.TrainExecutor(loss, aph, self.need_tosave)
         else:
             t = self.TrainExecute.TrainExecutor(loss, aph)
         t.init_Variable(feed_dict)
@@ -366,7 +367,6 @@ class Inceptionv4(threading.Thread):
          record = record_GPU.record("InceptionV4", self.type, self.gpu_num, self.file_name)
          record.start()
          print("InceptionV4" + " type" + str(self.type) + " start")
-         inception_v4 = Inceptionv4(self.num_step, self.type, self.batch_size, self.gpu_num, self.file_name)
-         inception_v4.inception_v4()
+         self.inception_v4()
          print("InceptionV4" + " type" + str(self.type) + " finish")
          record.stop()

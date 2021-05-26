@@ -5,10 +5,10 @@ from tests.Experiment import record_GPU
 tinyflow_path = "../../pycode/tinyflow/"
 
 class VGG16(threading.Thread):
-    def __init__(self, num_step, type, batch_size, gpu_num, file_name):
+    def __init__(self, num_step, type, batch_size, gpu_num, file_name,need_tosave=None):
+        self.need_tosave = need_tosave
         os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_num)
         self.gpu_num = gpu_num
-
         threading.Thread.__init__(self)
         self.dropout_rate = 0.5
         self.image_channel = 3
@@ -152,8 +152,8 @@ class VGG16(threading.Thread):
         # for i in range(16):
         #     b_val[i] = ndarray.array(b_val[i], ctx)
         aph = 0.001
-        if self.is_capu == True:
-            t = self.TrainExecute.TrainExecutor(loss, aph, self.gpu_num)
+        if self.is_capu == True and self.need_tosave!=None:
+            t = self.TrainExecute.TrainExecutor(loss, aph, self.need_tosave)
         else:
             t = self.TrainExecute.TrainExecutor(loss, aph)
         t.init_Variable(
