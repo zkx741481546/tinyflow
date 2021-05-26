@@ -13,8 +13,8 @@ class TrainExecutor(object):
     """Executor computes values for given set of nodes in computation graph."""
 
 
-    def __init__(self, targetloss, learning_rate=0.001,gpu_num=0,ctx=ndarray.gpu(0)):
-        self.gpu_num=gpu_num
+    def __init__(self, targetloss, learning_rate=0.001,need_tosave=None,ctx=ndarray.gpu(0)):
+        self.need_tosave=need_tosave
         self.b1 = 0.9
         self.b2 = 0.999
         self.e = 0.00000001
@@ -277,8 +277,12 @@ class TrainExecutor(object):
                     out_id = node.use_access_id[node.access_count-1]
                     outtime = self.capu.tensor_access_list[out_id][2]
                     node.FT.append(endtime-(outtime+node.swapouttime))
+            if self.need_tosave==None:
+               self.capu.hybrid_policy(need_tomem,endtime)
+            else:
+               self.capu.hybrid_policy(self.need_tosave,endtime)
 
-            self.capu.hybrid_policy(2*need_tomem,endtime)
+
             #把结果输出了： [loss,变量按网络顺序],这里只是输出value，并不保证一定在gpu中
             #但是如果这里value是None的话，他会报错
             result_output = [self.node_to_arr_map[self.targetloss]]
@@ -291,6 +295,7 @@ class TrainExecutor(object):
             if Accuracy_node !=None:
                 result_output.append(self.node_to_arr_map[Accuracy_node])
             # print(self.capu.policy)
+            # print(self.need_tosave)
             # print(self.capu.prior_policy)
 
 
@@ -483,8 +488,6 @@ class TrainExecutor(object):
             self.access_index=0
 
             self.clear()
-            self.hit_count=0
-            self.swap_count=0
             return result_output
 
 
@@ -562,8 +565,6 @@ class TrainExecutor(object):
         return self.start_finish_time
 
     def get_hit(self):
-        if self.swap_count==0:
-            return 1,1
         return self.swap_count-self.hit_count, self.swap_count
 
     def get_node_order(self):

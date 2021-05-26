@@ -174,9 +174,6 @@ class TrainExecutor(object):
                     if node.inputs:
                         input_vals.append(self.node_to_arr_map[input_node])
 
-
-
-
                 #除了SgdOp，其他的点此时要保证在gpu中
                 node_val = self.node_to_arr_map[node]
 
