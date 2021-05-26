@@ -825,8 +825,9 @@ def generate_scheduling_plan(logged_times, gpu: int):
                 for job_id in job_id_ordered_by_weights:
                     max_tensors_filtered = []
                     for tensor in max_tensors:
-                        # 张量不是参数，没被逐出过
-                        if not tensor.is_parameter and tensor not in swapped_out_tensor:
+                        # 张量不是参数，没被逐出过，且他的所有源张量从未被recomputation
+                        if not tensor.is_parameter and tensor not in swapped_out_tensor and tensor.source_tensors is not None and len(tensor.source_tensors) > 0 and \
+                                False not in [t not in swapped_out_tensor for t in tensor.source_tensors] and False not in [t not in recomputations for t in tensor.source_tensors]:
                             max_tensors_filtered.append(tensor)
                     if len(max_tensors_filtered) == 0:
                         continue
@@ -972,7 +973,7 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                         print(swap_order)
                         control_message = [swap_order[i], release_order[i], recomputation_order[i]]
                         control_messages[map_in_to_out[i]] = control_message
-                    global_control_queue.put(control_messages)
+                    # global_control_queue.put(control_messages)
                 # print(logged_times[0])
 
 # if debug_mod:

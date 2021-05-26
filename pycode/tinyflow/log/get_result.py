@@ -1,6 +1,6 @@
-workload = 'VGG x2'
-vanilla_path = f'./{workload}/vanilla v2/'
-scheduled_path = f'./{workload}/scheduled v2/'
+workload = 'VGG x2 new'
+vanilla_path = f'./{workload}/vanilla/'
+scheduled_path = f'./{workload}/scheduled/'
 with open(vanilla_path+'gpu_record.txt', 'r') as f:
     lines = f.readlines()
 temp = lines[-1].split('\t')

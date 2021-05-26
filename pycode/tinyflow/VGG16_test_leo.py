@@ -6,6 +6,8 @@ from pycode.tinyflow import ndarray
 import threading, pynvml, multiprocessing, os, datetime, time
 from multiprocessing import Process
 
+with open('./log_path.txt', 'r') as f:
+    log_path = f.readlines()[0]
 GPU = load_gpu()
 os.environ['CUDA_VISIBLE_DEVICES'] = f'{GPU}'
 class VGG16():
@@ -157,7 +159,7 @@ class VGG16():
             feed_dict_mv.update({m_key: m_val, v_key: v_val})
 
         feed_dict.update(feed_dict_mv)
-        f1 = open("./log/gpu_time.txt", "w+")
+        f1 = open(f"{log_path}/gpu_time.txt", "w+")
         for i in range(self.num_step):
             print("step", i)
             if i==5:
@@ -182,7 +184,7 @@ class GPURecord(threading.Thread):
         threading.Thread.__init__(self)
         pynvml.nvmlInit()
         self.handle = pynvml.nvmlDeviceGetHandleByIndex(GPU)
-        self.f = open("./log/gpu_record.txt", "w+")
+        self.f = open(f"{log_path}/gpu_record.txt", "w+")
         # todo 临时用作释放的计数器
         self.times = 0
         self.max_gpu_memory = 0
