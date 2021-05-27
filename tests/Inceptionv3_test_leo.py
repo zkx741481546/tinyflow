@@ -599,68 +599,68 @@ class GPURecord(threading.Thread):
             self.f.close()
 
 if __name__ == '__main__':
-        # gpu_record = GPURecord()
-        global_message_queue = multiprocessing.Queue()
-        global_control_queue = multiprocessing.Queue()
+    # gpu_record = GPURecord()
+    global_message_queue = multiprocessing.Queue()
+    global_control_queue = multiprocessing.Queue()
 
-        top_control_queue_list = []
-        top_message_queue_list = []
-        executor_ctx = ndarray.gpu(0)
-        print_loss_val_each_epoch = True
+    top_control_queue_list = []
+    top_message_queue_list = []
+    executor_ctx = ndarray.gpu(0)
+    print_loss_val_each_epoch = True
 
-        top_control_queue = multiprocessing.Queue()
-        top_control_queue_list.append(top_control_queue)
-        top_message_queue = multiprocessing.Queue()
-        top_message_queue_list.append(top_message_queue)
-        job_number = 1
+    top_control_queue = multiprocessing.Queue()
+    top_control_queue_list.append(top_control_queue)
+    top_message_queue = multiprocessing.Queue()
+    top_message_queue_list.append(top_message_queue)
+    job_number = 1
 
-        gpu_num = GPU
-        batch_size = 4
-        num_step = 20
-        inceptionv3 = Inceptionv3(num_step=num_step, batch_size=batch_size, gpu_num=gpu_num)
-        X_val = np.random.normal(loc=0, scale=0.1, size=(
+    gpu_num = GPU
+    batch_size = 4
+    num_step = 20
+    inceptionv3 = Inceptionv3(num_step=num_step, batch_size=batch_size, gpu_num=gpu_num)
+    X_val = np.random.normal(loc=0, scale=0.1, size=(
+    batch_size, 3, 299, 299))  # number = batch_size  channel = 3  image_size = 224*224
+
+    y_val = np.random.normal(loc=0, scale=0.1, size=(batch_size, 1000))  # n_class = 1000
+
+    p1 = Process(target=inceptionv3.inception_v3,
+                 args=(executor_ctx, top_control_queue, top_message_queue, 1000, X_val, y_val))
+    p1.start()
+    # p1.join()
+
+    top_control_queue2 = multiprocessing.Queue()
+    top_control_queue_list.append(top_control_queue2)
+    top_message_queue2 = multiprocessing.Queue()
+    top_message_queue_list.append(top_message_queue2)
+    job_number += 1
+
+    gpu_num = GPU
+    batch_size = 4
+    num_step = 20
+    inceptionv3 = Inceptionv3(num_step=num_step, batch_size=batch_size, gpu_num=gpu_num)
+    X_val = np.random.normal(loc=0, scale=0.1, size=(
         batch_size, 3, 299, 299))  # number = batch_size  channel = 3  image_size = 224*224
 
-        y_val = np.random.normal(loc=0, scale=0.1, size=(batch_size, 1000))  # n_class = 1000
+    y_val = np.random.normal(loc=0, scale=0.1, size=(batch_size, 1000))  # n_class = 1000
 
-        p1 = Process(target=inceptionv3.inception_v3,
-                     args=(executor_ctx, top_control_queue, top_message_queue, 1000, X_val, y_val))
-        p1.start()
-        # p1.join()
+    p2 = Process(target=inceptionv3.inception_v3,
+                 args=(executor_ctx, top_control_queue2, top_message_queue2, 1000, X_val, y_val))
+    p2.start()
+    # p1.join()
 
-        top_control_queue2 = multiprocessing.Queue()
-        top_control_queue_list.append(top_control_queue2)
-        top_message_queue2 = multiprocessing.Queue()
-        top_message_queue_list.append(top_message_queue2)
-        job_number += 1
+    scheduler = Process(target=mp.multiprocess_init, args=(global_message_queue, global_control_queue))
+    scheduler.start()
+    # scheduler.join()
+    # gpu_record.start()
 
-        gpu_num = GPU
-        batch_size = 4
-        num_step = 20
-        inceptionv3 = Inceptionv3(num_step=num_step, batch_size=batch_size, gpu_num=gpu_num)
-        X_val = np.random.normal(loc=0, scale=0.1, size=(
-            batch_size, 3, 299, 299))  # number = batch_size  channel = 3  image_size = 224*224
-
-        y_val = np.random.normal(loc=0, scale=0.1, size=(batch_size, 1000))  # n_class = 1000
-
-        p2 = Process(target=inceptionv3.inception_v3,
-                     args=(executor_ctx, top_control_queue2, top_message_queue2, 1000, X_val, y_val))
-        p2.start()
-        # p1.join()
-
-        scheduler = Process(target=mp.multiprocess_init, args=(global_message_queue, global_control_queue))
-        scheduler.start()
-        # scheduler.join()
-        # gpu_record.start()
-
-        while True:
+    while True:
+        for i in range(job_number):
+            if not top_message_queue_list[i].empty():
+                print("job ", i, "message")
+                global_message_queue.put([i, top_message_queue_list[i].get()])
+        if not global_control_queue.empty():
+            global_control = global_control_queue.get()
             for i in range(job_number):
-                if not top_message_queue_list[i].empty():
-                    print("job ", i, "message")
-                    global_message_queue.put([i, top_message_queue_list[i].get()])
-            if not global_control_queue.empty():
-                global_control = global_control_queue.get()
-                for i in range(job_number):
-                    if i in global_control:
-                        print("job ", i, "control")
-                        top_control_queue_list[i].put(global_control[i])
+                if i in global_control:
+                    print("job ", i, "control")
+                    top_control_queue_list[i].put(global_control[i])
