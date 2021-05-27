@@ -1,10 +1,16 @@
 import numpy as np
 from pycode.tinyflow import mainV2 as mp
 from pycode.tinyflow import autodiff as ad
-from pycode.tinyflow.tools import *
 from pycode.tinyflow import ndarray
 import threading, pynvml, multiprocessing, os, datetime, time
 from multiprocessing import Process
+from util import *
+
+
+with open('./log_path.txt', 'r') as f:
+    log_path = f.readlines()[0]
+    if not os.path.exists(log_path):
+        os.makedirs(log_path)
 GPU = load_gpu()
 os.environ['CUDA_VISIBLE_DEVICES'] = f'{GPU}'
 class Inceptionv4():
@@ -217,6 +223,7 @@ class Inceptionv4():
         return concat3_2, dict
 
     def inception_v4(self, executor_ctx, top_control_queue, top_message_queue, n_class, X_val, y_val):
+        gpu_record = GPURecord(log_path)
         start_time = datetime.datetime.now()
         X = self.ad.Placeholder("X")
         Y_ = self.ad.Placeholder("y_")
@@ -319,10 +326,17 @@ class Inceptionv4():
             feed_dict_mv.update({m_key: m_val, v_key: v_val})
 
         feed_dict.update(feed_dict_mv)
-
+        f1 = open(f"{log_path}/gpu_time.txt", "w+")
         for i in range(self.num_step):
             print("step", i)
-
+            if i==5:
+                gpu_record.start()
+                start_time = time.time()
+            if i==10:
+                gpu_record.stop()
+                f1.write(f'time_cost:{time.time() - start_time}')
+                f1.flush()
+                f1.close()
             feed_dict[X] = ndarray.array(X_val, ctx=executor_ctx)
             feed_dict[Y_] = ndarray.array(y_val, ctx=executor_ctx)
             res = executor.run(feed_dict=feed_dict)
@@ -333,28 +347,7 @@ class Inceptionv4():
         return 0
 
 
-class GPURecord(threading.Thread):
-    def __init__(self):
-        threading.Thread.__init__(self)
-        pynvml.nvmlInit()
-        self.handle = pynvml.nvmlDeviceGetHandleByIndex(GPU)
-        self.f = open("./log/gpu_record.txt", "w+")
-        # todo 临时用作释放的计数器
-        self.times = 0
 
-    def run(self):
-        while True:
-            if self.times == 30:
-                self.f.close()
-                break
-            self.times += 1
-            time.sleep(1)
-            meminfo = pynvml.nvmlDeviceGetMemoryInfo(self.handle)
-            print("time", datetime.datetime.now(),
-                  "\tmemory", meminfo.used / 1024 ** 2, file = self.f)  # 已用显存大小
-
-    def stop(self):
-        self.f.close()
 
 if __name__ == '__main__':
     # gpu_record = GPURecord()
@@ -405,9 +398,9 @@ if __name__ == '__main__':
     p2.start()
 
 
-
-    scheduler = Process(target=mp.multiprocess_init, args=(global_message_queue, global_control_queue))
-    scheduler.start()
+    if 'schedule' in log_path:
+        scheduler = Process(target=mp.multiprocess_init, args=(global_message_queue, global_control_queue))
+        scheduler.start()
     # scheduler.join()
     # gpu_record.start()
 

@@ -9,7 +9,11 @@ from . import ndarray, gpu_op
 import random
 import queue
 import datetime
+from util import load_gpu
+import os
 
+GPU = load_gpu()
+os.environ['CUDA_VISIBLE_DEVICES'] = f'{GPU}'
 index_to_cpu_map = {}
 index_to_cpu_flag = {}
 index_to_gpu_map = {}
@@ -1963,7 +1967,7 @@ class SqueezeOp(Op):
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
         assert use_numpy == False
-        input_vals[0].copyto(output_val)
+        input_vals[0].copyto(output_val, cudaStream)
         return 0
 
     def gradient(self, node, output_grad):
@@ -1985,7 +1989,7 @@ class SqueezeGradientOp(Op):
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
         assert use_numpy == False
-        input_vals[1].copyto(output_val)
+        input_vals[1].copyto(output_val, cudaStream)
         return 0
 
     def gradient(self, node, output_grad):
@@ -2211,7 +2215,7 @@ def nodelist_to_name(nodelist):
 class Executor(object):
     """Executor computes values for given set of nodes in computation graph."""
 
-    def __init__(self, targetloss, y, learning_rate, top_control_queue, top_message_queue):
+    def __init__(self, targetloss, y, learning_rate, top_control_queue, top_message_queue, log_path):
         """
         Parameters
         ----------
@@ -2231,7 +2235,7 @@ class Executor(object):
         self.y = y
         self.learning_rate = learning_rate
         self.Variable_node_list = get_Variable_node_list(self.targetloss)
-
+        self.log_path = log_path
 
         self.Variable_node_list.reverse()
         self.Variable_node_grad_list = gradients(self.targetloss, self.Variable_node_list)  # 反向node
@@ -2286,9 +2290,7 @@ class Executor(object):
         self.ctx_cpu = ndarray.cpu(0)
         self.ctx_gpu = ndarray.gpu(0)
         self.total_node = len(self.topo_order)
-        with open('./log_path.txt', 'r') as f:
-            path = f.readlines()[0]
-        self.f = open(f"{path}/hit_rate.txt", 'w')
+        self.f = open(f"{log_path}/hit_rate.txt", 'w')
 
     def infer_shape(self, feed_shapes):
         """Given shapes of feed_dict nodes, infer shape for all nodes in graph.

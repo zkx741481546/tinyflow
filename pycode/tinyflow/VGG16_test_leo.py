@@ -1,30 +1,36 @@
 import numpy as np
 from pycode.tinyflow import mainV2 as mp
 from pycode.tinyflow import autodiff as ad
-from pycode.tinyflow.tools import *
 from pycode.tinyflow import ndarray
 import threading, pynvml, multiprocessing, os, datetime, time
 from multiprocessing import Process
+from util import *
 
 with open('./log_path.txt', 'r') as f:
-    log_path = f.readlines()[0]
+    raw_log_path = f.readlines()[0]
+    if not os.path.exists(raw_log_path):
+        os.makedirs(raw_log_path)
+
 GPU = load_gpu()
 os.environ['CUDA_VISIBLE_DEVICES'] = f'{GPU}'
+
+
 class VGG16():
-    def __init__(self, num_step, batch_size, gpu_num):
+    def __init__(self, num_step, batch_size, gpu_num, log_path, job_id):
         os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_num)
         self.gpu_num = gpu_num
-
+        self.job_id = job_id
         self.dropout_rate = 0.5
         self.image_channel = 3
         self.image_size = 224
         self.num_step = num_step
         self.batch_size = batch_size
+        self.log_path = log_path
 
         self.ad = ad
 
     def vgg16(self, executor_ctx, top_control_queue, top_message_queue, n_class, X_val, y_val):
-        gpu_record = GPURecord()
+        gpu_record = GPURecord(self.log_path)
         X = self.ad.Placeholder("X")
         y_ = self.ad.Placeholder("y_")
         W1_1 = self.ad.Variable("W1_1")
@@ -119,16 +125,15 @@ class VGG16():
         W5_1_val = ndarray.array(np.random.normal(0.0, 0.1, (512, 512, 3, 3)), executor_ctx)
         W5_2_val = ndarray.array(np.random.normal(0.0, 0.1, (512, 512, 3, 3)), executor_ctx)
         W5_3_val = ndarray.array(np.random.normal(0.0, 0.1, (512, 512, 3, 3)), executor_ctx)
-        W6_val = ndarray.array(np.random.normal(0.0, 0.1, (512 * int(self.image_size/32) * int(self.image_size/32), 4096)), executor_ctx)
+        W6_val = ndarray.array(np.random.normal(0.0, 0.1, (512 * int(self.image_size / 32) * int(self.image_size / 32), 4096)), executor_ctx)
         W7_val = ndarray.array(np.random.normal(0.0, 0.1, (4096, 4096)) * 0.001, executor_ctx)
         W8_val = ndarray.array(np.random.normal(0.0, 0.1, (4096, n_class)) * 0.001, executor_ctx)
         b6_val = ndarray.array(np.ones(4096) * 0.1, executor_ctx)
         b7_val = ndarray.array(np.ones(4096) * 0.1, executor_ctx)
         b8_val = ndarray.array(np.ones(n_class) * 0.1, executor_ctx)
 
-
         # 只声明，不操作
-        executor = self.ad.Executor(loss, y, 0.001, top_control_queue=top_control_queue, top_message_queue=top_message_queue)
+        executor = self.ad.Executor(loss, y, 0.001, top_control_queue=top_control_queue, top_message_queue=top_message_queue, log_path=self.log_path)
         feed_dict = {
             W1_1: W1_1_val,
             W1_2: W1_2_val,
@@ -159,17 +164,19 @@ class VGG16():
             feed_dict_mv.update({m_key: m_val, v_key: v_val})
 
         feed_dict.update(feed_dict_mv)
-        f1 = open(f"{log_path}/gpu_time.txt", "w+")
+        if self.job_id==0:
+            f1 = open(f"{self.log_path}/gpu_time.txt", "w+")
         for i in range(self.num_step):
             print("step", i)
-            if i==5:
-                gpu_record.start()
-                start_time = time.time()
-            if i==10:
-                gpu_record.stop()
-                f1.write(f'time_cost:{time.time() - start_time}')
-                f1.flush()
-                f1.close()
+            if self.job_id==0:
+                if i == 5:
+                    gpu_record.start()
+                    start_time = time.time()
+                if i == 10:
+                    gpu_record.stop()
+                    f1.write(f'time_cost:{time.time() - start_time}')
+                    f1.flush()
+                    f1.close()
             feed_dict[X] = ndarray.array(X_val, ctx=executor_ctx)
             feed_dict[y_] = ndarray.array(y_val, ctx=executor_ctx)
             res = executor.run(feed_dict=feed_dict)
@@ -177,103 +184,69 @@ class VGG16():
             feed_dict = res[1]
             print(loss_val)
 
-
         print("success")
+        top_message_queue.close()
+        top_control_queue.close()
         return 0
 
-class GPURecord(threading.Thread):
-    def __init__(self):
-        threading.Thread.__init__(self)
-        pynvml.nvmlInit()
-        self.handle = pynvml.nvmlDeviceGetHandleByIndex(GPU)
-        self.f = open(f"{log_path}/gpu_record.txt", "w+")
-        # todo 临时用作释放的计数器
-        self.times = 0
-        self.max_gpu_memory = 0
-        meminfo = pynvml.nvmlDeviceGetMemoryInfo(self.handle)
-        self.base_used = meminfo.used / 1024 ** 2
-        self.flag = True
-    def run(self):
-        while self.flag:
-            # if self.times == 30000:
-            #     self.f.close()
-            #     break
-            self.times += 1
-            # time.sleep(0.1)
-            meminfo = pynvml.nvmlDeviceGetMemoryInfo(self.handle)
-            memory_used = meminfo.used / 1024 ** 2
-            if memory_used>self.max_gpu_memory:
-                self.max_gpu_memory = memory_used
-            print("time", datetime.datetime.now(),
-                  "\tmemory", memory_used,
-                  "\tmax_memory_used", self.max_gpu_memory,
-                  "\tretained_memory_used", memory_used-self.base_used,
-                  "\tretained_max_memory_used", self.max_gpu_memory-self.base_used, file=self.f)  # 已用显存大小
-            self.f.flush()
 
-    def stop(self):
-        self.flag = False
-        time.sleep(0.001)
-        self.f.close()
-
-if __name__ == '__main__':
-    # gpu_record = GPURecord()
-    global_message_queue = multiprocessing.Queue()
-    global_control_queue = multiprocessing.Queue()
-
-    top_control_queue_list = []
-    top_message_queue_list = []
-    executor_ctx = ndarray.gpu(0)
-    print_loss_val_each_epoch = True
-
-
+def run_workload(GPU, batch_size, num_step, log_path, top_control_queue_list, top_message_queue_list, job_id):
     top_control_queue = multiprocessing.Queue()
     top_control_queue_list.append(top_control_queue)
     top_message_queue = multiprocessing.Queue()
     top_message_queue_list.append(top_message_queue)
-    job_number = 1
 
     gpu_num = GPU
-    batch_size = 2
-    num_step = 20
-    vgg16 = VGG16(num_step=num_step, batch_size=batch_size, gpu_num=gpu_num)
+    vgg16 = VGG16(num_step=num_step, batch_size=batch_size, gpu_num=gpu_num, log_path=log_path, job_id=job_id)
     X_val = np.random.normal(loc=0, scale=0.1, size=(batch_size, 3, 224, 224))  # number = batch_size  channel = 3  image_size = 224*224
     y_val = np.random.randint(low=0, high=1, size=(batch_size, 1000))  # n_class = 1000
 
-
-    p1 = Process(target=vgg16.vgg16, args=(executor_ctx, top_control_queue, top_message_queue, 1000, X_val, y_val))
-    p1.start()
-
-    # top_control_queue2 = multiprocessing.Queue()
-    # top_control_queue_list.append(top_control_queue2)
-    # top_message_queue2 = multiprocessing.Queue()
-    # top_message_queue_list.append(top_message_queue2)
-    # job_number += 1
-
-    # gpu_num = GPU
-    # batch_size = 2
-    # num_step = 20
-    # vgg16 = VGG16(num_step=num_step, batch_size=batch_size, gpu_num=gpu_num)
-    # X_val = np.random.normal(loc=0, scale=0.1,
-    #                          size=(batch_size, 3, 224, 224))  # number = batch_size  channel = 3  image_size = 224*224
-    # y_val = np.random.randint(low=0, high=1, size=(batch_size, 1000))  # n_class = 1000
-    #
-    # p2 = Process(target=vgg16.vgg16, args=(executor_ctx, top_control_queue2, top_message_queue2, 1000, X_val, y_val))
-    # p2.start()
-    #
-    if 'scheduled' in log_path:
-        scheduler = Process(target=mp.multiprocess_init, args=(global_message_queue, global_control_queue))
-        scheduler.start()
+    p = Process(target=vgg16.vgg16, args=(executor_ctx, top_control_queue, top_message_queue, 1000, X_val, y_val))
+    return p
 
 
-    while True:
-        for i in range(job_number):
-            if not top_message_queue_list[i].empty():
-                print("job ", i, "message")
-                global_message_queue.put([i, top_message_queue_list[i].get()])
-        if not global_control_queue.empty():
-            global_control = global_control_queue.get()
+if __name__ == '__main__':
+    # gpu_record = GPURecord()
+    repeat_times = 3
+    for t in range(repeat_times):
+        print(f'repeat_time:{t}')
+        global_message_queue = multiprocessing.Queue()
+        global_control_queue = multiprocessing.Queue()
+
+        top_control_queue_list = []
+        top_message_queue_list = []
+        executor_ctx = ndarray.gpu(0)
+        print_loss_val_each_epoch = True
+        path_list = list(os.path.split(raw_log_path))
+        path_list.insert(1,f'repeat_{t}')
+        log_path = os.path.join(*path_list)
+        if not os.path.exists(log_path):
+            os.makedirs(log_path)
+
+        job_number = 1
+        job_pool = [run_workload(GPU, 2, 20, log_path, top_control_queue_list, top_message_queue_list, job_id) for job_id in range(job_number)]
+        for job in job_pool:
+            job.start()
+
+        if 'schedule' in log_path:
+            scheduler = Process(target=mp.multiprocess_init, args=(global_message_queue, global_control_queue))
+            scheduler.start()
+        while True in [job.is_alive() for job in job_pool]:
             for i in range(job_number):
-                if i in global_control:
-                    print("job ", i, "control")
-                    top_control_queue_list[i].put(global_control[i])
+                if not top_message_queue_list[i].empty():
+                    print("job ", i, "message")
+                    global_message_queue.put([i, top_message_queue_list[i].get()])
+            if not global_control_queue.empty():
+                global_control = global_control_queue.get()
+                for i in range(job_number):
+                    if i in global_control:
+                        print("job ", i, "control")
+                        top_control_queue_list[i].put(global_control[i])
+        for q in top_message_queue_list:
+            q.close()
+        for q in top_control_queue_list:
+            q.close()
+        if 'schedule' in log_path:
+            scheduler.terminate()
+        for job in job_pool:
+            job.terminate()

@@ -1,10 +1,15 @@
 import numpy as np
 from pycode.tinyflow import mainV2 as mp
 from pycode.tinyflow import autodiff as ad
-from pycode.tinyflow.tools import *
 from pycode.tinyflow import ndarray
 import threading, pynvml, multiprocessing, os, datetime, time
 from multiprocessing import Process
+from util import *
+
+with open('./log_path.txt', 'r') as f:
+    log_path = f.readlines()[0]
+    if not os.path.exists(log_path):
+        os.makedirs(log_path)
 GPU = load_gpu()
 os.environ['CUDA_VISIBLE_DEVICES'] = f'{GPU}'
 class Inceptionv3():
@@ -28,6 +33,7 @@ class Inceptionv3():
         return  node_after
 
     def inception_v3(self, executor_ctx, top_control_queue, top_message_queue, n_class, X_val, y_val):
+        gpu_record = GPURecord(log_path)
         start_time = datetime.datetime.now()
         X = self.ad.Placeholder("inputs")
         y_ = self.ad.Placeholder("y_")
@@ -562,10 +568,17 @@ class Inceptionv3():
             feed_dict_mv.update({m_key: m_val, v_key: v_val})
 
         feed_dict.update(feed_dict_mv)
-
+        f1 = open(f"{log_path}/gpu_time.txt", "w+")
         for i in range(self.num_step):
             print("step", i)
-
+            if i==5:
+                gpu_record.start()
+                start_time = time.time()
+            if i==15:
+                gpu_record.stop()
+                f1.write(f'time_cost:{time.time() - start_time}')
+                f1.flush()
+                f1.close()
             feed_dict[X] = ndarray.array(X_val, ctx=executor_ctx)
             feed_dict[y_] = ndarray.array(y_val, ctx=executor_ctx)
             res = executor.run(feed_dict=feed_dict)
@@ -575,28 +588,6 @@ class Inceptionv3():
         print("success")
         return 0
 
-class GPURecord(threading.Thread):
-    def __init__(self):
-            threading.Thread.__init__(self)
-            pynvml.nvmlInit()
-            self.handle = pynvml.nvmlDeviceGetHandleByIndex(GPU)
-            self.f = open("./log/gpu_record.txt", "w+")
-            # todo 临时用作释放的计数器
-            self.times = 0
-
-    def run(self):
-            while True:
-                if self.times == 30:
-                    self.f.close()
-                    break
-                self.times += 1
-                time.sleep(1)
-                meminfo = pynvml.nvmlDeviceGetMemoryInfo(self.handle)
-                print("time", datetime.datetime.now(),
-                      "\tmemory", meminfo.used / 1024 ** 2, file=self.f)  # 已用显存大小
-
-    def stop(self):
-            self.f.close()
 
 if __name__ == '__main__':
     # gpu_record = GPURecord()
@@ -615,7 +606,7 @@ if __name__ == '__main__':
     job_number = 1
 
     gpu_num = GPU
-    batch_size = 4
+    batch_size = 2
     num_step = 20
     inceptionv3 = Inceptionv3(num_step=num_step, batch_size=batch_size, gpu_num=gpu_num)
     X_val = np.random.normal(loc=0, scale=0.1, size=(
@@ -628,28 +619,29 @@ if __name__ == '__main__':
     p1.start()
     # p1.join()
 
-    top_control_queue2 = multiprocessing.Queue()
-    top_control_queue_list.append(top_control_queue2)
-    top_message_queue2 = multiprocessing.Queue()
-    top_message_queue_list.append(top_message_queue2)
-    job_number += 1
+    # top_control_queue2 = multiprocessing.Queue()
+    # top_control_queue_list.append(top_control_queue2)
+    # top_message_queue2 = multiprocessing.Queue()
+    # top_message_queue_list.append(top_message_queue2)
+    # job_number += 1
+    #
+    # gpu_num = GPU
+    # batch_size = 4
+    # num_step = 20
+    # inceptionv3 = Inceptionv3(num_step=num_step, batch_size=batch_size, gpu_num=gpu_num)
+    # X_val = np.random.normal(loc=0, scale=0.1, size=(
+    #     batch_size, 3, 299, 299))  # number = batch_size  channel = 3  image_size = 224*224
+    #
+    # y_val = np.random.normal(loc=0, scale=0.1, size=(batch_size, 1000))  # n_class = 1000
+    #
+    # p2 = Process(target=inceptionv3.inception_v3,
+    #              args=(executor_ctx, top_control_queue2, top_message_queue2, 1000, X_val, y_val))
+    # p2.start()
+    # # p1.join()
 
-    gpu_num = GPU
-    batch_size = 4
-    num_step = 20
-    inceptionv3 = Inceptionv3(num_step=num_step, batch_size=batch_size, gpu_num=gpu_num)
-    X_val = np.random.normal(loc=0, scale=0.1, size=(
-        batch_size, 3, 299, 299))  # number = batch_size  channel = 3  image_size = 224*224
-
-    y_val = np.random.normal(loc=0, scale=0.1, size=(batch_size, 1000))  # n_class = 1000
-
-    p2 = Process(target=inceptionv3.inception_v3,
-                 args=(executor_ctx, top_control_queue2, top_message_queue2, 1000, X_val, y_val))
-    p2.start()
-    # p1.join()
-
-    scheduler = Process(target=mp.multiprocess_init, args=(global_message_queue, global_control_queue))
-    scheduler.start()
+    if 'schedule' in log_path:
+        scheduler = Process(target=mp.multiprocess_init, args=(global_message_queue, global_control_queue))
+        scheduler.start()
     # scheduler.join()
     # gpu_record.start()
 

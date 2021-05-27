@@ -14,14 +14,15 @@ from pynvml import *
 import time
 import matplotlib
 # matplotlib.use('Agg')
+import pickle
 import numpy as np
 from pynvml import *
 from keras.models import Sequential, load_model
 from keras.layers import Dense, Conv1D, MaxPool1D, Dropout, Flatten
 from matplotlib import cm
 from tensorboard.plugins.hparams import keras
-from tools import *
-import pickle
+from util import load_gpu
+# from line_profiler import LineProfiler
 
 GPU = load_gpu()
 debug_mod = False
@@ -351,7 +352,7 @@ def draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num):
         draw(sorted(res, key=lambda x: x.start_time), swap_scheduler[job_id])
 
 
-def get_max_memory_used(tensor_access_list, swap_tasks, swapped_out_tensor, recomputation_tensor, tensor_access_by_tensor, tensors):
+def get_max_memory_used(tensor_access_list, swap_tasks, swapped_out_tensor, recomputation_tensor, tensors):
     # 计算显存开销
     tmp = [tensor_access for tensor_access in tensor_access_list]
     tmp.extend(swap_tasks)
@@ -401,7 +402,7 @@ def get_max_memory_used(tensor_access_list, swap_tasks, swapped_out_tensor, reco
             # 如果此刻时间已经过了释放时间，则释放该访问的附带影响
             if time >= access.end_time:
                 wait_to_be_released.pop(i)
-                assert access.tensor in recomputation_tensor or access.tensor in in_gpu_tensors
+                # assert access.tensor in recomputation_tensor or access.tensor in in_gpu_tensors
                 if access.tensor in in_gpu_tensors:
                     memory_used -= access.tensor.size
                     in_gpu_tensors.remove(access.tensor)
@@ -447,7 +448,7 @@ def get_max_memory_used(tensor_access_list, swap_tasks, swapped_out_tensor, reco
     return max_memory_actual, max_memory_tensors, max_last_access, max_time, foot_print, time_axis
 
 
-def run_global_memory_analysis(global_tensor_access, swap_tasks, swapped_out_tensor, recomputation_tensor, tensor_access_by_tensor):
+def run_global_memory_analysis(global_tensor_access, swap_tasks, swapped_out_tensor, recomputation_tensor):
     global global_tensors
     max_memory = 0
     max_memory_tensors = []
@@ -456,8 +457,7 @@ def run_global_memory_analysis(global_tensor_access, swap_tasks, swapped_out_ten
     foot_prints = []
     time_axis = []
     for job_id, tensor_accesses in enumerate(global_tensor_access):
-        job_max_memory, job_max_memory_tensors, last_input_access, now_time, foot_print, t_axis = get_max_memory_used(tensor_accesses, swap_tasks[job_id], swapped_out_tensor, recomputation_tensor,
-                                                                                                                      tensor_access_by_tensor[job_id], global_tensors[job_id])
+        job_max_memory, job_max_memory_tensors, last_input_access, now_time, foot_print, t_axis = get_max_memory_used(tensor_accesses, swap_tasks[job_id], swapped_out_tensor, recomputation_tensor, global_tensors[job_id])
         time_axis.append(t_axis)
         foot_prints.append(foot_print)
         max_memory_tensors.extend(job_max_memory_tensors)
@@ -674,13 +674,11 @@ def generate_scheduling_plan(logged_times, gpu: int):
     recomputations = []
     recomputation_tensor = set()
     # key：tensor，value：[所有释放这个张量的重计算对应的在recomputations中的index]
-    released_by_recomputation_op = defaultdict(list)
     # 上一轮没有成功的swap_out时为False
     swapped_flag = True
     recomputation_flag = True
     iter = 0
     original_memory_used = 0
-    original_memory_footprint = None
     last_memory_used = 0
     max_memory = 0
     job_id_ordered_by_weights = list(map(lambda x: x[0], sorted([(job_id, weights) for job_id, weights in enumerate(jobs_weights)], key=lambda x: x[1], reverse=True)))
@@ -691,11 +689,9 @@ def generate_scheduling_plan(logged_times, gpu: int):
             total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
         else:
             total_memory = 6000
-        max_memory, max_tensors, last_input_accesses, max_time, foot_prints, time_axis = run_global_memory_analysis(global_tensor_access, swap_scheduler, swapped_out_tensor, recomputation_tensor,
-                                                                                                                    tensor_access_by_tensor)
+        max_memory, max_tensors, last_input_accesses, max_time, foot_prints, time_axis = run_global_memory_analysis(global_tensor_access, swap_scheduler, swapped_out_tensor, recomputation_tensor)
         if iter == 0:
             original_memory_used = max_memory
-            original_memory_footprint = foot_prints
             liveness_analysis(global_tensor_access)
         else:
             last_memory_used = max_memory
@@ -857,15 +853,15 @@ def generate_scheduling_plan(logged_times, gpu: int):
                                     break
                             break
         iter += 1
-    fig = go.Figure(data=[go.Scatter(x=list(original_memory_footprint[0].keys()), y=list(original_memory_footprint[0].values())), go.Scatter(x=list(foot_prints[0].keys()), y=list(foot_prints[0].values()))])
-    plotly.offline.plot(fig, filename='../../pic/footprint.html')
+    # fig = go.Figure(data=[go.Scatter(x=list(original_memory_footprint[0].keys()), y=list(original_memory_footprint[0].values())), go.Scatter(x=list(foot_prints[0].keys()), y=list(foot_prints[0].values()))])
+    # plotly.offline.plot(fig, filename='../../pic/footprint.html')
     if not debug_mod:
         total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
     else:
         total_memory = 6000
     stats = 'succeed' if max_memory < total_memory else ' failure'
     print(f'scheduling {stats}')
-    draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
+    # draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
     memory_saved_ratio = format((1 - last_memory_used / original_memory_used) * 100, '.2f')
     print(f'memory_saved_ratio:{memory_saved_ratio}%')
     print(f'swap ratio:{len(swap_scheduler[0]) / len(global_tensors)}')
@@ -911,8 +907,8 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                 global_graphs.append(message_graph)
                 tensor_num = len(message_graph)
 
-                with open("./log/global_graphs", "wb") as f1:
-                    pickle.dump(global_graphs, f1)
+                # with open("./log/global_graphs", "wb") as f1:
+                #     pickle.dump(global_graphs, f1)
 
                 for i in range(tensor_num):
                     logged_times[job_id_in].append([1])
@@ -979,14 +975,20 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                     global_control_queue.put(control_messages)
                 # print(logged_times[0])
 
-# if debug_mod:
-#     import pickle
-#
-#     with open('../../global_graphs', 'rb') as f:
-#         g = pickle.load(f)
-#     global_graphs = g
-#     with open('../../logged_times', 'rb') as f:
-#         logged_times = pickle.load(f)
-#     job_num = 1
-#     init(global_graphs, logged_times, 0)
-#     release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
+if debug_mod and __name__ == '__main__':
+    import pickle
+
+    with open('../../global_graphs', 'rb') as f:
+        g = pickle.load(f)
+    global_graphs = g
+    with open('../../logged_times', 'rb') as f:
+        logged_times = pickle.load(f)
+    job_num = 1
+    init(global_graphs, logged_times, 0)
+    # profiler = LineProfiler()
+    # profiler.add_function(get_free_intervals)
+    # profiler.add_function(get_max_memory_used)
+    # profiler_wrapper = profiler(generate_scheduling_plan)
+    # res = profiler_wrapper(logged_times, 0)
+    # profiler.print_stats()
+    release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
