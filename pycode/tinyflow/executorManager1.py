@@ -461,7 +461,7 @@ if __name__ == '__main__':
 
     p2 = Process(target=mnist_mlp,
                  args=(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_queue2, top_message_queue2))
-    p2.start()
+    # p2.start()
 
     scheduler = Process(target=mp.multiprocess_init, args=(global_message_queue, global_control_queue))
     scheduler.start()
