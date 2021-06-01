@@ -23,7 +23,7 @@ from matplotlib import cm
 from tensorboard.plugins.hparams import keras
 from util import load_gpu
 from line_profiler import LineProfiler
-
+from typing import List
 
 def get_PCIE_bandwidth():
     if not debug_mod:
@@ -265,6 +265,10 @@ def get_free_intervals(target_task, swap_schedule, access_of_target_tensor, key=
         return []
     intervals = []
     for task in swap_schedule:
+        # if target_task.back_boundary < task.start_time:
+        #     continue
+        # elif task.end_time < target_task.front_boundary:
+        #     break
         if target_task.front_boundary <= task.start_time < task.end_time <= target_task.back_boundary:
             intervals.append((task.start_time, task.end_time))
         elif task.start_time < target_task.front_boundary < task.end_time < target_task.back_boundary:
@@ -274,11 +278,22 @@ def get_free_intervals(target_task, swap_schedule, access_of_target_tensor, key=
         elif task.start_time < target_task.front_boundary < target_task.back_boundary < task.end_time:
             return []
     # 防止区间与被调度张量的access重合
-
     intervals = sorted(intervals, key=lambda x: x[0])
+    # 区间融合，确保区间之间无交集
+    occupied_intervals = []
+    i = 0
+    while i<len(intervals):
+        interval = intervals[i]
+        l = interval[0]
+        r = interval[1]
+        while i<len(intervals)-1 and intervals[i+1][0]<=r:
+            r = max(r, intervals[i+1][1])
+            i += 1
+        occupied_intervals.append((l, r))
+        i += 1
     not_occupied_intervals = []
     s = target_task.front_boundary
-    for interval in intervals:
+    for interval in occupied_intervals:
         if s < interval[0]:
             not_occupied_intervals.append((s, interval[0]))
         s = interval[1]
@@ -457,13 +472,15 @@ class MemoryAnalyzer:
                 in_gpu_tensors.add(tensor)
                 memory_used += tensor.size
         for time_index, event in enumerate(self.time_axis):
-            for i in range(len(wait_to_be_released) - 1, -1, -1):
+            i = len(wait_to_be_released) - 1
+            while i >= 0:
                 access = wait_to_be_released[i]
                 # 如果此刻时间已经过了释放时间，则释放该访问的附带影响
                 if event.time >= access.end_time:
                     wait_to_be_released.pop(i)
                     memory_used -= access.tensor.size
                     in_gpu_tensors.remove(access.tensor)
+                i -= 1
             if isinstance(event, TensorAccess):
                 if event.access_type == AccessType.output:
                     if event.tensor not in in_gpu_tensors:
@@ -624,27 +641,6 @@ def get_framework_info(info, logged_time, job_id):
     # earliest_time = float('inf')
     # 从最早的参数开始安排
     parameter = sorted(parameter, key=lambda x: dic[x][0].start_time)
-    # for para in parameter:
-    #     if not para.in_gpu:
-    #         # 找到第一次访问
-    #         first_access = dic[para][0]
-    #         swap_in_task = SwapTask(para, first_access.time, first_access.tensor.swap_time, TaskType.swap_in, front_boundary=float('-inf'), back_boundary=first_access.start_time)
-    #         # 对所有参数的第一次访问进行调度
-    #         res = try_swap_in(swap_in_task, swap_scheduler)
-    #         assert not res, f'swap in parameter:{para} failed'
-    #         if swap_in_task.start_time < earliest_time:
-    #             earliest_time = swap_in_task.start_time
-    #             # earliest_swap = swap_in_task
-    # # 重置时间轴
-    # if earliest_time < 0:
-    #     delta_time = -earliest_time
-    #     tmp = copy.copy(swap_scheduler)
-    #     tmp.extend(tensor_access_list)
-    #     for event in tmp:
-    #         event.time += delta_time
-    #         event.end_time = event.end_time + delta_time
-    #         event.end_time = event.end_time + delta_time
-
     return tensor_access_list, swap_scheduler, parameter, operator_execution_time
 
 
@@ -757,9 +753,9 @@ def generate_scheduling_plan(logged_times, gpu: int):
             total_memory = 6000
         max_memory, max_tensors, last_input_accesses, max_time, time_axis = run_global_memory_analysis(swap_scheduler, swapped_out_tensor)
         max_memory_footprint.append(max_memory)
-        # 最后三次迭代的峰值，做一阶差分，结果的最大值大于上一次峰值的5%以上才继续~`
+        # 最后三次迭代的峰值，做一阶差分，结果的最大值大于上一次峰值的0.2%以上才继续~`
         if len(max_memory_footprint) > 3 and max([max_memory_footprint[i] - max_memory_footprint[i + 1] for i in range(len(max_memory_footprint) - 3, len(max_memory_footprint) - 1)]) < max_memory_footprint[
-            -1] * 0.001:
+            -1] * 0.002:
             break
         if iter == 0:
             original_memory_used = max_memory
@@ -930,7 +926,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
         total_memory = 6000
     stats = 'succeed' if max_memory < total_memory else ' failure'
     print(f'scheduling {stats}')
-    # draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
+    draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
     memory_saved_ratio = format((1 - last_memory_used / original_memory_used) * 100, '.2f')
     print(f'memory_saved_ratio:{memory_saved_ratio}%')
     print(f'swap ratio:{len(swap_scheduler[0]) / len(global_tensors)}')
@@ -1053,10 +1049,11 @@ if debug_mod and __name__ == '__main__':
         logged_times = pickle.load(f)
     job_num = 1
     profiler = LineProfiler()
-    profiler.add_function(get_free_intervals)
-    # profiler.add_function(get_max_memory_used)
-    profiler.add_function(run_global_memory_analysis)
-    profiler_wrapper = profiler(generate_scheduling_plan)
-    res = profiler_wrapper(logged_times, 0)
-    profiler.print_stats()
-    # release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
+    # # profiler.add_function(get_free_intervals)
+    # # profiler.add_function(get_occupied_intervals)
+    # profiler.add_function(MemoryAnalyzer.get_max_memory_used)
+    # # profiler.add_function(run_global_memory_analysis)
+    # profiler_wrapper = profiler(generate_scheduling_plan)
+    # res = profiler_wrapper(logged_times, 0)
+    # profiler.print_stats()
+    release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
