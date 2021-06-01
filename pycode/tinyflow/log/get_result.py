@@ -1,5 +1,5 @@
 import numpy as np
-raw_workload = 'VGG x2'
+raw_workload = 'VGG'
 repeat_times = 3
 all_saved_ratio = []
 all_extra_overhead = []
@@ -11,7 +11,7 @@ all_memory_saved_to_extra_overhead_ratio = []
 for i in range(repeat_times):
     workload = raw_workload+f'/repeat_{i}'
     vanilla_path = f'./{workload}/vanilla/'
-    scheduled_path = f'./{workload}/schedule/'
+    scheduled_path = f'./{workload}/schedule V2/'
     with open(vanilla_path+'gpu_record.txt', 'r') as f:
         lines = f.readlines()
     temp = lines[-1].split('\t')

@@ -22,16 +22,26 @@ from keras.layers import Dense, Conv1D, MaxPool1D, Dropout, Flatten
 from matplotlib import cm
 from tensorboard.plugins.hparams import keras
 from util import load_gpu
-# from line_profiler import LineProfiler
+from line_profiler import LineProfiler
+
+
+def get_PCIE_bandwidth():
+    if not debug_mod:
+        PCIE_bandwidth = nvmlDeviceGetPcieThroughput(handle, NVML_PCIE_UTIL_COUNT)  # kb/s => MB/ms
+        PCIE_bandwidth /= 1000000
+    else:
+        PCIE_bandwidth = 12
+    return PCIE_bandwidth
+
 
 GPU = load_gpu()
-debug_mod = False
+debug_mod = True
 if not debug_mod:
     nvmlInit()
     handle = nvmlDeviceGetHandleByIndex(GPU)
 os.environ["CUDA_VISIBLE_DEVICES"] = f"{GPU}"
 pyplt = py.offline.plot
-PCIE_bandwidth = 12  # MB/ms
+PCIE_bandwidth = get_PCIE_bandwidth()
 load_list = ['convolution_2d_forward_VALID', 'convolution_backward_filter_2d_VALID', 'convolution_backward_data_2d_VALID',
              'convolution_2d_forward_SAME', 'convolution_backward_filter_2d_SAME', 'convolution_backward_data_2d_SAME',
              'dropout_forward', 'dropout_backward', 'broadcast_to_NHWC',
@@ -73,6 +83,10 @@ class Tensor:
 
     def __repr__(self):
         return f'tensor_id:{self.tensor_id}, job_id":{self.job_id}, size:{self.size}'
+
+    def update_swap_time(self):
+        PCIE_bandwidth = get_PCIE_bandwidth()
+        self.swap_time = self.size / PCIE_bandwidth
 
 
 class TensorAccess:
@@ -245,6 +259,7 @@ def is_overlap(task: SwapTask, target: SwapTask):
 
 
 def get_free_intervals(target_task, swap_schedule, access_of_target_tensor, key=0, asc=True):
+    target_task.tensor.update_swap_time()
     # 列出在可行区间内的所有空白时间区间，并按区间排序
     if target_task.back_boundary - target_task.front_boundary < target_task.time_cost:
         return []
@@ -275,12 +290,12 @@ def get_free_intervals(target_task, swap_schedule, access_of_target_tensor, key=
     j = 0
     # 按照区间起点排序
     not_occupied_intervals = sorted(not_occupied_intervals, key=lambda x: x[key], reverse=False)
-    while j< len(access_of_target_tensor):
+    while j < len(access_of_target_tensor):
         if i >= len(not_occupied_intervals):
             break
         access = access_of_target_tensor[j]
         start, end = not_occupied_intervals[i]
-        if access.start_time< end <= access.end_time:
+        if access.start_time < end <= access.end_time:
             not_occupied_intervals[i] = (start, access.start_time)
             i += 1
         elif start < access.start_time < access.end_time < end:
@@ -300,7 +315,7 @@ def get_free_intervals(target_task, swap_schedule, access_of_target_tensor, key=
             j += 1
         elif start == access.start_time < access.end_time == end:
             not_occupied_intervals.pop(i)
-        elif access.start_time<=start < end <=access.end_time:
+        elif access.start_time <= start < end <= access.end_time:
             not_occupied_intervals.pop(i)
         elif access.start_time < start < access.end_time < end:
             not_occupied_intervals[i] = (access.end_time, end)
@@ -352,12 +367,42 @@ def draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num):
         draw(sorted(res, key=lambda x: x.start_time), swap_scheduler[job_id])
 
 
-def get_max_memory_used(tensor_access_list, swap_tasks, swapped_out_tensor, recomputation_tensor, tensors):
-    # 计算显存开销
-    tmp = [tensor_access for tensor_access in tensor_access_list]
-    tmp.extend(swap_tasks)
+class MemoryAnalyzer:
+    def __init__(self, tensor_access_list, tensors):
+        self.tensor_access_list = tensor_access_list
+        self.tensors = tensors
+        self.next_swap_tasks_index = 0
 
-    def custom_cmp(x, y):
+    def insert_sort(self, list_with_order: list, list_b: list, cmp):
+        # 升序
+        for obj_b in list_b:
+            i = 0
+            mid = 0
+            j = len(list_with_order) - 1
+            while i < j:
+                mid = (i + j) // 2
+                obj_mid = list_with_order[mid]
+                flag = cmp(obj_mid, obj_b)
+                if flag == -1:
+                    # mid<b
+                    if mid == i:
+                        # mid>i，插入位置在i+1
+                        mid = i + 1
+                        break
+                    i = mid
+                elif flag == 1:
+                    # b<mid
+                    if mid == j:
+                        # mid<j，插入位置在j
+                        break
+                    j = mid
+                elif flag == 0:
+                    # b==mid
+                    break
+            list_with_order.insert(mid, obj_b)
+        return list_with_order
+
+    def custom_cmp(self, x, y):
         if x.time < y.time:
             return -1
         elif x.time > y.time:
@@ -370,7 +415,7 @@ def get_max_memory_used(tensor_access_list, swap_tasks, swapped_out_tensor, reco
             else:
                 return 0
 
-    def custom_cmp_end_time(x, y):
+    def custom_cmp_end_time(self, x, y):
         if x.end_time < y.end_time:
             return -1
         elif x.end_time > y.end_time:
@@ -378,93 +423,109 @@ def get_max_memory_used(tensor_access_list, swap_tasks, swapped_out_tensor, reco
         else:
             return 0
 
-    time_axis = sorted(tmp, key=cmp_to_key(custom_cmp))
-    end_time_axis = sorted(tmp, key=cmp_to_key(custom_cmp_end_time))
-    # occupied by handle, cudnn, cuda stream and cudart
-    memory_used = 0
-    max_memory_actual = float('-inf')
-    in_gpu_tensors = set()
-    max_memory_tensors = set()
-    last_input_tensor_access = None
-    max_last_access = None
-    wait_to_be_released = []
-    max_time = None
-    foot_print = {}
-    # 首先把输入的x，y以及所有没被swap out的参数载入显存，因为他们从上轮迭代结束时就一直在显存里面
-    for tensor in tensors:
-        if tensor.in_gpu_at_beginning and tensor not in swapped_out_tensor:
-            in_gpu_tensors.add(tensor)
-            memory_used += tensor.size
-    for time_index, event in enumerate(time_axis):
-        time = event.time
-        for i in range(len(wait_to_be_released) - 1, -1, -1):
-            access = wait_to_be_released[i]
-            # 如果此刻时间已经过了释放时间，则释放该访问的附带影响
-            if time >= access.end_time:
-                wait_to_be_released.pop(i)
-                # assert access.tensor in recomputation_tensor or access.tensor in in_gpu_tensors
-                if access.tensor in in_gpu_tensors:
+    def get_max_memory_used(self, swap_tasks, swapped_out_tensor):
+        delta = len(swap_tasks)
+        if self.next_swap_tasks_index == 0:
+            # 初始化时间轴
+            tmp = copy.copy(self.tensor_access_list)
+            tmp.extend(swap_tasks)
+            self.time_axis = sorted(tmp, key=cmp_to_key(self.custom_cmp))
+            self.end_time_axis = sorted(copy.copy(tmp), key=cmp_to_key(self.custom_cmp_end_time))
+            # self.last_unused_swap_tasks = copy.copy(swap_tasks)
+        else:
+            # 更新时间轴
+            # assert swap_tasks[:self.next_swap_tasks_index] == self.last_unused_swap_tasks
+            # self.last_unused_swap_tasks = copy.copy(swap_tasks)
+            swap_tasks = swap_tasks[self.next_swap_tasks_index:]
+            self.time_axis = self.insert_sort(self.time_axis, swap_tasks, self.custom_cmp)
+            self.end_time_axis = self.insert_sort(self.end_time_axis, swap_tasks, self.custom_cmp_end_time)
+        self.index_of_end_time_axis = {self.end_time_axis[i]: i for i in range(len(self.end_time_axis))}
+        # 计算显存开销
+        # occupied by handle, cudnn, cuda stream and cudart
+        memory_used = 0
+        max_memory_actual = float('-inf')
+        in_gpu_tensors = set()
+        max_memory_tensors = set()
+        last_input_tensor_access = None
+        max_last_access = None
+        wait_to_be_released = []
+        max_time = None
+        # foot_print = {}
+        # 首先把输入的x，y以及所有没被swap out的参数载入显存，因为他们从上轮迭代结束时就一直在显存里面
+        for tensor in self.tensors:
+            if tensor.in_gpu_at_beginning and tensor not in swapped_out_tensor:
+                in_gpu_tensors.add(tensor)
+                memory_used += tensor.size
+        for time_index, event in enumerate(self.time_axis):
+            for i in range(len(wait_to_be_released) - 1, -1, -1):
+                access = wait_to_be_released[i]
+                # 如果此刻时间已经过了释放时间，则释放该访问的附带影响
+                if event.time >= access.end_time:
+                    wait_to_be_released.pop(i)
                     memory_used -= access.tensor.size
                     in_gpu_tensors.remove(access.tensor)
-        if isinstance(event, TensorAccess):
-            if event.access_type == AccessType.output:
-                if event.tensor not in in_gpu_tensors:
-                    # 新参数不额外占用空间
-                    if event.operation_name not in optimizer_op:
-                        memory_used += event.tensor.size
-                    in_gpu_tensors.add(event.tensor)
-            else:
-                # 用完即释放的
-                # input本身并不增加gpu使用，swap in增加
-                if event.release_flag:
-                    wait_to_be_released.append(event)
+            if isinstance(event, TensorAccess):
+                if event.access_type == AccessType.output:
+                    if event.tensor not in in_gpu_tensors:
+                        # 新参数不额外占用空间
+                        if event.operation_name not in optimizer_op:
+                            memory_used += event.tensor.size
+                        in_gpu_tensors.add(event.tensor)
                 else:
-                    last_input_tensor_access = event
-        elif isinstance(event, SwapTask):
-            # 使用按照结束时间排序的时间轴进行倒序查找
-            last_event = None
-            idx = end_time_axis.index(event)
-            for j in range(idx - 1, -1, -1):
-                if isinstance(end_time_axis[j], TensorAccess) and end_time_axis[j].end_time <= event.start_time:
-                    last_event = end_time_axis[j]
-                    break
-            if last_event is None:
-                last_event = tensor_access_list[0]
-            event.execute_ref = last_event
-            event.execute_time = event.start_time - last_event.end_time
-            if event.task_type == TaskType.swap_in:
-                memory_used += event.tensor.size
-                in_gpu_tensors.add(event.tensor)
-            else:
-                memory_used -= event.tensor.size
-                in_gpu_tensors.remove(event.tensor)
-        foot_print[time] = memory_used
-        if memory_used > max_memory_actual:
-            # max_memory_actual与是否有考虑价值无关，单纯计量峰值
-            max_memory_actual = memory_used
-            max_memory_tensors = copy.copy(in_gpu_tensors)
-            max_last_access = copy.copy(last_input_tensor_access)
-            max_time = time
-    return max_memory_actual, max_memory_tensors, max_last_access, max_time, foot_print, time_axis
+                    # 用完即释放的
+                    # input本身并不增加gpu使用，swap in增加
+                    if event.release_flag:
+                        wait_to_be_released.append(event)
+                    else:
+                        last_input_tensor_access = event
+            elif isinstance(event, SwapTask):
+                # 使用按照结束时间排序的时间轴进行倒序查找
+                last_event = None
+                # idx = end_time_axis.index(event)
+                idx = self.index_of_end_time_axis[event]
+                for j in range(idx - 1, -1, -1):
+                    if isinstance(self.end_time_axis[j], TensorAccess) and self.end_time_axis[j].end_time <= event.start_time:
+                        last_event = self.end_time_axis[j]
+                        break
+                if last_event is None:
+                    last_event = self.tensor_access_list[0]
+                event.execute_ref = last_event
+                event.execute_time = event.start_time - last_event.end_time
+                if event.task_type == TaskType.swap_in:
+                    memory_used += event.tensor.size
+                    in_gpu_tensors.add(event.tensor)
+                else:
+                    memory_used -= event.tensor.size
+                    in_gpu_tensors.remove(event.tensor)
+            # foot_print[time] = memory_used
+            if memory_used > max_memory_actual:
+                # max_memory_actual与是否有考虑价值无关，单纯计量峰值
+                max_memory_actual = memory_used
+                max_memory_tensors = copy.copy(in_gpu_tensors)
+                max_last_access = last_input_tensor_access
+                max_time = time
+        self.next_swap_tasks_index = delta
+        return max_memory_actual, max_memory_tensors, max_last_access, max_time, self.time_axis
 
 
-def run_global_memory_analysis(global_tensor_access, swap_tasks, swapped_out_tensor, recomputation_tensor):
-    global global_tensors
+def run_global_memory_analysis(swap_tasks, swapped_out_tensor):
+    global job_num
+    global global_memory_analyzer
     max_memory = 0
     max_memory_tensors = []
     last_input_accesses = []
     max_time = []
-    foot_prints = []
+    # foot_prints = []
     time_axis = []
-    for job_id, tensor_accesses in enumerate(global_tensor_access):
-        job_max_memory, job_max_memory_tensors, last_input_access, now_time, foot_print, t_axis = get_max_memory_used(tensor_accesses, swap_tasks[job_id], swapped_out_tensor, recomputation_tensor, global_tensors[job_id])
+    for job_id in range(job_num):
+        job_max_memory, job_max_memory_tensors, last_input_access, now_time, t_axis = global_memory_analyzer[job_id].get_max_memory_used(swap_tasks[job_id], swapped_out_tensor)
         time_axis.append(t_axis)
-        foot_prints.append(foot_print)
+        # foot_prints.append(foot_print)
         max_memory_tensors.extend(job_max_memory_tensors)
         last_input_accesses.append(last_input_access)
         max_time.append(now_time)
         max_memory += job_max_memory
-    return max_memory, max_memory_tensors, last_input_accesses, max_time, foot_prints, time_axis
+    return max_memory, max_memory_tensors, last_input_accesses, max_time, time_axis
 
 
 def draw(tensor_access_list, swap_schedule):
@@ -607,6 +668,7 @@ global_tensors = {}
 swap_scheduler = []
 parameters = []
 models = {}
+global_memory_analyzer = []
 
 
 # load_all_model()
@@ -623,6 +685,7 @@ def init(graphs, logged_times: list, gpu: int):
     global global_tensors
     global swap_scheduler
     global parameters
+    global global_memory_analyzer
     global_graphs = graphs
     jobs_weights = [weight for _ in range(len(graphs))]
     tensor_access_by_tensor = [[] for _ in range(job_num)]
@@ -639,6 +702,8 @@ def init(graphs, logged_times: list, gpu: int):
     global_tensor_access = [tmp[i][0] for i in range(job_num)]
     swap_scheduler = [tmp[i][1] for i in range(job_num)]
     parameters = [tmp[i][2] for i in range(job_num)]
+    for i in range(job_num):
+        global_memory_analyzer.append(MemoryAnalyzer(global_tensor_access[i], global_tensors[i]))
 
 
 def add_job(graph, job_id, gpu: int):
@@ -682,6 +747,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
     last_memory_used = 0
     max_memory = 0
     job_id_ordered_by_weights = list(map(lambda x: x[0], sorted([(job_id, weights) for job_id, weights in enumerate(jobs_weights)], key=lambda x: x[1], reverse=True)))
+    max_memory_footprint = []
     # draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
     while swapped_flag or (recomputation_flag and enable_recomputation):
         # MB
@@ -689,7 +755,12 @@ def generate_scheduling_plan(logged_times, gpu: int):
             total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
         else:
             total_memory = 6000
-        max_memory, max_tensors, last_input_accesses, max_time, foot_prints, time_axis = run_global_memory_analysis(global_tensor_access, swap_scheduler, swapped_out_tensor, recomputation_tensor)
+        max_memory, max_tensors, last_input_accesses, max_time, time_axis = run_global_memory_analysis(swap_scheduler, swapped_out_tensor)
+        max_memory_footprint.append(max_memory)
+        # 最后三次迭代的峰值，做一阶差分，结果的最大值大于上一次峰值的5%以上才继续~`
+        if len(max_memory_footprint) > 3 and max([max_memory_footprint[i] - max_memory_footprint[i + 1] for i in range(len(max_memory_footprint) - 3, len(max_memory_footprint) - 1)]) < max_memory_footprint[
+            -1] * 0.001:
+            break
         if iter == 0:
             original_memory_used = max_memory
             liveness_analysis(global_tensor_access)
@@ -785,7 +856,6 @@ def generate_scheduling_plan(logged_times, gpu: int):
                     if tensor not in swapped_out_tensor:
                         output_access = tensor_access_by_tensor[tensor.job_id][tensor][0]
                         assert output_access.access_type == AccessType.output
-                        # TODO: 框架在开始下一个batch的计算前需要等待最后一个swap结束
                         swap_out_task = SwapTask(tensor, time=output_access.time, time_cost=tensor.swap_time, task_type=TaskType.swap_out, front_boundary=output_access.end_time, back_boundary=float('inf'))
                         free_intervals = get_free_intervals(swap_out_task, swap_scheduler[swap_out_task.tensor.job_id], tensor_access_by_tensor[tensor.job_id][tensor])
                         for interval in free_intervals:
@@ -820,7 +890,6 @@ def generate_scheduling_plan(logged_times, gpu: int):
             recomputation_flag = False
             # 需要重计算
             if max_memory >= total_memory:
-                succeed = False
                 for job_id in job_id_ordered_by_weights:
                     max_tensors_filtered = []
                     for tensor in max_tensors:
@@ -893,7 +962,6 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
             message_type = global_message[1][0]
             message_graph = global_message[1][1]
 
-
             if message_type == 0:
 
                 # print("job_id =", job_id)
@@ -907,7 +975,7 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                 global_graphs.append(message_graph)
                 tensor_num = len(message_graph)
 
-                # with open("./log/global_graphs", "wb") as f1:
+                # with open("../../global_graphs", "wb") as f1:
                 #     pickle.dump(global_graphs, f1)
 
                 for i in range(tensor_num):
@@ -953,7 +1021,7 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
 
                     second_schedule_finished = True
 
-                    # with open("./log/logged_times", "wb") as f1:
+                    # with open("../../logged_times", "wb") as f1:
                     #     pickle.dump(logged_times, f1)
 
                     for node_message in message_graph:
@@ -968,12 +1036,12 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                     control_messages = {}
 
                     for i in range(job_num):
-
                         print(swap_order)
                         control_message = [swap_order[i], release_order[i], recomputation_order[i]]
                         control_messages[map_in_to_out[i]] = control_message
                     global_control_queue.put(control_messages)
                 # print(logged_times[0])
+
 
 if debug_mod and __name__ == '__main__':
     import pickle
@@ -984,11 +1052,11 @@ if debug_mod and __name__ == '__main__':
     with open('../../logged_times', 'rb') as f:
         logged_times = pickle.load(f)
     job_num = 1
-    init(global_graphs, logged_times, 0)
-    # profiler = LineProfiler()
-    # profiler.add_function(get_free_intervals)
+    profiler = LineProfiler()
+    profiler.add_function(get_free_intervals)
     # profiler.add_function(get_max_memory_used)
-    # profiler_wrapper = profiler(generate_scheduling_plan)
-    # res = profiler_wrapper(logged_times, 0)
-    # profiler.print_stats()
-    release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
+    profiler.add_function(run_global_memory_analysis)
+    profiler_wrapper = profiler(generate_scheduling_plan)
+    res = profiler_wrapper(logged_times, 0)
+    profiler.print_stats()
+    # release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)

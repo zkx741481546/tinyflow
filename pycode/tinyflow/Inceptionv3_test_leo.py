@@ -507,9 +507,10 @@ class Inceptionv3():
         y = self.ad.fullyactivation_forward_op(dense, "NCHW", "softmax")
         loss = self.ad.crossEntropy_loss(y, y_)
         # fc8
-
+        if not os.path.exists('./log/Inception V3/test'):
+            os.makedirs('./log/Inception V3/test')
         executor = self.ad.Executor(loss, y, 0.001, top_control_queue=top_control_queue,
-                                    top_message_queue=top_message_queue)
+                                    top_message_queue=top_message_queue,log_path='./log/Inception V3/test')
 
         feed_dict={ filterb_1: filtersb_val1, filterb_2: filtersb_val2, filterb_3: filtersb_val3
                                            , filterb_4: filtersb_val4, filterb_5: filtersb_val5,
@@ -606,8 +607,8 @@ if __name__ == '__main__':
     job_number = 1
 
     gpu_num = GPU
-    batch_size = 2
-    num_step = 20
+    batch_size = 32
+    num_step = 200
     inceptionv3 = Inceptionv3(num_step=num_step, batch_size=batch_size, gpu_num=gpu_num)
     X_val = np.random.normal(loc=0, scale=0.1, size=(
     batch_size, 3, 299, 299))  # number = batch_size  channel = 3  image_size = 224*224
