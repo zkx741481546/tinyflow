@@ -113,7 +113,7 @@ class TensorAccess:
         return (self.tensor.tensor_id, self.time)
 
     def __repr__(self):
-        return f'id={self.tensor.tensor_id}, time={self.time}, access_type={self.access_type}'
+        return f'id={self.tensor.tensor_id}, start_time={self.start_time}, end_time={self.end_time}, time={self.time}, access_type={self.access_type}, release_flag={self.release_flag}'
 
 
 class SwapTask(object):
@@ -161,7 +161,7 @@ class SwapTask(object):
         return cls(access.tensor, weight, access.time, access.tensor.swap_time, task_type, front_boundary=front_boundary, back_boundary=back_boundary)
 
     def __repr__(self):
-        return f'id={self.tensor}, type={self.task_type}, start_time={self.start_time}, end_time={self.end_time}'
+        return f'id={self.tensor}, type={self.task_type}, start_time={self.start_time}, end_time={self.end_time}, time={self.time}'
 
 
 def numpy_ewma_vectorized(data, window):
@@ -401,20 +401,39 @@ class MemoryAnalyzer:
                 if flag == -1:
                     # mid<b
                     if mid == i:
-                        # mid>i，插入位置在i+1
-                        mid = i + 1
+                        # i=mid<=j, mid<b, 比较b和j
+                        flag2 = cmp(list_with_order[j], obj_b)
+                        if flag2==-1:
+                            # i=mid<=j<b, 插入位置在j+1
+                            mid = j
+                        elif flag2==1:
+                            # i=mid<b<j, 插入位置在j
+                            mid = j-1
+                        else:
+                            # i=mid<=j=b, 插入位置在j+1
+                            mid = j
                         break
                     i = mid
                 elif flag == 1:
                     # b<mid
                     if mid == j:
-                        # mid<j，插入位置在j
+                        # i<=mid=j, b<mid, 比较i和b
+                        flag2 = cmp(list_with_order[i], obj_b)
+                        if flag2 == -1:
+                            # i<b<mid=j, 插入位置在i+1
+                            mid = i
+                        elif flag2 == 1:
+                            # b<i<mid=j, 插入位置在i
+                            mid = i - 1
+                        else:
+                            # i=b<mid=j, 插入位置在i+1
+                            mid = i
                         break
                     j = mid
                 elif flag == 0:
-                    # b==mid
+                    # b==mid，插入位置在mid+1
                     break
-            list_with_order.insert(mid, obj_b)
+            list_with_order.insert(mid+1, obj_b)
         return list_with_order
 
     def custom_cmp(self, x, y):
@@ -428,6 +447,10 @@ class MemoryAnalyzer:
             elif x.start_time > y.start_time:
                 return 1
             else:
+                # if isinstance(x,TensorAccess) and isinstance(y, SwapTask):
+                #     return 1
+                # elif isinstance(x, SwapTask) and isinstance(y, TensorAccess):
+                #     return -1
                 return 0
 
     def custom_cmp_end_time(self, x, y):
@@ -513,6 +536,10 @@ class MemoryAnalyzer:
                     in_gpu_tensors.add(event.tensor)
                 else:
                     memory_used -= event.tensor.size
+                    if event.tensor not in in_gpu_tensors:
+                        draw_all_task(tensor_access_by_tensor,swap_scheduler,1)
+                        print(tensor_access_by_tensor[event.tensor.job_id][event.tensor])
+                        print(self.time_axis[-2:])
                     in_gpu_tensors.remove(event.tensor)
             # foot_print[time] = memory_used
             if memory_used > max_memory_actual:
@@ -754,9 +781,9 @@ def generate_scheduling_plan(logged_times, gpu: int):
         max_memory, max_tensors, last_input_accesses, max_time, time_axis = run_global_memory_analysis(swap_scheduler, swapped_out_tensor)
         max_memory_footprint.append(max_memory)
         # 最后三次迭代的峰值，做一阶差分，结果的最大值大于上一次峰值的0.2%以上才继续~`
-        if len(max_memory_footprint) > 3 and max([max_memory_footprint[i] - max_memory_footprint[i + 1] for i in range(len(max_memory_footprint) - 3, len(max_memory_footprint) - 1)]) < max_memory_footprint[
-            -1] * 0.002:
-            break
+        # if len(max_memory_footprint) > 3 and max([max_memory_footprint[i] - max_memory_footprint[i + 1] for i in range(len(max_memory_footprint) - 3, len(max_memory_footprint) - 1)]) < max_memory_footprint[
+        #     -1] * 0.002:
+        #     break
         if iter == 0:
             original_memory_used = max_memory
             liveness_analysis(global_tensor_access)
@@ -926,7 +953,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
         total_memory = 6000
     stats = 'succeed' if max_memory < total_memory else ' failure'
     print(f'scheduling {stats}')
-    draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
+    # draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
     memory_saved_ratio = format((1 - last_memory_used / original_memory_used) * 100, '.2f')
     print(f'memory_saved_ratio:{memory_saved_ratio}%')
     print(f'swap ratio:{len(swap_scheduler[0]) / len(global_tensors)}')
@@ -1048,10 +1075,10 @@ if debug_mod and __name__ == '__main__':
     with open('../../logged_times', 'rb') as f:
         logged_times = pickle.load(f)
     job_num = 1
-    profiler = LineProfiler()
-    # # profiler.add_function(get_free_intervals)
+    # profiler = LineProfiler()
+    # profiler.add_function(get_free_intervals)
     # # profiler.add_function(get_occupied_intervals)
-    # profiler.add_function(MemoryAnalyzer.get_max_memory_used)
+    # # profiler.add_function(MemoryAnalyzer.get_max_memory_used)
     # # profiler.add_function(run_global_memory_analysis)
     # profiler_wrapper = profiler(generate_scheduling_plan)
     # res = profiler_wrapper(logged_times, 0)
