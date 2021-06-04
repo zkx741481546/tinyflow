@@ -279,7 +279,6 @@ def get_free_intervals(target_task, swap_schedule, access_of_target_tensor, key=
             intervals.append((task.start_time, target_task.back_boundary))
         elif task.start_time < target_task.front_boundary < target_task.back_boundary < task.end_time:
             return []
-    # 防止区间与被调度张量的access重合
     intervals = sorted(intervals, key=lambda x: x[0])
     # 区间融合，确保区间之间无交集
     occupied_intervals = []
@@ -310,12 +309,13 @@ def get_free_intervals(target_task, swap_schedule, access_of_target_tensor, key=
     j = 0
     # 按照区间起点排序
     not_occupied_intervals = sorted(not_occupied_intervals, key=lambda x: x[key], reverse=False)
+    # 防止区间与被调度张量的access重合
     while j < len(access_of_target_tensor):
         if i >= len(not_occupied_intervals):
             break
         access = access_of_target_tensor[j]
         start, end = not_occupied_intervals[i]
-        if access.start_time < end <= access.end_time:
+        if start < access.start_time < end <= access.end_time:
             not_occupied_intervals[i] = (start, access.start_time)
             i += 1
         elif start < access.start_time < access.end_time < end:
@@ -323,23 +323,14 @@ def get_free_intervals(target_task, swap_schedule, access_of_target_tensor, key=
             not_occupied_intervals.insert(i + 1, (access.end_time, end))
             i += 1
             j += 1
-        elif start < access.start_time < access.end_time == end:
-            not_occupied_intervals[i] = (start, access.start_time)
-            i += 1
-            j += 1
-        elif start == access.start_time < access.end_time < end:
-            not_occupied_intervals[i] = (access.end_time, end)
-            j += 1
         elif start == access.start_time < end < access.end_time:
             not_occupied_intervals.pop(i)
             j += 1
-        elif start == access.start_time < access.end_time == end:
-            not_occupied_intervals.pop(i)
-        elif access.start_time <= start < end <= access.end_time:
-            not_occupied_intervals.pop(i)
-        elif access.start_time < start < access.end_time < end:
+        elif access.start_time <= start < access.end_time < end:
             not_occupied_intervals[i] = (access.end_time, end)
             j += 1
+        elif access.start_time <= start < end <= access.end_time:
+            not_occupied_intervals.pop(i)
         else:
             j += 1
     # 按照区间终点排序

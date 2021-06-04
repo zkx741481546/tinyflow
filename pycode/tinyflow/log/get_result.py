@@ -1,5 +1,5 @@
 import numpy as np
-raw_workload = 'VGG x1 EMA'
+raw_workload = 'VGG x2 EMA'
 repeat_times = 3
 all_saved_ratio = []
 all_extra_overhead = []
@@ -14,8 +14,12 @@ for i in range(repeat_times):
     scheduled_path = f'./{workload}/schedule/'
     with open(vanilla_path+'gpu_record.txt', 'r') as f:
         lines = f.readlines()
-    temp = lines[-1].split('\t')
-    vanilla_max_memory_used = float(temp[2].split(' ')[1])
+    try:
+        temp = lines[-1].split('\t')
+        vanilla_max_memory_used = float(temp[2].split(' ')[1])
+    except:
+        temp = lines[-2].split('\t')
+        vanilla_max_memory_used = float(temp[2].split(' ')[1])
     all_vanilla_max_memory_used.append(vanilla_max_memory_used)
     with open(scheduled_path+'gpu_record.txt', 'r') as f:
         lines = f.readlines()
@@ -56,4 +60,4 @@ with open(f'./{raw_workload}/repeat_{repeat_times}_result.txt', 'w') as f:
             f'\nschedule_max_memory_used:{all_schedule_max_memory_used.mean()} +- {all_schedule_max_memory_used.std()}'
             f'\nvanilla_time_cost:{all_vanilla_time_cost.mean()} +- {all_vanilla_time_cost.std()}'
             f'\nschedule_time_cost:{all_schedule_time_cost.mean()} +- {all_schedule_time_cost.std()}'
-            f'\nefficiency:{all_memory_saved_to_extra_overhead_ratio.mean()} +- {all_memory_saved_to_extra_overhead_ratio.std()}')
+            f'\nefficiency:{all_saved_ratio.mean()/all_extra_overhead.mean()}')
