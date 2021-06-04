@@ -1,5 +1,5 @@
 import numpy as np
-raw_workload = 'VGG EMA x2'
+raw_workload = 'VGG x1 EMA'
 repeat_times = 3
 all_saved_ratio = []
 all_extra_overhead = []
@@ -19,8 +19,8 @@ for i in range(repeat_times):
     all_vanilla_max_memory_used.append(vanilla_max_memory_used)
     with open(scheduled_path+'gpu_record.txt', 'r') as f:
         lines = f.readlines()
-    temp = lines[-1].split('\t')
     try:
+        temp = lines[-1].split('\t')
         schedule_max_memory_used = float(temp[2].split(' ')[1])
     except:
         temp = lines[-2].split('\t')

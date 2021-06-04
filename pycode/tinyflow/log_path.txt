@@ -1,1 +1,1 @@
-./log/VGG EMA/vanilla
+./log/VGG x1 EMA/schedule

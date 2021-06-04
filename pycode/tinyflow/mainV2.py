@@ -25,12 +25,13 @@ from util import load_gpu
 from line_profiler import LineProfiler
 from typing import List
 
+
 def get_PCIE_bandwidth():
-    if not debug_mod:
-        PCIE_bandwidth = nvmlDeviceGetPcieThroughput(handle, NVML_PCIE_UTIL_COUNT)  # kb/s => MB/ms
-        PCIE_bandwidth /= 1000000
-    else:
-        PCIE_bandwidth = 12
+    # if not debug_mod:
+    #     PCIE_bandwidth = nvmlDeviceGetPcieThroughput(handle, NVML_PCIE_UTIL_COUNT)  # KB/s => MB/ms
+    #     PCIE_bandwidth /= 1000000
+    # else:
+    PCIE_bandwidth = 12
     return PCIE_bandwidth
 
 
@@ -86,6 +87,7 @@ class Tensor:
 
     def update_swap_time(self):
         PCIE_bandwidth = get_PCIE_bandwidth()
+        # print(f'PCIE_bandwidth:{PCIE_bandwidth}')
         self.swap_time = self.size / PCIE_bandwidth
 
 
@@ -282,15 +284,18 @@ def get_free_intervals(target_task, swap_schedule, access_of_target_tensor, key=
     # 区间融合，确保区间之间无交集
     occupied_intervals = []
     i = 0
-    while i<len(intervals):
+    while i < len(intervals):
         interval = intervals[i]
         l = interval[0]
         r = interval[1]
-        while i<len(intervals)-1 and intervals[i+1][0]<=r:
-            r = max(r, intervals[i+1][1])
+        flag = False
+        while i < len(intervals) - 1 and intervals[i + 1][0] <= r:
+            r = max(r, intervals[i + 1][1])
+            flag = True
             i += 1
         occupied_intervals.append((l, r))
-        i += 1
+        if not flag:
+            i += 1
     not_occupied_intervals = []
     s = target_task.front_boundary
     for interval in occupied_intervals:
@@ -403,12 +408,12 @@ class MemoryAnalyzer:
                     if mid == i:
                         # i=mid<=j, mid<b, 比较b和j
                         flag2 = cmp(list_with_order[j], obj_b)
-                        if flag2==-1:
+                        if flag2 == -1:
                             # i=mid<=j<b, 插入位置在j+1
                             mid = j
-                        elif flag2==1:
+                        elif flag2 == 1:
                             # i=mid<b<j, 插入位置在j
-                            mid = j-1
+                            mid = j - 1
                         else:
                             # i=mid<=j=b, 插入位置在j+1
                             mid = j
@@ -433,7 +438,7 @@ class MemoryAnalyzer:
                 elif flag == 0:
                     # b==mid，插入位置在mid+1
                     break
-            list_with_order.insert(mid+1, obj_b)
+            list_with_order.insert(mid + 1, obj_b)
         return list_with_order
 
     def custom_cmp(self, x, y):
@@ -537,7 +542,7 @@ class MemoryAnalyzer:
                 else:
                     memory_used -= event.tensor.size
                     if event.tensor not in in_gpu_tensors:
-                        draw_all_task(tensor_access_by_tensor,swap_scheduler,1)
+                        draw_all_task(tensor_access_by_tensor, swap_scheduler, 1)
                         print(tensor_access_by_tensor[event.tensor.job_id][event.tensor])
                         print(self.time_axis[-2:])
                     in_gpu_tensors.remove(event.tensor)
@@ -547,7 +552,7 @@ class MemoryAnalyzer:
                 max_memory_actual = memory_used
                 max_memory_tensors = copy.copy(in_gpu_tensors)
                 max_last_access = last_input_tensor_access
-                max_time = time
+                max_time = event.time
         self.next_swap_tasks_index = delta
         return max_memory_actual, max_memory_tensors, max_last_access, max_time, self.time_axis
 
@@ -787,9 +792,9 @@ def generate_scheduling_plan(logged_times, gpu: int):
         max_memory, max_tensors, last_input_accesses, max_time, time_axis = run_global_memory_analysis(swap_scheduler, swapped_out_tensor)
         max_memory_footprint.append(max_memory)
         # 最后三次迭代的峰值，做一阶差分，结果的最大值大于上一次峰值的0.2%以上才继续~`
-        if len(max_memory_footprint) > 3 and max([max_memory_footprint[i] - max_memory_footprint[i + 1] for i in range(len(max_memory_footprint) - 3, len(max_memory_footprint) - 1)]) < max_memory_footprint[
-            -1] * 0.002:
-            break
+        # if len(max_memory_footprint) > 3 and max([max_memory_footprint[i] - max_memory_footprint[i + 1] for i in range(len(max_memory_footprint) - 3, len(max_memory_footprint) - 1)]) < max_memory_footprint[
+        #     -1] * 0.002:
+        #     break
         if iter == 0:
             original_memory_used = max_memory
             liveness_analysis(global_tensor_access)
@@ -953,13 +958,13 @@ def generate_scheduling_plan(logged_times, gpu: int):
         iter += 1
     # fig = go.Figure(data=[go.Scatter(x=list(original_memory_footprint[0].keys()), y=list(original_memory_footprint[0].values())), go.Scatter(x=list(foot_prints[0].keys()), y=list(foot_prints[0].values()))])
     # plotly.offline.plot(fig, filename='../../pic/footprint.html')
-    if not debug_mod:
-        total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
-    else:
-        total_memory = 6000
-    stats = 'succeed' if max_memory < total_memory else ' failure'
-    print(f'scheduling {stats}')
-    # draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
+    # if not debug_mod:
+    #     total_memory = nvmlDeviceGetMemoryInfo(handle).free / 1000000
+    # else:
+    #     total_memory = 6000
+    # stats = 'succeed' if max_memory < total_memory else ' failure'
+    # print(f'scheduling {stats}')
+    draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
     memory_saved_ratio = format((1 - last_memory_used / original_memory_used) * 100, '.2f')
     print(f'memory_saved_ratio:{memory_saved_ratio}%')
     print(f'swap ratio:{len(swap_scheduler[0]) / len(global_tensors)}')

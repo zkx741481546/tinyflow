@@ -169,7 +169,7 @@ class VGG16():
         for i in range(self.num_step):
             print("step", i)
             if self.job_id==0:
-                if i == 69:
+                if i == 79:
                     gpu_record.start()
                     start_time = time.time()
                 if i == 99:
@@ -185,6 +185,9 @@ class VGG16():
             print(loss_val)
 
         print("success")
+        top_message_queue.close()
+        top_control_queue.close()
+        return 0
 
 
 def run_workload(GPU, batch_size, num_step, log_path, top_control_queue_list, top_message_queue_list, job_id):
@@ -222,7 +225,7 @@ if __name__ == '__main__':
             os.makedirs(log_path)
 
         job_number = 1
-        job_pool = [run_workload(GPU, 32, 100, log_path, top_control_queue_list, top_message_queue_list, job_id) for job_id in range(job_number)]
+        job_pool = [run_workload(GPU, 2, 100, log_path, top_control_queue_list, top_message_queue_list, job_id) for job_id in range(job_number)]
         for job in job_pool:
             job.start()
 
@@ -240,6 +243,10 @@ if __name__ == '__main__':
                         if i in global_control:
                             print("job ", i, "control")
                             top_control_queue_list[i].put(global_control[i])
+            for q in top_message_queue_list:
+                q.close()
+            for q in top_control_queue_list:
+                q.close()
             if 'schedule' in log_path:
                 scheduler.terminate()
         else:
