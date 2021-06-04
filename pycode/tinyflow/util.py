@@ -43,5 +43,5 @@ class GPURecord(threading.Thread):
 
     def stop(self):
         self.flag = False
-        time.sleep(0.001)
+        time.sleep(0.01)
         self.f.close()

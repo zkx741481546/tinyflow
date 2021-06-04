@@ -35,7 +35,7 @@ def get_PCIE_bandwidth():
 
 
 GPU = load_gpu()
-debug_mod = True
+debug_mod = False
 if not debug_mod:
     nvmlInit()
     handle = nvmlDeviceGetHandleByIndex(GPU)
@@ -697,7 +697,7 @@ global_memory_analyzer = []
 # load_all_model()
 
 
-def init(graphs, logged_times: list, gpu: int):
+def init(logged_times: list, gpu: int):
     global job_num
     global global_tensor_access
     global tensor_access_by_tensor
@@ -709,7 +709,13 @@ def init(graphs, logged_times: list, gpu: int):
     global swap_scheduler
     global parameters
     global global_memory_analyzer
-    global_graphs = graphs
+    global_tensor_access = [[]]
+    tensor_access_by_tensor = []
+    global_tensors = {}
+    swap_scheduler = []
+    parameters = []
+    global_memory_analyzer = []
+    graphs = global_graphs
     jobs_weights = [weight for _ in range(len(graphs))]
     tensor_access_by_tensor = [[] for _ in range(job_num)]
     os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu)
@@ -736,13 +742,13 @@ def add_job(graph, job_id, gpu: int):
         global_graphs.append(graph)
     else:
         global_graphs[job_id] = graph
-    init(global_graphs, [[] for _ in range(job_num)], gpu)
+    init([[] for _ in range(job_num)], gpu)
 
 
 def remove_job(job_id, gpu: int):
     global global_graphs
     global_graphs[job_id] = None
-    init(global_graphs, [], gpu)
+    init([], gpu)
 
 
 def generate_scheduling_plan(logged_times, gpu: int):
@@ -750,7 +756,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
     # logged_times: [[(operation_id, [time, time, time])]]，外层索引为job_id
     global total_memory
     global global_tensors
-    init(global_graphs, logged_times, gpu)
+    init(logged_times, gpu)
     # 指数加权平均更新估计时间
     tensor_nums = list(map(lambda x: len(x), tensor_access_by_tensor))
     swap_out_number_limits = [int(weight * tensor_num) for weight, tensor_num in zip(jobs_weights, tensor_nums)]
@@ -781,9 +787,9 @@ def generate_scheduling_plan(logged_times, gpu: int):
         max_memory, max_tensors, last_input_accesses, max_time, time_axis = run_global_memory_analysis(swap_scheduler, swapped_out_tensor)
         max_memory_footprint.append(max_memory)
         # 最后三次迭代的峰值，做一阶差分，结果的最大值大于上一次峰值的0.2%以上才继续~`
-        # if len(max_memory_footprint) > 3 and max([max_memory_footprint[i] - max_memory_footprint[i + 1] for i in range(len(max_memory_footprint) - 3, len(max_memory_footprint) - 1)]) < max_memory_footprint[
-        #     -1] * 0.002:
-        #     break
+        if len(max_memory_footprint) > 3 and max([max_memory_footprint[i] - max_memory_footprint[i + 1] for i in range(len(max_memory_footprint) - 3, len(max_memory_footprint) - 1)]) < max_memory_footprint[
+            -1] * 0.002:
+            break
         if iter == 0:
             original_memory_used = max_memory
             liveness_analysis(global_tensor_access)
@@ -1025,7 +1031,6 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                 for run_time in message_graph:
                     total_time_new += run_time[1]
                 change_rate = abs(total_time_new - total_time_old) / total_time_old
-                is_replan = False
                 print("change rate is ", change_rate)
                 # print("total time new is", total_time_new)
                 # print("total time old is", total_time_old)
@@ -1049,8 +1054,7 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
 
                     for node_message in message_graph:
                         time_new = node_message[1] * alpha + logged_times[job_id_in][node_message[0]][0] * (1 - alpha)
-                        # todo 未实装指数平滑
-                        logged_times[job_id_in][node_message[0]] = [node_message[1]]
+                        logged_times[job_id_in][node_message[0]] = [time_new]
 
                     release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
 

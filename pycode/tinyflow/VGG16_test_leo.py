@@ -169,10 +169,10 @@ class VGG16():
         for i in range(self.num_step):
             print("step", i)
             if self.job_id==0:
-                if i == 5:
+                if i == 69:
                     gpu_record.start()
                     start_time = time.time()
-                if i == 10:
+                if i == 99:
                     gpu_record.stop()
                     f1.write(f'time_cost:{time.time() - start_time}')
                     f1.flush()
@@ -185,9 +185,6 @@ class VGG16():
             print(loss_val)
 
         print("success")
-        top_message_queue.close()
-        top_control_queue.close()
-        return 0
 
 
 def run_workload(GPU, batch_size, num_step, log_path, top_control_queue_list, top_message_queue_list, job_id):
@@ -210,8 +207,9 @@ if __name__ == '__main__':
     repeat_times = 3
     for t in range(repeat_times):
         print(f'repeat_time:{t}')
-        global_message_queue = multiprocessing.Queue()
-        global_control_queue = multiprocessing.Queue()
+        if 'schedule' in raw_log_path:
+            global_message_queue = multiprocessing.Queue()
+            global_control_queue = multiprocessing.Queue()
 
         top_control_queue_list = []
         top_message_queue_list = []
@@ -224,29 +222,30 @@ if __name__ == '__main__':
             os.makedirs(log_path)
 
         job_number = 1
-        job_pool = [run_workload(GPU, 2, 20, log_path, top_control_queue_list, top_message_queue_list, job_id) for job_id in range(job_number)]
+        job_pool = [run_workload(GPU, 32, 100, log_path, top_control_queue_list, top_message_queue_list, job_id) for job_id in range(job_number)]
         for job in job_pool:
             job.start()
 
         if 'schedule' in log_path:
             scheduler = Process(target=mp.multiprocess_init, args=(global_message_queue, global_control_queue))
             scheduler.start()
-        while True in [job.is_alive() for job in job_pool]:
-            for i in range(job_number):
-                if not top_message_queue_list[i].empty():
-                    print("job ", i, "message")
-                    global_message_queue.put([i, top_message_queue_list[i].get()])
-            if not global_control_queue.empty():
-                global_control = global_control_queue.get()
+            while True in [job.is_alive() for job in job_pool]:
                 for i in range(job_number):
-                    if i in global_control:
-                        print("job ", i, "control")
-                        top_control_queue_list[i].put(global_control[i])
-        for q in top_message_queue_list:
-            q.close()
-        for q in top_control_queue_list:
-            q.close()
-        if 'schedule' in log_path:
-            scheduler.terminate()
+                    if not top_message_queue_list[i].empty():
+                        print("job ", i, "message")
+                        global_message_queue.put([i, top_message_queue_list[i].get()])
+                if not global_control_queue.empty():
+                    global_control = global_control_queue.get()
+                    for i in range(job_number):
+                        if i in global_control:
+                            print("job ", i, "control")
+                            top_control_queue_list[i].put(global_control[i])
+            if 'schedule' in log_path:
+                scheduler.terminate()
+        else:
+            while True in [job.is_alive() for job in job_pool]:
+                for i in range(job_number):
+                    if not top_message_queue_list[i].empty():
+                        top_message_queue_list[i].get()
         for job in job_pool:
             job.terminate()

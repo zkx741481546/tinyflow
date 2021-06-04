@@ -1,1 +1,1 @@
-./log/Inception V3/test_schedule
+./log/VGG EMA/vanilla

@@ -2751,9 +2751,9 @@ class Executor(object):
         return_feed_dict = {}
 
         if have_got_control_message:
-            print("等待同步")
+            # print("等待同步")
             swap_finish_event.wait()
-        print("同步完成")
+        # print("同步完成")
 
         n = self.eval_node_list[0]
         assert not index_to_gpu_map[n.index] is None
