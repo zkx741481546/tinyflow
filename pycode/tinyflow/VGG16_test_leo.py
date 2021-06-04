@@ -224,8 +224,8 @@ if __name__ == '__main__':
         if not os.path.exists(log_path):
             os.makedirs(log_path)
 
-        job_number = 3
-        job_pool = [run_workload(GPU, 2, 100, log_path, top_control_queue_list, top_message_queue_list, job_id) for job_id in range(job_number)]
+        job_number = 1
+        job_pool = [run_workload(GPU, 32, 100, log_path, top_control_queue_list, top_message_queue_list, job_id) for job_id in range(job_number)]
         for job in job_pool:
             job.start()
 

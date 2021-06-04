@@ -1,5 +1,5 @@
 import numpy as np
-raw_workload = 'VGG x2 EMA'
+raw_workload = 'VGG x3 EMA'
 repeat_times = 3
 all_saved_ratio = []
 all_extra_overhead = []
