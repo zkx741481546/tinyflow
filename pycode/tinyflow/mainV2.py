@@ -964,7 +964,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
     #     total_memory = 6000
     # stats = 'succeed' if max_memory < total_memory else ' failure'
     # print(f'scheduling {stats}')
-    draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
+    # draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
     memory_saved_ratio = format((1 - last_memory_used / original_memory_used) * 100, '.2f')
     print(f'memory_saved_ratio:{memory_saved_ratio}%')
     print(f'swap ratio:{len(swap_scheduler[0]) / len(global_tensors)}')

@@ -1,1 +1,1 @@
-./log/VGG x1 EMA/schedule
+./log/VGG x2 EMA/schedule
