@@ -207,7 +207,7 @@ def run_workload(GPU, batch_size, num_step, log_path, top_control_queue_list, to
 
 if __name__ == '__main__':
     # gpu_record = GPURecord()
-    repeat_times = 3
+    repeat_times = 1
     for t in range(repeat_times):
         print(f'repeat_time:{t}')
         if 'schedule' in raw_log_path:
@@ -224,8 +224,8 @@ if __name__ == '__main__':
         if not os.path.exists(log_path):
             os.makedirs(log_path)
 
-        job_number = 1
-        job_pool = [run_workload(GPU, 32, 100, log_path, top_control_queue_list, top_message_queue_list, job_id) for job_id in range(job_number)]
+        job_number = 3
+        job_pool = [run_workload(GPU, 2, 100, log_path, top_control_queue_list, top_message_queue_list, job_id) for job_id in range(job_number)]
         for job in job_pool:
             job.start()
 
