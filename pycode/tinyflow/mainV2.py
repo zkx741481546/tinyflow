@@ -791,7 +791,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
             liveness_analysis(global_tensor_access)
         else:
             last_memory_used = max_memory
-        print(f'iter:{iter}, max_memory:{max_memory}')
+        # print(f'iter:{iter}, max_memory:{max_memory}')
         max_tensors = sorted(max_tensors, key=lambda x: x.size, reverse=True)
         if swapped_flag:
             swapped_flag = False
