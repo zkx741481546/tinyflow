@@ -614,7 +614,7 @@ if __name__ == '__main__':
         if not os.path.exists(log_path):
             os.makedirs(log_path)
         gpu_num = GPU
-        batch_size = 32
+        batch_size = 2
         num_step = 100
 
         job_number = 1
@@ -625,25 +625,21 @@ if __name__ == '__main__':
         if 'schedule' in log_path:
             scheduler = Process(target=mp.multiprocess_init, args=(global_message_queue, global_control_queue))
             scheduler.start()
-        # scheduler.join()
-        # gpu_record.start()
-
-        while True in [job.is_alive() for job in job_pool]:
-            for i in range(job_number):
-                if not top_message_queue_list[i].empty():
-                    # print("job ", i, "message")
-                    global_message_queue.put([i, top_message_queue_list[i].get()])
-            if not global_control_queue.empty():
-                global_control = global_control_queue.get()
+            while True in [job.is_alive() for job in job_pool]:
                 for i in range(job_number):
-                    if i in global_control:
-                        # print("job ", i, "control")
-                        top_control_queue_list[i].put(global_control[i])
-        for q in top_message_queue_list:
-            q.close()
-        for q in top_control_queue_list:
-            q.close()
-        if 'schedule' in log_path:
-            scheduler.terminate()
+                    if not top_message_queue_list[i].empty():
+                        # print("job ", i, "message")
+                        global_message_queue.put([i, top_message_queue_list[i].get()])
+                if not global_control_queue.empty():
+                    global_control = global_control_queue.get()
+                    for i in range(job_number):
+                        if i in global_control:
+                            # print("job ", i, "control")
+                            top_control_queue_list[i].put(global_control[i])
+        else:
+            while True in [job.is_alive() for job in job_pool]:
+                for i in range(job_number):
+                    if not top_message_queue_list[i].empty():
+                        top_message_queue_list[i].get()
         for job in job_pool:
             job.terminate()

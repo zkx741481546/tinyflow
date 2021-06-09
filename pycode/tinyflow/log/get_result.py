@@ -1,6 +1,6 @@
 import numpy as np
-raw_workload = 'VGG x3 EMA new'
-repeat_times = 1
+raw_workload = 'InceptionV3'
+repeat_times = 3
 all_saved_ratio = []
 all_extra_overhead = []
 all_vanilla_max_memory_used = []
