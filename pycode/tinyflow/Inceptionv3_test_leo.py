@@ -599,7 +599,7 @@ def run_workload(GPU, batch_size, num_step, log_path, top_control_queue_list, to
 
 if __name__ == '__main__':
     # gpu_record = GPURecord()
-    repeat_times = 3
+    repeat_times = 1
     for t in range(repeat_times):
         print(f'repeat_time:{t}')
         global_message_queue = multiprocessing.Queue()

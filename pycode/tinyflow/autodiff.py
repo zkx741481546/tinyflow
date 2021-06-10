@@ -2537,7 +2537,7 @@ class Executor(object):
         # Traverse graph in topo order and compute values for all nodes.
         for node in self.topo_order:
 
-            # print(node.index)
+            print(node.index)
             self.will_do_queue.join()
             self.control_queue.join()
 
