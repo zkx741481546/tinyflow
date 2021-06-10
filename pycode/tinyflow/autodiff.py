@@ -69,6 +69,7 @@ class MemoryManager(threading.Thread):
     def run(self):
         while (True):
             node = self.will_do_queue.get(block=True)
+            print(f'start swapping:{node}')
             node_index = node[0]
             move_to_gpu = node[1]
             is_swap_finish = node[2]
@@ -2716,8 +2717,9 @@ class Executor(object):
                 # # todo 仅用于测试
                 # self.have_done_queue.get(block=True)
                 # print("swap end")
-
+            # time.sleep(0.001)
             for release_message in node.release_list:
+                assert index_to_gpu_map[release_message] is not None, release_message
                 index_to_gpu_map[release_message].free_gpu()
                 index_to_gpu_map[release_message] = None
                 self.topo_order[release_message].array_status = 0

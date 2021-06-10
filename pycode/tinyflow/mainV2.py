@@ -31,7 +31,7 @@ def get_PCIE_bandwidth():
     #     PCIE_bandwidth = nvmlDeviceGetPcieThroughput(handle, NVML_PCIE_UTIL_COUNT)  # KB/s => MB/ms
     #     PCIE_bandwidth /= 1000000
     # else:
-    PCIE_bandwidth = 12
+    PCIE_bandwidth = 1
     return PCIE_bandwidth
 
 
@@ -245,8 +245,9 @@ def liveness_analysis(tensor_access_list):
     # 活跃性分析结果生成
     for job_id in range(len(tensor_access_list)):
         tmp = set()
-        for i in range(len(tensor_access_list[job_id]) - 1, -1, -1):
-            tensor_access = tensor_access_list[job_id][i]
+        sorted_accesses = sorted(tensor_access_list[job_id], key=lambda x: x.end_time)
+        for i in range(len(sorted_accesses) - 1, -1, -1):
+            tensor_access = sorted_accesses[i]
             accesses_of_tensor = tensor_access_by_tensor[tensor_access.tensor.job_id][tensor_access.tensor]
             if tensor_access.tensor not in tmp and len(accesses_of_tensor) > 1 and tensor_access == accesses_of_tensor[-1]:
                 # 参数不会释放
@@ -783,15 +784,15 @@ def generate_scheduling_plan(logged_times, gpu: int):
         max_memory, max_tensors, last_input_accesses, max_time, time_axis = run_global_memory_analysis(swap_scheduler, swapped_out_tensor)
         max_memory_footprint.append(max_memory)
         # 最后三次迭代的峰值，做一阶差分，结果的最大值大于上一次峰值的0.2%以上才继续~`
-        # if len(max_memory_footprint) > 3 and max([max_memory_footprint[i] - max_memory_footprint[i + 1] for i in range(len(max_memory_footprint) - 3, len(max_memory_footprint) - 1)]) < max_memory_footprint[
-        #     -1] * 0.002:
-        #     break
+        if len(max_memory_footprint) > 3 and max([max_memory_footprint[i] - max_memory_footprint[i + 1] for i in range(len(max_memory_footprint) - 3, len(max_memory_footprint) - 1)]) < max_memory_footprint[
+            -1] * 0.002:
+            break
         if iter == 0:
             original_memory_used = max_memory
             liveness_analysis(global_tensor_access)
         else:
             last_memory_used = max_memory
-        print(f'iter:{iter}, max_memory:{max_memory}')
+        # print(f'iter:{iter}, max_memory:{max_memory}')
         max_tensors = sorted(max_tensors, key=lambda x: x.size, reverse=True)
         if swapped_flag:
             swapped_flag = False
@@ -898,7 +899,6 @@ def generate_scheduling_plan(logged_times, gpu: int):
                                         assert first_access.access_type == AccessType.input
                                         swap_in_task = SwapTask(t, first_access.time, first_access.tensor.swap_time, TaskType.swap_in, front_boundary=0, back_boundary=first_access.start_time)
                                         res = try_swap_in(swap_in_task, swap_scheduler, tensor_access_by_tensor[t.job_id][t])
-                                        # assert not res, f'swap in parameter:{t} failed'
                                         if res:
                                             swapped_in_source_tensor.add(t)
                                             swapped_out_tensor.add(tensor)
@@ -931,7 +931,9 @@ def generate_scheduling_plan(logged_times, gpu: int):
                     now_time = max_time[job_id]
                     all_access_of_tensor = tensor_access_by_tensor[tensor.job_id][tensor]
                     for i, access in enumerate(all_access_of_tensor):
-                        if access.access_type == AccessType.input and access not in recomputations:
+                        if i==0:
+                            continue
+                        if all_access_of_tensor[i-1].access_type == AccessType.input and access.access_type == AccessType.input and access not in recomputations:
                             if access.start_time >= now_time:
                                 for source_tensor in access.tensor.source_tensors:
                                     accesses = tensor_access_by_tensor[source_tensor.job_id][source_tensor]
@@ -941,6 +943,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
                                             break
                                     else:
                                         recomputations.append(access)
+                                        # assert all_access_of_tensor[i - 1].access_type == AccessType.input
                                         all_access_of_tensor[i - 1].release_flag = True
                                         recomputation_flag = True
                                         recomputation_tensor.add(access.tensor)
@@ -955,7 +958,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
     #     total_memory = 6000
     # stats = 'succeed' if max_memory < total_memory else ' failure'
     # print(f'scheduling {stats}')
-    draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
+    # draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
     memory_saved_ratio = format((1 - last_memory_used / original_memory_used) * 100, '.2f')
     print(f'memory_saved_ratio:{memory_saved_ratio}%')
     print(f'swap ratio:{len(swap_scheduler[0]) / len(global_tensors)}')
@@ -982,6 +985,7 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
 
     while True:
         if not global_message_queue.empty():
+            print('global_message')
             global_message = global_message_queue.get()
             job_id = global_message[0]
             message_type = global_message[1][0]

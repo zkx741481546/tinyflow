@@ -560,7 +560,7 @@ class Inceptionv3():
         for i in range(self.num_step):
             print("step", i)
             if self.job_id == 0:
-                if i == 69:
+                if i == 79:
                     gpu_record.start()
                     start_time = time.time()
                 if i == 99:
@@ -575,6 +575,8 @@ class Inceptionv3():
             feed_dict = res[1]
 
         print("success")
+        top_message_queue.close()
+        top_control_queue.close()
         return 0
 
 
@@ -617,7 +619,7 @@ if __name__ == '__main__':
         batch_size = 2
         num_step = 100
 
-        job_number = 1
+        job_number = 2
         job_pool = [run_workload(GPU, batch_size, num_step, log_path, top_control_queue_list, top_message_queue_list, job_id) for job_id in range(job_number)]
         for job in job_pool:
             job.start()
@@ -636,6 +638,11 @@ if __name__ == '__main__':
                         if i in global_control:
                             # print("job ", i, "control")
                             top_control_queue_list[i].put(global_control[i])
+            for q in top_message_queue_list:
+                q.close()
+            for q in top_control_queue_list:
+                q.close()
+            scheduler.terminate()
         else:
             while True in [job.is_alive() for job in job_pool]:
                 for i in range(job_number):

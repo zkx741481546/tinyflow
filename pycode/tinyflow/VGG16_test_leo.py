@@ -247,8 +247,7 @@ if __name__ == '__main__':
                 q.close()
             for q in top_control_queue_list:
                 q.close()
-            if 'schedule' in log_path:
-                scheduler.terminate()
+            scheduler.terminate()
         else:
             while True in [job.is_alive() for job in job_pool]:
                 for i in range(job_number):
