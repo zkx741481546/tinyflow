@@ -783,15 +783,15 @@ def generate_scheduling_plan(logged_times, gpu: int):
         max_memory, max_tensors, last_input_accesses, max_time, time_axis = run_global_memory_analysis(swap_scheduler, swapped_out_tensor)
         max_memory_footprint.append(max_memory)
         # 最后三次迭代的峰值，做一阶差分，结果的最大值大于上一次峰值的0.2%以上才继续~`
-        # if len(max_memory_footprint) > 3 and max([max_memory_footprint[i] - max_memory_footprint[i + 1] for i in range(len(max_memory_footprint) - 3, len(max_memory_footprint) - 1)]) < max_memory_footprint[
-        #     -1] * 0.002:
-        #     break
+        if len(max_memory_footprint) > 3 and max([max_memory_footprint[i] - max_memory_footprint[i + 1] for i in range(len(max_memory_footprint) - 3, len(max_memory_footprint) - 1)]) < max_memory_footprint[
+            -1] * 0.002:
+            break
         if iter == 0:
             original_memory_used = max_memory
             liveness_analysis(global_tensor_access)
         else:
             last_memory_used = max_memory
-        print(f'iter:{iter}, max_memory:{max_memory}')
+        # print(f'iter:{iter}, max_memory:{max_memory}')
         max_tensors = sorted(max_tensors, key=lambda x: x.size, reverse=True)
         if swapped_flag:
             swapped_flag = False
@@ -982,6 +982,7 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
 
     while True:
         if not global_message_queue.empty():
+            print("global message")
             global_message = global_message_queue.get()
             job_id = global_message[0]
             message_type = global_message[1][0]

@@ -24,9 +24,9 @@ have_got_control_message = False
 
 
 class MemoryManagerController(threading.Thread):
-    def __init__(self, control_queue: queue.Queue, have_done_queue: queue.Queue):
+    def __init__(self, control_queue: queue.Queue, will_do_queue: queue.Queue, have_done_queue: queue.Queue):
         threading.Thread.__init__(self)
-        self.will_do_queue = queue.Queue()
+        self.will_do_queue = will_do_queue
         self.have_done_queue = have_done_queue
         self.control_queue = control_queue
         # todo hard code with device id again, may need to change
@@ -49,10 +49,14 @@ class MemoryManagerController(threading.Thread):
             if wait_time > 0:
                 time.sleep(wait_time / 1000.0)
             if move_to_gpu == 1 and index_to_gpu_map[node_index] is not None:
+                # 此处要加入task_done相关的语句
+                self.control_queue.task_done()
                 continue
             if move_to_gpu == 0 and node_index in index_to_cpu_flag and index_to_cpu_flag[node_index]:
+                self.control_queue.task_done()
                 continue
             self.will_do_queue.put((node_index, move_to_gpu, is_swap_finish))
+            self.control_queue.task_done()
 
 
 class MemoryManager(threading.Thread):
@@ -108,6 +112,8 @@ class MemoryManager(threading.Thread):
                     index_to_gpu_map[node_index] = node_ndarray_new
                 else:
                     pass
+
+            self.will_do_queue.task_done()
             if is_swap_finish:
                 swap_finish_event.set()
 
@@ -2270,7 +2276,8 @@ class Executor(object):
         self.top_message_queue = top_message_queue
         self.control_queue = queue.Queue()
         self.have_done_queue = queue.Queue()
-        self.memoryManagerController = MemoryManagerController(self.control_queue,
+        self.will_do_queue = queue.Queue()
+        self.memoryManagerController = MemoryManagerController(self.control_queue, self.will_do_queue,
                                                                self.have_done_queue)
         self.memoryManagerController.start()
 
@@ -2531,6 +2538,8 @@ class Executor(object):
         for node in self.topo_order:
 
             # print(node.index)
+            self.will_do_queue.join()
+            self.control_queue.join()
 
             if node.index in index_to_gpu_map:
                 # Skip placeholder nodes. Values already provided by feed_dict.
