@@ -572,6 +572,7 @@ class Inceptionv3():
             feed_dict[y_] = ndarray.array(y_val, ctx=executor_ctx)
             res = executor.run(feed_dict=feed_dict)
             loss_val = res[0]
+
             feed_dict = res[1]
 
         print("success")
@@ -636,7 +637,7 @@ if __name__ == '__main__':
                     global_control = global_control_queue.get()
                     for i in range(job_number):
                         if i in global_control:
-                            # print("job ", i, "control")
+                            print("job ", i, "control")
                             top_control_queue_list[i].put(global_control[i])
             for q in top_message_queue_list:
                 q.close()

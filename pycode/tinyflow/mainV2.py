@@ -31,7 +31,7 @@ def get_PCIE_bandwidth():
     #     PCIE_bandwidth = nvmlDeviceGetPcieThroughput(handle, NVML_PCIE_UTIL_COUNT)  # KB/s => MB/ms
     #     PCIE_bandwidth /= 1000000
     # else:
-    PCIE_bandwidth = 1
+    PCIE_bandwidth = 12
     return PCIE_bandwidth
 
 
@@ -792,7 +792,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
             liveness_analysis(global_tensor_access)
         else:
             last_memory_used = max_memory
-        # print(f'iter:{iter}, max_memory:{max_memory}')
+        print(f'iter:{iter}, max_memory:{max_memory}')
         max_tensors = sorted(max_tensors, key=lambda x: x.size, reverse=True)
         if swapped_flag:
             swapped_flag = False
@@ -899,6 +899,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
                                         assert first_access.access_type == AccessType.input
                                         swap_in_task = SwapTask(t, first_access.time, first_access.tensor.swap_time, TaskType.swap_in, front_boundary=0, back_boundary=first_access.start_time)
                                         res = try_swap_in(swap_in_task, swap_scheduler, tensor_access_by_tensor[t.job_id][t])
+                                        # assert not res, f'swap in parameter:{t} failed'
                                         if res:
                                             swapped_in_source_tensor.add(t)
                                             swapped_out_tensor.add(tensor)
