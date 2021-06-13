@@ -1,1 +1,1 @@
-./log/InceptionV3 test/schedule
+./log/VGG fixed x1/schedule

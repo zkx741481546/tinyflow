@@ -31,17 +31,18 @@ class GPURecord(threading.Thread):
             self.times += 1
             # time.sleep(0.1)
             meminfo = pynvml.nvmlDeviceGetMemoryInfo(self.handle)
-            memory_used = meminfo.used / 1024 ** 2
-            if memory_used>self.max_gpu_memory:
-                self.max_gpu_memory = memory_used
-            print("time", datetime.datetime.now(),
-                  "\tmemory", memory_used,
-                  "\tmax_memory_used", self.max_gpu_memory,
-                  "\tretained_memory_used", memory_used-self.base_used,
-                  "\tretained_max_memory_used", self.max_gpu_memory-self.base_used, file=self.f)  # 已用显存大小
-            self.f.flush()
+            self.memory_used = meminfo.used / 1024 ** 2
+            if self.memory_used>self.max_gpu_memory:
+                self.max_gpu_memory = self.memory_used
+
 
     def stop(self):
         self.flag = False
         time.sleep(0.01)
+        print("time", datetime.datetime.now(),
+              "\tmemory", self.memory_used,
+              "\tmax_memory_used", self.max_gpu_memory,
+              "\tretained_memory_used", self.memory_used - self.base_used,
+              "\tretained_max_memory_used", self.max_gpu_memory - self.base_used, file=self.f)  # 已用显存大小
+        self.f.flush()
         self.f.close()

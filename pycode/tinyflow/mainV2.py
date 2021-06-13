@@ -245,9 +245,8 @@ def liveness_analysis(tensor_access_list):
     # 活跃性分析结果生成
     for job_id in range(len(tensor_access_list)):
         tmp = set()
-        sorted_accesses = sorted(tensor_access_list[job_id], key=lambda x: x.end_time)
-        for i in range(len(sorted_accesses) - 1, -1, -1):
-            tensor_access = sorted_accesses[i]
+        for i in range(len(tensor_access_list[job_id]) - 1, -1, -1):
+            tensor_access = tensor_access_list[job_id][i]
             accesses_of_tensor = tensor_access_by_tensor[tensor_access.tensor.job_id][tensor_access.tensor]
             if tensor_access.tensor not in tmp and len(accesses_of_tensor) > 1 and tensor_access == accesses_of_tensor[-1]:
                 # 参数不会释放
@@ -533,10 +532,6 @@ class MemoryAnalyzer:
                     in_gpu_tensors.add(event.tensor)
                 else:
                     memory_used -= event.tensor.size
-                    if event.tensor not in in_gpu_tensors:
-                        draw_all_task(tensor_access_by_tensor, swap_scheduler, 1)
-                        print(tensor_access_by_tensor[event.tensor.job_id][event.tensor])
-                        print(self.time_axis[-2:])
                     in_gpu_tensors.remove(event.tensor)
             # foot_print[time] = memory_used
             if memory_used > max_memory_actual:
@@ -771,7 +766,6 @@ def generate_scheduling_plan(logged_times, gpu: int):
     iter = 0
     original_memory_used = 0
     last_memory_used = 0
-    max_memory = 0
     job_id_ordered_by_weights = list(map(lambda x: x[0], sorted([(job_id, weights) for job_id, weights in enumerate(jobs_weights)], key=lambda x: x[1], reverse=True)))
     max_memory_footprint = []
     # draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
@@ -792,7 +786,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
             liveness_analysis(global_tensor_access)
         else:
             last_memory_used = max_memory
-        print(f'iter:{iter}, max_memory:{max_memory}')
+        # print(f'iter:{iter}, max_memory:{max_memory}')
         max_tensors = sorted(max_tensors, key=lambda x: x.size, reverse=True)
         if swapped_flag:
             swapped_flag = False
@@ -932,9 +926,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
                     now_time = max_time[job_id]
                     all_access_of_tensor = tensor_access_by_tensor[tensor.job_id][tensor]
                     for i, access in enumerate(all_access_of_tensor):
-                        if i==0:
-                            continue
-                        if all_access_of_tensor[i-1].access_type == AccessType.input and access.access_type == AccessType.input and access not in recomputations:
+                        if access.access_type == AccessType.input and access not in recomputations:
                             if access.start_time >= now_time:
                                 for source_tensor in access.tensor.source_tensors:
                                     accesses = tensor_access_by_tensor[source_tensor.job_id][source_tensor]
@@ -944,7 +936,6 @@ def generate_scheduling_plan(logged_times, gpu: int):
                                             break
                                     else:
                                         recomputations.append(access)
-                                        # assert all_access_of_tensor[i - 1].access_type == AccessType.input
                                         all_access_of_tensor[i - 1].release_flag = True
                                         recomputation_flag = True
                                         recomputation_tensor.add(access.tensor)
@@ -986,7 +977,6 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
 
     while True:
         if not global_message_queue.empty():
-            print('global_message')
             global_message = global_message_queue.get()
             job_id = global_message[0]
             message_type = global_message[1][0]
