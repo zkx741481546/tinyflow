@@ -7,6 +7,7 @@ from multiprocessing import Process
 
 from pycode.tinyflow.log.get_result import get_result
 from util import *
+from agetinputsofmodel import *
 
 # with open('./log_path.txt', 'r') as f:
 #     raw_log_path = f.readlines()[0]
@@ -496,6 +497,7 @@ class Inceptionv3():
         y = self.ad.fullyactivation_forward_op(dense, "NCHW", "softmax")
         loss = self.ad.crossEntropy_loss(y, y_)
         # fc8
+
         executor = self.ad.Executor(loss, y, 0.001, top_control_queue=top_control_queue,
                                     top_message_queue=top_message_queue, log_path=self.log_path)
 
