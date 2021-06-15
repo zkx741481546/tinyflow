@@ -4,12 +4,12 @@ from pycode.tinyflow import autodiff as ad
 from pycode.tinyflow import ndarray
 import threading, pynvml, multiprocessing, os, datetime, time
 from multiprocessing import Process
+
+from pycode.tinyflow.log.get_result import get_result
 from util import *
 
-with open('./log_path.txt', 'r') as f:
-    raw_log_path = f.readlines()[0]
-    if not os.path.exists(raw_log_path):
-        os.makedirs(raw_log_path)
+# with open('./log_path.txt', 'r') as f:
+#     raw_log_path = f.readlines()[0]
 GPU = load_gpu()
 os.environ['CUDA_VISIBLE_DEVICES'] = f'{GPU}'
 
@@ -560,7 +560,7 @@ class Inceptionv3():
         for i in range(self.num_step):
             print("step", i)
             if self.job_id == 0:
-                if i == 69:
+                if i == 79:
                     gpu_record.start()
                     start_time = time.time()
                 if i == 99:
@@ -576,10 +576,12 @@ class Inceptionv3():
             feed_dict = res[1]
 
         print("success")
+        top_message_queue.close()
+        top_control_queue.close()
         return 0
 
 
-def run_workload(GPU, batch_size, num_step, log_path, top_control_queue_list, top_message_queue_list, job_id):
+def run_workload(GPU, batch_size, num_step, log_path, top_control_queue_list, top_message_queue_list, job_id, executor_ctx):
     top_control_queue = multiprocessing.Queue()
     top_control_queue_list.append(top_control_queue)
     top_message_queue = multiprocessing.Queue()
@@ -597,9 +599,7 @@ def run_workload(GPU, batch_size, num_step, log_path, top_control_queue_list, to
     return p
 
 
-if __name__ == '__main__':
-    # gpu_record = GPURecord()
-    repeat_times = 1
+def main(raw_log_path, repeat_times, job_number, batch_size):
     for t in range(repeat_times):
         print(f'repeat_time:{t}')
         global_message_queue = multiprocessing.Queue()
@@ -615,11 +615,11 @@ if __name__ == '__main__':
         if not os.path.exists(log_path):
             os.makedirs(log_path)
         gpu_num = GPU
-        batch_size = 2
+        batch_size = 32
         num_step = 100
 
         job_number = 1
-        job_pool = [run_workload(GPU, batch_size, num_step, log_path, top_control_queue_list, top_message_queue_list, job_id) for job_id in range(job_number)]
+        job_pool = [run_workload(GPU, batch_size, num_step, log_path, top_control_queue_list, top_message_queue_list, job_id, executor_ctx) for job_id in range(job_number)]
         for job in job_pool:
             job.start()
 
@@ -637,6 +637,11 @@ if __name__ == '__main__':
                         if i in global_control:
                             print("job ", i, "control")
                             top_control_queue_list[i].put(global_control[i])
+            for q in top_message_queue_list:
+                q.close()
+            for q in top_control_queue_list:
+                q.close()
+            scheduler.terminate()
         else:
             while True in [job.is_alive() for job in job_pool]:
                 for i in range(job_number):
@@ -644,3 +649,18 @@ if __name__ == '__main__':
                         top_message_queue_list[i].get()
         for job in job_pool:
             job.terminate()
+
+
+if __name__ == '__main__':
+    workloads = [['./log/Inception fixed/', 3, 1, 32], ['./log/Inception fixed x1/', 3, 1, 2], ['./log/Inception fixed x2/', 3, 2, 2], ['./log/Inception fixed x3/', 3, 3, 2]]
+    for path, repeat, jobs_num, batch_size in workloads:
+        raw_path = path
+        for i in range(2):
+            if i == 0:
+                path = raw_path + 'schedule'
+                print(path)
+            else:
+                path = raw_path + 'vanilla'
+                print(path)
+            main(path, repeat, jobs_num, batch_size)
+        get_result(raw_path, 3)

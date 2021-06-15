@@ -1,15 +1,18 @@
+import copy
 import numpy as np
 from pycode.tinyflow import mainV2 as mp
 from pycode.tinyflow import autodiff as ad
 from pycode.tinyflow import ndarray
 import threading, pynvml, multiprocessing, os, datetime, time
 from multiprocessing import Process
+
+from pycode.tinyflow.log.get_result import get_result
 from util import *
 
-with open('./log_path.txt', 'r') as f:
-    raw_log_path = f.readlines()[0]
-    if not os.path.exists(raw_log_path):
-        os.makedirs(raw_log_path)
+# with open('./log_path.txt', 'r') as f:
+#     raw_log_path = f.readlines()[0]
+# if not os.path.exists(raw_log_path):
+#     os.makedirs(raw_log_path)
 
 GPU = load_gpu()
 os.environ['CUDA_VISIBLE_DEVICES'] = f'{GPU}'
@@ -164,11 +167,11 @@ class VGG16():
             feed_dict_mv.update({m_key: m_val, v_key: v_val})
 
         feed_dict.update(feed_dict_mv)
-        if self.job_id==0:
+        if self.job_id == 0:
             f1 = open(f"{self.log_path}/gpu_time.txt", "w+")
         for i in range(self.num_step):
             print("step", i)
-            if self.job_id==0:
+            if self.job_id == 0:
                 if i == 79:
                     gpu_record.start()
                     start_time = time.time()
@@ -190,7 +193,7 @@ class VGG16():
         return 0
 
 
-def run_workload(GPU, batch_size, num_step, log_path, top_control_queue_list, top_message_queue_list, job_id):
+def run_workload(GPU, batch_size, num_step, log_path, top_control_queue_list, top_message_queue_list, job_id, executor_ctx):
     top_control_queue = multiprocessing.Queue()
     top_control_queue_list.append(top_control_queue)
     top_message_queue = multiprocessing.Queue()
@@ -205,9 +208,8 @@ def run_workload(GPU, batch_size, num_step, log_path, top_control_queue_list, to
     return p
 
 
-if __name__ == '__main__':
+def main(raw_log_path, repeat_times, job_number, batch_size):
     # gpu_record = GPURecord()
-    repeat_times = 1
     for t in range(repeat_times):
         print(f'repeat_time:{t}')
         if 'schedule' in raw_log_path:
@@ -219,13 +221,12 @@ if __name__ == '__main__':
         executor_ctx = ndarray.gpu(0)
         print_loss_val_each_epoch = True
         path_list = list(os.path.split(raw_log_path))
-        path_list.insert(1,f'repeat_{t}')
+        path_list.insert(1, f'repeat_{t}')
         log_path = os.path.join(*path_list)
         if not os.path.exists(log_path):
             os.makedirs(log_path)
 
-        job_number = 3
-        job_pool = [run_workload(GPU, 2, 100, log_path, top_control_queue_list, top_message_queue_list, job_id) for job_id in range(job_number)]
+        job_pool = [run_workload(GPU, batch_size, 100, log_path, top_control_queue_list, top_message_queue_list, job_id, executor_ctx) for job_id in range(job_number)]
         for job in job_pool:
             job.start()
 
@@ -247,8 +248,7 @@ if __name__ == '__main__':
                 q.close()
             for q in top_control_queue_list:
                 q.close()
-            if 'schedule' in log_path:
-                scheduler.terminate()
+            scheduler.terminate()
         else:
             while True in [job.is_alive() for job in job_pool]:
                 for i in range(job_number):
@@ -256,3 +256,19 @@ if __name__ == '__main__':
                         top_message_queue_list[i].get()
         for job in job_pool:
             job.terminate()
+
+
+if __name__ == '__main__':
+    # workloads = [['./log/VGG fixed/', 3, 1, 32], ['./log/VGG fixed x1/', 3, 1, 2], ['./log/VGG fixed x2/', 3, 2, 2], ['./log/VGG fixed x3/', 3, 3, 2]]
+    workloads = [['./log/VGG fixed/', 3, 1, 16]]
+    for path, repeat, jobs_num, batch_size in workloads:
+        raw_path = path
+        for i in range(2):
+            if i == 0:
+                path = raw_path + 'schedule'
+                print(path)
+            else:
+                path = raw_path + 'vanilla'
+                print(path)
+            main(path, repeat, jobs_num, batch_size)
+        get_result(raw_path, 3)

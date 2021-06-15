@@ -532,10 +532,6 @@ class MemoryAnalyzer:
                     in_gpu_tensors.add(event.tensor)
                 else:
                     memory_used -= event.tensor.size
-                    if event.tensor not in in_gpu_tensors:
-                        draw_all_task(tensor_access_by_tensor, swap_scheduler, 1)
-                        print(tensor_access_by_tensor[event.tensor.job_id][event.tensor])
-                        print(self.time_axis[-2:])
                     in_gpu_tensors.remove(event.tensor)
             # foot_print[time] = memory_used
             if memory_used > max_memory_actual:
@@ -770,7 +766,6 @@ def generate_scheduling_plan(logged_times, gpu: int):
     iter = 0
     original_memory_used = 0
     last_memory_used = 0
-    max_memory = 0
     job_id_ordered_by_weights = list(map(lambda x: x[0], sorted([(job_id, weights) for job_id, weights in enumerate(jobs_weights)], key=lambda x: x[1], reverse=True)))
     max_memory_footprint = []
     # draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
@@ -955,7 +950,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
     #     total_memory = 6000
     # stats = 'succeed' if max_memory < total_memory else ' failure'
     # print(f'scheduling {stats}')
-    draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
+    # draw_all_task(tensor_access_by_tensor, swap_scheduler, job_num)
     memory_saved_ratio = format((1 - last_memory_used / original_memory_used) * 100, '.2f')
     print(f'memory_saved_ratio:{memory_saved_ratio}%')
     print(f'swap ratio:{len(swap_scheduler[0]) / len(global_tensors)}')
@@ -982,7 +977,6 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
 
     while True:
         if not global_message_queue.empty():
-            print("global message")
             global_message = global_message_queue.get()
             job_id = global_message[0]
             message_type = global_message[1][0]
