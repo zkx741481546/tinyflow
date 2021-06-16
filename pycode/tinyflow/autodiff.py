@@ -55,9 +55,19 @@ class MemoryManagerController(threading.Thread):
             if move_to_gpu == 1 and index_to_gpu_map[node_index] is not None:
                 # 此处要加入task_done相关的语句
                 # self.control_queue.task_done()
+                if is_swap_finish:
+                    swap_finish_event.set()
                 continue
             if move_to_gpu == 0 and node_index in index_to_cpu_flag and index_to_cpu_flag[node_index]:
                 # self.control_queue.task_done()
+
+                global swap_out_onetime_num
+                swap_out_onetime_num -= 1
+                if swap_out_onetime_num == 0:
+                    swap_out_onetime_finish_event.set()
+                if is_swap_finish:
+                    swap_finish_event.set()
+
                 continue
             self.will_do_queue.put((node_index, move_to_gpu, is_swap_finish, node_ref, wait_time))
             # self.control_queue.task_done()
@@ -2788,9 +2798,9 @@ class Executor(object):
         return_feed_dict = {}
 
         if have_got_control_message:
-            # print("等待同步")
+            print("等待同步")
             swap_finish_event.wait()
-        # print("同步完成")
+        print("同步完成")
 
         n = self.eval_node_list[0]
         assert not index_to_gpu_map[n.index] is None
