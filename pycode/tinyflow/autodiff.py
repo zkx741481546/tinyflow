@@ -20,6 +20,9 @@ index_to_gpu_map = {}
 swaping_index = 0
 swaping_to_gpu = 0
 swap_finish_event = threading.Event()
+swap_out_onetime_num = 0
+swap_out_onetime_finish_event = threading.Event()
+swap_out_onetime_finish_event.set()
 have_got_control_message = False
 
 
@@ -51,13 +54,13 @@ class MemoryManagerController(threading.Thread):
                 time.sleep(wait_time / 1000.0)
             if move_to_gpu == 1 and index_to_gpu_map[node_index] is not None:
                 # 此处要加入task_done相关的语句
-                self.control_queue.task_done()
+                # self.control_queue.task_done()
                 continue
             if move_to_gpu == 0 and node_index in index_to_cpu_flag and index_to_cpu_flag[node_index]:
-                self.control_queue.task_done()
+                # self.control_queue.task_done()
                 continue
             self.will_do_queue.put((node_index, move_to_gpu, is_swap_finish, node_ref, wait_time))
-            self.control_queue.task_done()
+            # self.control_queue.task_done()
 
 
 class MemoryManager(threading.Thread):
@@ -102,6 +105,12 @@ class MemoryManager(threading.Thread):
                 # print("当前变量计数器为" + str(sys.getrefcount(index_to_gpu_map[node_index]) - 2))
 
                 index_to_gpu_map[node_index] = None
+
+                global swap_out_onetime_num
+
+                swap_out_onetime_num -= 1
+                if swap_out_onetime_num == 0:
+                    swap_out_onetime_finish_event.set()
                 # print("swaping node " + str(node_index) + " to cpu")
                 # self.lock.release()
                 # print("swap finish: node " + str(node_index) + " to " + str(move_to_gpu))
@@ -119,7 +128,7 @@ class MemoryManager(threading.Thread):
                 else:
                     pass
 
-            self.will_do_queue.task_done()
+            # self.will_do_queue.task_done()
             if is_swap_finish:
                 swap_finish_event.set()
 
@@ -2544,8 +2553,15 @@ class Executor(object):
         for node in self.topo_order:
 
             # print(node.index)
-            self.will_do_queue.join()
-            self.control_queue.join()
+            # self.will_do_queue.join()
+            # self.control_queue.join()
+
+            global swap_out_onetime_num
+
+            if swap_out_onetime_num != 0:
+                swap_out_onetime_finish_event.wait()
+            swap_out_onetime_num = 0
+            swap_out_onetime_finish_event.clear()
 
             if node.index in index_to_gpu_map:
                 # Skip placeholder nodes. Values already provided by feed_dict.
@@ -2559,6 +2575,7 @@ class Executor(object):
                         total_swap_in += 1
                         self.control_queue.put((wait_time, node_id, move_to_gpu, is_last_swap, node.index))
                     else:
+                        swap_out_onetime_num += 1
                         self.control_queue.put((wait_time, node_id, move_to_gpu, is_last_swap, node.index))
 
                     # # todo 仅用于测试
@@ -2669,6 +2686,7 @@ class Executor(object):
                         total_swap_in += 1
                         self.control_queue.put((wait_time, node_id, move_to_gpu, is_last_swap, node.index))
                     else:
+                        swap_out_onetime_num += 1
                         self.control_queue.put((wait_time, node_id, move_to_gpu, is_last_swap, node.index))
 
                     # # todo 仅用于测试
@@ -2696,6 +2714,7 @@ class Executor(object):
                     total_swap_in += 1
                     self.control_queue.put((wait_time, node_id, move_to_gpu, node.index))
                 else:
+                    swap_out_onetime_num += 1
                     self.control_queue.put((wait_time, node_id, move_to_gpu, node.index))
 
             # todo 两种不同的时间计算策略
@@ -2726,7 +2745,7 @@ class Executor(object):
                     total_swap_in += 1
                     self.control_queue.put((wait_time, node_id, move_to_gpu, is_last_swap, node.index))
                 else:
-
+                    swap_out_onetime_num += 1
                     self.control_queue.put((wait_time, node_id, move_to_gpu, is_last_swap, node.index))
 
                 # # todo 仅用于测试
