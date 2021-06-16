@@ -2418,14 +2418,14 @@ class Executor(object):
             return_list = []
             for node in self.topo_order:
 
-                # 初始化时进行初始运行时间的预测
-                if node.index not in index_to_gpu_map:
-                    print(node.index)
-                    input_shape = []
-                    for input_node in node.inputs:
-                        input_shape.append(self.node_to_shape_map[input_node])
-                    tmp = getinputsofmodel(node, input_shape)
-                    print(tmp)
+                # todo 初始化时进行初始运行时间的预测
+                # if node.index not in index_to_gpu_map:
+                #     print(node.index)
+                #     input_shape = []
+                #     for input_node in node.inputs:
+                #         input_shape.append(self.node_to_shape_map[input_node])
+                #     tmp = getinputsofmodel(node, input_shape)
+                #     print(tmp)
 
                 node_inputs = []
                 for node_input in node.inputs:
