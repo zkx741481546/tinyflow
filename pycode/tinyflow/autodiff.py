@@ -20,7 +20,7 @@ index_to_gpu_map = {}
 swaping_index = 0
 swaping_to_gpu = 0
 swap_finish_event = threading.Event()
-swap_out_onetime_num = 0
+index_to_swap_out_num = {}
 swap_out_onetime_finish_event = threading.Event()
 swap_out_onetime_finish_event.set()
 have_got_control_message = False
@@ -61,10 +61,10 @@ class MemoryManagerController(threading.Thread):
             if move_to_gpu == 0 and node_index in index_to_cpu_flag and index_to_cpu_flag[node_index]:
                 # self.control_queue.task_done()
 
-                global swap_out_onetime_num
-                swap_out_onetime_num -= 1
-                if swap_out_onetime_num == 0:
-                    swap_out_onetime_finish_event.set()
+                global index_to_swap_out_num
+                index_to_swap_out_num[node_index] -= 1
+                swap_out_onetime_finish_event.set()
+
                 if is_swap_finish:
                     swap_finish_event.set()
 
@@ -110,11 +110,10 @@ class MemoryManager(threading.Thread):
 
                 index_to_gpu_map[node_index] = None
 
-                global swap_out_onetime_num
+                global index_to_swap_out_num
 
-                swap_out_onetime_num -= 1
-                if swap_out_onetime_num == 0:
-                    swap_out_onetime_finish_event.set()
+                index_to_swap_out_num[node_index] -= 1
+                swap_out_onetime_finish_event.set()
                 # print("swaping node " + str(node_index) + " to cpu")
                 # self.lock.release()
                 # print("swap finish: node " + str(node_index) + " to " + str(move_to_gpu))
@@ -2558,12 +2557,7 @@ class Executor(object):
             # self.will_do_queue.join()
             # self.control_queue.join()
 
-            global swap_out_onetime_num
-
-            if swap_out_onetime_num != 0:
-                swap_out_onetime_finish_event.wait()
-            swap_out_onetime_num = 0
-            swap_out_onetime_finish_event.clear()
+            global index_to_swap_out_num
 
             if node.index in index_to_gpu_map:
                 # Skip placeholder nodes. Values already provided by feed_dict.
@@ -2577,7 +2571,7 @@ class Executor(object):
                         total_swap_in += 1
                         self.control_queue.put((wait_time, node_id, move_to_gpu, is_last_swap, node.index))
                     else:
-                        swap_out_onetime_num += 1
+                        index_to_swap_out_num[node_id] = index_to_swap_out_num.get(node_id, 0) + 1
                         self.control_queue.put((wait_time, node_id, move_to_gpu, is_last_swap, node.index))
 
                     # # todo 仅用于测试
@@ -2585,6 +2579,13 @@ class Executor(object):
                     # print("swap end")
 
                 for release_message in node.release_list:
+                    if release_message in index_to_swap_out_num and index_to_swap_out_num[release_message] > 0:
+                        while True:
+                            swap_out_onetime_finish_event.wait()
+                            swap_out_onetime_finish_event.clear()
+                            if index_to_swap_out_num[release_message] == 0:
+                                break
+
                     # print(f'releasing:{release_message}, ref:{node.index}, at line 2569')
                     index_to_gpu_map[release_message].free_gpu()
                     index_to_gpu_map[release_message] = None
@@ -2688,7 +2689,7 @@ class Executor(object):
                         total_swap_in += 1
                         self.control_queue.put((wait_time, node_id, move_to_gpu, is_last_swap, node.index))
                     else:
-                        swap_out_onetime_num += 1
+                        index_to_swap_out_num[node_id] = index_to_swap_out_num.get(node_id, 0) + 1
                         self.control_queue.put((wait_time, node_id, move_to_gpu, is_last_swap, node.index))
 
                     # # todo 仅用于测试
@@ -2696,6 +2697,13 @@ class Executor(object):
                     # print("swap end")
 
                 for release_message in node.release_list:
+                    if release_message in index_to_swap_out_num and index_to_swap_out_num[release_message] > 0:
+                        while True:
+                            swap_out_onetime_finish_event.wait()
+                            swap_out_onetime_finish_event.clear()
+                            if index_to_swap_out_num[release_message] == 0:
+                                break
+                    index_to_gpu_map[release_message].free_gpu()
                     index_to_gpu_map[release_message] = None
                     self.topo_order[release_message].array_status = 0
 
@@ -2716,7 +2724,7 @@ class Executor(object):
                     total_swap_in += 1
                     self.control_queue.put((wait_time, node_id, move_to_gpu, node.index))
                 else:
-                    swap_out_onetime_num += 1
+                    index_to_swap_out_num[node_id] = index_to_swap_out_num.get(node_id, 0) + 1
                     self.control_queue.put((wait_time, node_id, move_to_gpu, node.index))
 
             # todo 两种不同的时间计算策略
@@ -2747,7 +2755,7 @@ class Executor(object):
                     total_swap_in += 1
                     self.control_queue.put((wait_time, node_id, move_to_gpu, is_last_swap, node.index))
                 else:
-                    swap_out_onetime_num += 1
+                    index_to_swap_out_num[node_id] = index_to_swap_out_num.get(node_id, 0) + 1
                     self.control_queue.put((wait_time, node_id, move_to_gpu, is_last_swap, node.index))
 
                 # # todo 仅用于测试
