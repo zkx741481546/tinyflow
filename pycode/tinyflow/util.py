@@ -60,7 +60,7 @@ def run_workload(GPU, batch_size, num_step, log_path, top_control_queue_list, to
     gpu_num = GPU
     model = model(num_step=num_step, batch_size=batch_size, gpu_num=gpu_num, log_path=log_path, job_id=job_id)
     X_val = np.random.normal(loc=0, scale=0.1, size=(
-        batch_size, 3, 299, 299))  # number = batch_size  channel = 3  image_size = 224*224
+        batch_size, model.image_channel, model.image_size, model.image_size))  # number = batch_size  channel = 3  image_size = 224*224
 
     y_val = np.random.normal(loc=0, scale=0.1, size=(batch_size, 1000))  # n_class = 1000
 
