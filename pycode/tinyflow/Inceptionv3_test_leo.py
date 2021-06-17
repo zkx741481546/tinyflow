@@ -1,18 +1,10 @@
-import numpy as np
-from pycode.tinyflow import mainV2 as mp
-from pycode.tinyflow import autodiff as ad
-from pycode.tinyflow import ndarray
-import threading, pynvml, multiprocessing, os, datetime, time
-from multiprocessing import Process
+GPU = 1
+import os
 
+os.environ['CUDA_VISIBLE_DEVICES'] = f'{GPU}'
+from pycode.tinyflow import autodiff as ad
 from pycode.tinyflow.log.get_result import get_result
 from util import *
-
-# with open('./log_path.txt', 'r') as f:
-#     raw_log_path = f.readlines()[0]
-GPU = 1
-# os.environ['CUDA_VISIBLE_DEVICES'] = f'{GPU}'
-
 
 class Inceptionv3():
 
