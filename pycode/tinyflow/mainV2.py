@@ -21,7 +21,6 @@ from keras.models import Sequential, load_model
 from keras.layers import Dense, Conv1D, MaxPool1D, Dropout, Flatten
 from matplotlib import cm
 from tensorboard.plugins.hparams import keras
-from util import load_gpu
 from line_profiler import LineProfiler
 from typing import List
 
@@ -35,12 +34,11 @@ def get_PCIE_bandwidth():
     return PCIE_bandwidth
 
 
-GPU = load_gpu()
+GPU = int(os.environ['CUDA_VISIBLE_DEVICES'])
 debug_mod = False
 if not debug_mod:
     nvmlInit()
     handle = nvmlDeviceGetHandleByIndex(GPU)
-os.environ["CUDA_VISIBLE_DEVICES"] = f"{GPU}"
 pyplt = py.offline.plot
 PCIE_bandwidth = get_PCIE_bandwidth()
 load_list = ['convolution_2d_forward_VALID', 'convolution_backward_filter_2d_VALID', 'convolution_backward_data_2d_VALID',

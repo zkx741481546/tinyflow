@@ -9,11 +9,10 @@ from . import ndarray, gpu_op
 import random
 import queue
 import datetime
-from util import load_gpu
 import os
 
-GPU = load_gpu()
-os.environ['CUDA_VISIBLE_DEVICES'] = f'{GPU}'
+# GPU = load_gpu()
+# os.environ['CUDA_VISIBLE_DEVICES'] = f'{GPU}'
 index_to_cpu_map = {}
 index_to_cpu_flag = {}
 index_to_gpu_map = {}
