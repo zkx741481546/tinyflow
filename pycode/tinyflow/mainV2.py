@@ -914,7 +914,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
                     for tensor in max_tensors:
                         # 张量不是参数，没被逐出过，且他的所有源张量从未被recomputation
                         if not tensor.is_parameter and tensor not in swapped_out_tensor and tensor.source_tensors is not None and len(tensor.source_tensors) > 0 and \
-                                False not in [t not in swapped_out_tensor for t in tensor.source_tensors] and False not in [t not in recomputations for t in tensor.source_tensors]:
+                                False not in [t not in recomputations for t in tensor.source_tensors]:
                             max_tensors_filtered.append(tensor)
                     if len(max_tensors_filtered) == 0:
                         continue
