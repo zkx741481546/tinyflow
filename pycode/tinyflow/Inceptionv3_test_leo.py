@@ -575,7 +575,8 @@ class Inceptionv3():
 
 if __name__ == '__main__':
     os.environ['CUDA_VISIBLE_DEVICES'] = f'{GPU}'
-    workloads = [['./log/Inception V3 fixed/', 3, 1, 16], ['./log/Inception V3 fixed x1/', 3, 1, 2], ['./log/Inception V3 fixed x2/', 3, 2, 2], ['./log/Inception V3 fixed x3/', 3, 3, 2]]
+    #workloads = [['./log/Inception V3 fixed/', 3, 1, 16], ['./log/Inception V3 fixed x1/', 3, 1, 2], ['./log/Inception V3 fixed x2/', 3, 2, 2], ['./log/Inception V3 fixed x3/', 3, 3, 2]]
+    workloads = [['./log/Inception V3 fixed x3/', 3, 3, 2]]
     for path, repeat, jobs_num, batch_size in workloads:
         raw_path = path
         for i in range(2):

@@ -15,6 +15,7 @@ class ResNet50():
 
         self.dropout_rate = 0.5
         self.image_channel = 3
+        self.image_size = 224
         self.num_step = num_step
         self.batch_size = batch_size
         self.ad = ad
@@ -171,7 +172,7 @@ class ResNet50():
 
         # 只声明，不操作
         executor = self.ad.Executor(loss, y, 0.001, top_control_queue=top_control_queue,
-                                    top_message_queue=top_message_queue)
+                                    top_message_queue=top_message_queue,log_path=self.log_path)
 
         feed_dict_mv = {}
         for key, value in feed_dict.items():

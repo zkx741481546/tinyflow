@@ -9,17 +9,18 @@ from . import ndarray, gpu_op
 import random
 import queue
 import datetime
+
 import os
 
-# GPU = load_gpu()
-# os.environ['CUDA_VISIBLE_DEVICES'] = f'{GPU}'
+
+
 index_to_cpu_map = {}
 index_to_cpu_flag = {}
 index_to_gpu_map = {}
 swaping_index = 0
 swaping_to_gpu = 0
 swap_finish_event = threading.Event()
-index_to_swap_out_num = {}
+swap_out_onetime_num = 0
 swap_out_onetime_finish_event = threading.Event()
 swap_out_onetime_finish_event.set()
 have_got_control_message = False
@@ -60,15 +61,16 @@ class MemoryManagerController(threading.Thread):
             if move_to_gpu == 0 and node_index in index_to_cpu_flag and index_to_cpu_flag[node_index]:
                 # self.control_queue.task_done()
 
-                global index_to_swap_out_num
-                index_to_swap_out_num[node_index] -= 1
-                swap_out_onetime_finish_event.set()
-
+                global swap_out_onetime_num
+                swap_out_onetime_num -= 1
+                if swap_out_onetime_num == 0:
+                    swap_out_onetime_finish_event.set()
                 if is_swap_finish:
                     swap_finish_event.set()
 
                 continue
-            self.will_do_queue.put((node_index, move_to_gpu, is_swap_finish))
+            self.will_do_queue.put((node_index, move_to_gpu, is_swap_finish, node_ref, wait_time))
+            # self.control_queue.task_done()
 
 
 class MemoryManager(threading.Thread):
@@ -85,9 +87,12 @@ class MemoryManager(threading.Thread):
     def run(self):
         while (True):
             node = self.will_do_queue.get(block=True)
+            # print(f'start swapping:{node}')
             node_index = node[0]
             move_to_gpu = node[1]
             is_swap_finish = node[2]
+            node_ref = node[3]
+            wait_time = node[4]
             node_ndarray_new = None
 
             global index_to_cpu_map
@@ -99,20 +104,23 @@ class MemoryManager(threading.Thread):
             swaping_to_gpu = move_to_gpu
             if move_to_gpu == 0:
                 node_ndarray = index_to_gpu_map[node_index]
+                # print(f'swapping out:{node_index}, ref:{node_ref}, wait_time:{wait_time}')
                 node_ndarray.copyto(index_to_cpu_map[node_index], self.cudaSwapStream)
                 # 暂时使用锁保证原子性
                 # self.lock.acquire()
                 index_to_cpu_flag[node_index] = True
+                # print(f'swap out releasing:{node_index}, ref:{node_ref}, wait_time:{wait_time}')
                 index_to_gpu_map[node_index].free_gpu()
 
                 # print("当前变量计数器为" + str(sys.getrefcount(index_to_gpu_map[node_index]) - 2))
 
                 index_to_gpu_map[node_index] = None
 
-                global index_to_swap_out_num
+                global swap_out_onetime_num
 
-                index_to_swap_out_num[node_index] -= 1
-                swap_out_onetime_finish_event.set()
+                swap_out_onetime_num -= 1
+                if swap_out_onetime_num == 0:
+                    swap_out_onetime_finish_event.set()
                 # print("swaping node " + str(node_index) + " to cpu")
                 # self.lock.release()
                 # print("swap finish: node " + str(node_index) + " to " + str(move_to_gpu))
@@ -123,12 +131,14 @@ class MemoryManager(threading.Thread):
 
                 node_ndarray_new = ndarray.empty(node_ndarray.shape, self.gpu_ctx)
                 # time2 = datetime.datetime.now()
-
+                # print(f'swapping in:{node_index}, ref:{node_ref}, wait_time:{wait_time}')
                 node_ndarray.copyto(node_ndarray_new, self.cudaSwapStream)
                 if index_to_gpu_map[node_index] is None:
                     index_to_gpu_map[node_index] = node_ndarray_new
                 else:
                     pass
+
+            # self.will_do_queue.task_done()
             if is_swap_finish:
                 swap_finish_event.set()
 
@@ -2556,7 +2566,12 @@ class Executor(object):
             # self.will_do_queue.join()
             # self.control_queue.join()
 
-            global index_to_swap_out_num
+            global swap_out_onetime_num
+
+            if swap_out_onetime_num != 0:
+                swap_out_onetime_finish_event.wait()
+            swap_out_onetime_num = 0
+            swap_out_onetime_finish_event.clear()
 
             if node.index in index_to_gpu_map:
                 # Skip placeholder nodes. Values already provided by feed_dict.
@@ -2570,7 +2585,7 @@ class Executor(object):
                         total_swap_in += 1
                         self.control_queue.put((wait_time, node_id, move_to_gpu, is_last_swap, node.index))
                     else:
-                        index_to_swap_out_num[node_id] = index_to_swap_out_num.get(node_id, 0) + 1
+                        swap_out_onetime_num += 1
                         self.control_queue.put((wait_time, node_id, move_to_gpu, is_last_swap, node.index))
 
                     # # todo 仅用于测试
@@ -2578,13 +2593,6 @@ class Executor(object):
                     # print("swap end")
 
                 for release_message in node.release_list:
-                    if release_message in index_to_swap_out_num and index_to_swap_out_num[release_message] > 0:
-                        while True:
-                            swap_out_onetime_finish_event.wait()
-                            swap_out_onetime_finish_event.clear()
-                            if index_to_swap_out_num[release_message] == 0:
-                                break
-
                     # print(f'releasing:{release_message}, ref:{node.index}, at line 2569')
                     index_to_gpu_map[release_message].free_gpu()
                     index_to_gpu_map[release_message] = None
@@ -2602,7 +2610,7 @@ class Executor(object):
                 recompute_inputs = []
 
                 for n in recompute_node.inputs:
-                    # assert index_to_gpu_map[n.index] is not None
+                    assert index_to_gpu_map[n.index] is not None
                     if index_to_gpu_map[n.index] is None:
 
                         global swaping_index
@@ -2688,7 +2696,7 @@ class Executor(object):
                         total_swap_in += 1
                         self.control_queue.put((wait_time, node_id, move_to_gpu, is_last_swap, node.index))
                     else:
-                        index_to_swap_out_num[node_id] = index_to_swap_out_num.get(node_id, 0) + 1
+                        swap_out_onetime_num += 1
                         self.control_queue.put((wait_time, node_id, move_to_gpu, is_last_swap, node.index))
 
                     # # todo 仅用于测试
@@ -2696,13 +2704,6 @@ class Executor(object):
                     # print("swap end")
 
                 for release_message in node.release_list:
-                    if release_message in index_to_swap_out_num and index_to_swap_out_num[release_message] > 0:
-                        while True:
-                            swap_out_onetime_finish_event.wait()
-                            swap_out_onetime_finish_event.clear()
-                            if index_to_swap_out_num[release_message] == 0:
-                                break
-                    index_to_gpu_map[release_message].free_gpu()
                     index_to_gpu_map[release_message] = None
                     self.topo_order[release_message].array_status = 0
 
@@ -2723,7 +2724,7 @@ class Executor(object):
                     total_swap_in += 1
                     self.control_queue.put((wait_time, node_id, move_to_gpu, node.index))
                 else:
-                    index_to_swap_out_num[node_id] = index_to_swap_out_num.get(node_id, 0) + 1
+                    swap_out_onetime_num += 1
                     self.control_queue.put((wait_time, node_id, move_to_gpu, node.index))
 
             # todo 两种不同的时间计算策略
@@ -2754,7 +2755,7 @@ class Executor(object):
                     total_swap_in += 1
                     self.control_queue.put((wait_time, node_id, move_to_gpu, is_last_swap, node.index))
                 else:
-                    index_to_swap_out_num[node_id] = index_to_swap_out_num.get(node_id, 0) + 1
+                    swap_out_onetime_num += 1
                     self.control_queue.put((wait_time, node_id, move_to_gpu, is_last_swap, node.index))
 
                 # # todo 仅用于测试

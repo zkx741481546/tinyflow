@@ -14,6 +14,7 @@ class DenseNet121():
 
         self.n_filter = 32 # growth rate
         self.image_channel = 3
+        self.image_size = 224
         self.dropout_rate = 0.2
         self.num_step = num_step
         self.batch_size = batch_size
