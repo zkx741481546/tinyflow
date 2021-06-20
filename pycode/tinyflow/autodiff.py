@@ -69,7 +69,8 @@ class MemoryManagerController(threading.Thread):
                     swap_finish_event.set()
 
                 continue
-            self.will_do_queue.put((node_index, move_to_gpu, is_swap_finish))
+            self.will_do_queue.put((node_index, move_to_gpu, is_swap_finish, node_ref, wait_time))
+            # self.control_queue.task_done()
 
 
 class MemoryManager(threading.Thread):
@@ -2602,7 +2603,7 @@ class Executor(object):
                 recompute_inputs = []
 
                 for n in recompute_node.inputs:
-                    # assert index_to_gpu_map[n.index] is not None
+                    assert index_to_gpu_map[n.index] is not None
                     if index_to_gpu_map[n.index] is None:
 
                         global swaping_index
@@ -2790,9 +2791,9 @@ class Executor(object):
         return_feed_dict = {}
 
         if have_got_control_message:
-            print("等待同步")
+            # print("等待同步")
             swap_finish_event.wait()
-        print("同步完成")
+        # print("同步完成")
 
         n = self.eval_node_list[0]
         assert not index_to_gpu_map[n.index] is None

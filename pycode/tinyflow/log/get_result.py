@@ -64,4 +64,4 @@ def get_result(raw_workload, repeat_times):
 
 
 if __name__ == '__main__':
-    get_result('VGG fixed x2/', 3)
+    get_result('VGG fixed x1/', 1)

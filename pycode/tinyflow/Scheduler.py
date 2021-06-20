@@ -359,8 +359,8 @@ def generate_swap_recomputation_release_order(tensor_access_by_tensor, swap_sche
             recomps.append((access.operation_id, access.tensor.tensor_id, access.release_for_recomputation))
         recomp_orders[job_id] = recomps
         for task in swap_tasks:
+            # if task.task_type==TaskType.swap_out:
             # (task_id, node_id(tensor_id), start_time, start_node, move_to_gpu, start_node_type)
-            # if task.execute_ref is not None:
             ref = task.execute_ref.operation_id
             swaps.append([task.tensor.tensor_id, task.execute_time, ref, 0 if task.task_type == TaskType.swap_out else 1, 1, task.start_time])
         swap_orders[job_id] = list(map(lambda x: x[:-1], sorted(swaps, key=lambda x: x[-1])))
@@ -777,7 +777,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
         max_memory_footprint.append(max_memory)
         # 最后三次迭代的峰值，做一阶差分，结果的最大值大于上一次峰值的0.05%以上或迭代次数小于200轮才继续~`
         if len(max_memory_footprint) > 3 and max([max_memory_footprint[i] - max_memory_footprint[i + 1] for i in range(len(max_memory_footprint) - 3, len(max_memory_footprint) - 1)]) < max_memory_footprint[
-            -1] * 0.0005 and iter>200:
+            -1] * 0.0005 and iter > 300:
             break
         if iter == 0:
             original_memory_used = max_memory
@@ -913,7 +913,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
                     for tensor in max_tensors:
                         # 张量不是参数，没被逐出过，且他的所有源张量从未被swap或recomputation
                         if not tensor.is_parameter and tensor not in swapped_out_tensor and tensor.source_tensors is not None and len(tensor.source_tensors) > 0 and \
-                                False not in [t not in recomputations for t in tensor.source_tensors]:
+                                False not in [t not in swapped_out_tensor for t in tensor.source_tensors] and False not in [t not in recomputations for t in tensor.source_tensors]:
                             max_tensors_filtered.append(tensor)
                     if len(max_tensors_filtered) == 0:
                         continue

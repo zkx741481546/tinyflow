@@ -198,4 +198,4 @@ def run_exp(workloads):
 
 
 if __name__ == '__main__':
-    run_exp([['./log/VGG fixed x2/', 3, 2, 2]])
+    run_exp([['./log/VGG passive /', 3, 1, 16], ['./log/VGG passive x1/', 3, 1, 2], ['./log/VGG passive x2/', 3, 2, 2], ['./log/VGG passive x3/', 3, 3, 2]])
