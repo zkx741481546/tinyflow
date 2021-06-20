@@ -1,7 +1,8 @@
-GPU = 5
+GPU = 0
 import os
-
+import sys
 os.environ['CUDA_VISIBLE_DEVICES'] = f'{GPU}'
+sys.path.append('../../')
 from pycode.tinyflow import autodiff as ad
 from pycode.tinyflow.log.get_result import get_result
 from util import *
@@ -208,9 +209,7 @@ class ResNet50():
         top_control_queue.close()
         return 0
 
-
-if __name__ == '__main__':
-    workloads = [['./log/ResNet fixed/', 3, 1, 16], ['./log/ResNet fixed x1/', 3, 1, 2], ['./log/ResNet fixed x2/', 3, 2, 2], ['./log/ResNet fixed x3/', 3, 3, 2]]
+def run_exp(workloads):
     for path, repeat, jobs_num, batch_size in workloads:
         raw_path = path
         for i in range(2):

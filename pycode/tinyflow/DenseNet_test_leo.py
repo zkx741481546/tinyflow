@@ -1,7 +1,8 @@
-GPU = 4
+GPU = 0
 import os
-
+import sys
 os.environ['CUDA_VISIBLE_DEVICES'] = f'{GPU}'
+sys.path.append('../../')
 from pycode.tinyflow import autodiff as ad
 from pycode.tinyflow.log.get_result import get_result
 from util import *
@@ -12,7 +13,7 @@ class DenseNet121():
         os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_num)
         self.gpu_num = gpu_num
 
-        self.n_filter = 32 # growth rate
+        self.n_filter = 32  # growth rate
         self.image_channel = 3
         self.image_size = 224
         self.dropout_rate = 0.2
@@ -22,12 +23,10 @@ class DenseNet121():
         self.job_id = job_id
         self.ad = ad
 
-
     def bottleneck_layer(self, inputs, in_filter, layer_name, executor_ctx):
 
         W1 = self.ad.Variable(layer_name + "_W1")
         W2 = self.ad.Variable(layer_name + "_W2")
-
 
         # 1*1 conv
         bn1 = self.ad.bn_forward_op(inputs, "NCHW", "pre_activation")
@@ -35,13 +34,11 @@ class DenseNet121():
         conv1 = self.ad.convolution_2d_forward_op(act1, W1, "NCHW", "SAME", 1, 1)
         drop1 = self.ad.dropout_forward_op(conv1, "NCHW", self.dropout_rate)
 
-
         # 3*3 conv
         bn2 = self.ad.bn_forward_op(drop1, "NCHW", "pre_activation")
         act2 = self.ad.activation_forward_op(bn2, "NCHW", "relu")
         conv2 = self.ad.convolution_2d_forward_op(act2, W2, "NCHW", "SAME", 1, 1)
         drop2 = self.ad.dropout_forward_op(conv2, "NCHW", self.dropout_rate)
-
 
         W1_val = ndarray.array(np.random.normal(loc=0, scale=0.1, size=(4 * self.n_filter, in_filter, 1, 1)), executor_ctx)  # kernel_size=1*1
         W2_val = ndarray.array(np.random.normal(loc=0, scale=0.1, size=(self.n_filter, 4 * self.n_filter, 3, 3)), executor_ctx)  # kernel_size=3*3
@@ -69,13 +66,11 @@ class DenseNet121():
         drop1 = self.ad.dropout_forward_op(conv1, "NCHW", self.dropout_rate)
         pool0 = self.ad.pooling_2d_forward_op(drop1, "NCHW", "mean", 0, 0, 2, 2, 2, 2)  # stride=2   pool_size=2*2
 
-        W1_val = ndarray.array(np.random.normal(loc=0, scale=0.1, size=(int(0.5*in_filter), in_filter, 1, 1)) , executor_ctx) # kernel_size=1*1
+        W1_val = ndarray.array(np.random.normal(loc=0, scale=0.1, size=(int(0.5 * in_filter), in_filter, 1, 1)), executor_ctx)  # kernel_size=1*1
         dict = {W1: W1_val}
-        return pool0, dict, int(0.5*in_filter)
+        return pool0, dict, int(0.5 * in_filter)
 
-
-
-    def run(self, executor_ctx, top_control_queue, top_message_queue ,n_class, X_val, y_val):
+    def run(self, executor_ctx, top_control_queue, top_message_queue, n_class, X_val, y_val):
         gpu_record = GPURecord(self.log_path)
         X = self.ad.Placeholder("X")
         y_ = self.ad.Placeholder("y_")
@@ -83,8 +78,8 @@ class DenseNet121():
         W1 = self.ad.Variable("W1")
         b1 = self.ad.Variable("b1")
 
-        conv0 = self.ad.convolution_2d_forward_op(X, W0, "NCHW", "SAME", 2, 2) # stride=2
-        pool0 = self.ad.pooling_2d_forward_op(conv0, "NCHW", "max", 1, 1, 2, 2, 3, 3) # stride=2   pool_size=3*3
+        conv0 = self.ad.convolution_2d_forward_op(X, W0, "NCHW", "SAME", 2, 2)  # stride=2
+        pool0 = self.ad.pooling_2d_forward_op(conv0, "NCHW", "max", 1, 1, 2, 2, 3, 3)  # stride=2   pool_size=3*3
 
         dense_1, dict_1, out_filter1 = self.dense_block(inputs=pool0, in_filter=2 * self.n_filter, nb_layers=6, block_name="dense1", executor_ctx=executor_ctx)
         transition_1, dict_2, out_filter2 = self.transition_layer(inputs=dense_1, in_filter=out_filter1, layer_name="trans1", executor_ctx=executor_ctx)
@@ -99,7 +94,7 @@ class DenseNet121():
 
         bn1 = self.ad.bn_forward_op(dense_4, "NCHW", "pre_activation")
         act1 = self.ad.activation_forward_op(bn1, "NCHW", "relu")
-        pool1 = self.ad.pooling_2d_forward_op(act1, "NCHW", "mean", 0, 0, 1, 1, 7, 7) # global_pool
+        pool1 = self.ad.pooling_2d_forward_op(act1, "NCHW", "mean", 0, 0, 1, 1, 7, 7)  # global_pool
 
         flat = self.ad.flatten_op(pool1)
         dense = self.ad.dense(flat, W1, b1)
@@ -107,15 +102,12 @@ class DenseNet121():
 
         loss = self.ad.crossEntropy_loss(y, y_)
 
-
-
         W0_val = ndarray.array(np.random.normal(loc=0, scale=0.1, size=(2 * self.n_filter, self.image_channel, 7, 7)), executor_ctx)  # n_filter   n_channel=3   kernel_size=7*7
         W1_val = ndarray.array(np.random.normal(loc=0, scale=0.1, size=(out_filter7, n_class)), executor_ctx)
         b1_val = ndarray.array(np.random.normal(loc=0, scale=0.1, size=(n_class)), executor_ctx)
 
-
         executor = self.ad.Executor(loss, y, 0.001, top_control_queue=top_control_queue,
-                                    top_message_queue=top_message_queue,log_path=self.log_path)
+                                    top_message_queue=top_message_queue, log_path=self.log_path)
 
         feed_dict = {W0: W0_val, W1: W1_val, b1: b1_val}
         feed_dict.update(dict_1)
@@ -160,8 +152,7 @@ class DenseNet121():
         top_control_queue.close()
         return 0
 
-if __name__ == '__main__':
-    workloads = [['./log/DenseNet fixed/', 3, 1, 16], ['./log/DenseNet fixed x1/', 3, 1, 2], ['./log/DenseNet fixed x2/', 3, 2, 2], ['./log/DenseNet fixed x3/', 3, 3, 2]]
+def run_exp(workloads):
     for path, repeat, jobs_num, batch_size in workloads:
         raw_path = path
         for i in range(2):

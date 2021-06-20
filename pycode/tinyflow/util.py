@@ -8,7 +8,7 @@ from multiprocessing import Process
 
 import numpy as np
 import pynvml
-from pycode.tinyflow import mainV2 as mp
+from pycode.tinyflow import Scheduler as mp
 
 from pycode.tinyflow import ndarray
 

@@ -1,7 +1,8 @@
 GPU = 0
 import os
-
 os.environ['CUDA_VISIBLE_DEVICES'] = f'{GPU}'
+import sys
+sys.path.append('../../')
 from pycode.tinyflow import autodiff as ad
 from pycode.tinyflow.log.get_result import get_result
 from util import *
@@ -182,9 +183,7 @@ class VGG16():
         return 0
 
 
-if __name__ == '__main__':
-    # workloads = [['./log/VGG fixed/', 3, 1, 16], ['./log/VGG fixed x1/', 3, 1, 2], ['./log/VGG fixed x2/', 3, 2, 2], ['./log/VGG fixed x3/', 3, 3, 2]]
-    workloads = [['./log/VGG fixed x2/', 3, 2, 2]]
+def run_exp(workloads):
     for path, repeat, jobs_num, batch_size in workloads:
         raw_path = path
         for i in range(2):
@@ -196,3 +195,7 @@ if __name__ == '__main__':
                 print(path)
             main(path, repeat, jobs_num, batch_size, GPU, VGG16)
         get_result(raw_path, 3)
+
+
+if __name__ == '__main__':
+    run_exp([['./log/VGG fixed x2/', 3, 2, 2]])
