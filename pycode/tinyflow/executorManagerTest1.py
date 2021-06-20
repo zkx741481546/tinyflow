@@ -70,7 +70,7 @@ def test2():
     tmp = ('dropout_forward', [32, 2048, 1, 0.8])
     opname = tmp[0]
     inputs_of_model = tmp[1]
-    model = read_model.load(opname, 4)
+    model = read_model.load(opname, 5)
     model.predict(inputs_of_model, verbose=1)
 
 

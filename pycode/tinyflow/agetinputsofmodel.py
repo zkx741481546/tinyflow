@@ -97,6 +97,9 @@ def getinputsofmodel(node, inputsshape):
         if node.type == "NCHW":
             opname = 'reduce_sum_new_NCHW'
             inputsofmodel = [inputsshape[0][0], inputsshape[0][1], inputsshape[0][2]]
+    if node.name == 'ReduceSumOp':
+        opname = 'reduce_sum_new_NHWC'
+        inputsofmodel = [inputsshape[0][0], inputsshape[0][1]]
     if node.name == "CrossOp":
         opname = 'cross'
         inputsofmodel = [inputsshape[0][0], inputsshape[0][1]]

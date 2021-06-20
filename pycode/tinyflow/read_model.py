@@ -43,8 +43,10 @@ load_list = ['convolution_2d_forward_VALID', 'convolution_backward_filter_2d_VAL
              'array_set', 'concat_forward', 'concat_a_backward',
              'concat_b_backward', 'sgd_update', 'cross', 'cross_backward', 'adam_mv', 'adam_compute']
 
-# for opname in load_list:
-#     file_handle = open('data_bn/' + opname + '_mean_and_std.txt', mode='r')
-#     model = load(opname, len(file_handle.readlines()) + 1)
-#     file_handle.close()
-# print('finish')
+for opname in load_list:
+    print(opname, end=" ")
+    file_handle = open('../../res/data_bn/' + opname + '_mean_and_std.txt', mode='r')
+    print(len(file_handle.readlines()) + 1)
+    # model = load(opname, len(file_handle.readlines()) + 1)
+    file_handle.close()
+print('finish')
