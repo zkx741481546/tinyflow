@@ -2346,8 +2346,10 @@ class Executor(object):
         global index_to_gpu_map
         global index_to_cpu_map
         global index_to_cpu_flag
+        global waiting_for_releasing
         index_to_gpu_map = {}
         index_to_cpu_flag = {}
+        waiting_for_releasing = []
         feed_shapes = {}
         swap_finish_event.clear()
 

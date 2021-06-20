@@ -760,7 +760,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
     swapped_in_access = set()
     recomputations = []
     recomputation_tensor = set()
-    release_by_swap_out_accesss=defaultdict(set)
+    release_by_swap_out_access=defaultdict(set)
     # key：tensor，value：[所有释放这个张量的重计算对应的在recomputations中的index]
     # 上一轮没有成功的swap_out时为False
     swapped_flag = True
@@ -835,7 +835,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
                                                 have_next_ITA = True
                                                 if can_next_input_access_swap_in(i, all_access_of_tensor, swap_out_task, swap_scheduler):
                                                     swapped_out_tensor.add(tensor)
-                                                    release_by_swap_out_accesss[tensor.job_id].add(access)
+                                                    release_by_swap_out_access[access.tensor.job_id].add(access)
                                                     swap_out_dict[tensor] = swap_out_task
                                                     swapped_in_access.add(access)
                                                     swap_out_number[tensor.job_id] += 1
@@ -870,8 +870,10 @@ def generate_scheduling_plan(logged_times, gpu: int):
                                         if can_next_input_access_swap_in(i, all_access_of_tensor, swap_out_task, swap_scheduler):
                                             # print(f'成功{access}')
                                             swapped_in_access.add(access)
-                                            if all_access_of_tensor[i - 1].start_time > swap_out_task.end_time:
-                                                all_access_of_tensor[i - 1].release_flag = True
+                                            last_access = all_access_of_tensor[i-1]
+                                            if last_access.start_time > swap_out_task.end_time:
+                                                last_access.release_flag = True
+                                                release_by_swap_out_access[last_access.tensor.job_id].add(last_access)
                             if swapped_flag:
                                 break
                 # 如果是新参数，则尝试对新参数进行swap out，对对应的旧参数进行swap in
@@ -900,7 +902,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
                                         if res:
                                             swapped_in_source_tensor.add(t)
                                             swapped_out_tensor.add(tensor)
-                                            release_by_swap_out_accesss[tensor.job_id].add(output_access)
+                                            release_by_swap_out_access[tensor.job_id].add(output_access)
                                             swap_out_dict[tensor] = swap_out_task
                                             swapped_in_access.add(first_access)
                                             swap_out_number[tensor.job_id] += 1
@@ -959,7 +961,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
     print(f'memory_saved_ratio:{memory_saved_ratio}%')
     print(f'swap ratio:{len(swap_scheduler[0]) / len(global_tensors)}')
     print(f'recomputations:{recomputations}')
-    return generate_swap_recomputation_release_order(tensor_access_by_tensor, swap_scheduler, recomputations, job_num, release_by_swap_out_accesss)
+    return generate_swap_recomputation_release_order(tensor_access_by_tensor, swap_scheduler, recomputations, job_num, release_by_swap_out_access)
 
 
 def multiprocess_init(global_message_queue: multiprocessing.Queue, global_control_queue: multiprocessing.Queue):

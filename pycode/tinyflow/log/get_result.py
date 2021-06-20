@@ -19,6 +19,9 @@ def get_result(raw_workload, repeat_times):
             temp = lines[-1].split('\t')
             vanilla_max_memory_used = float(temp[2].split(' ')[1])
         except:
+            print(vanilla_path + 'gpu_record.txt')
+            print(lines[-2])
+            print(lines[-1])
             temp = lines[-2].split('\t')
             vanilla_max_memory_used = float(temp[2].split(' ')[1])
         all_vanilla_max_memory_used.append(vanilla_max_memory_used)
@@ -29,6 +32,8 @@ def get_result(raw_workload, repeat_times):
             schedule_max_memory_used = float(temp[2].split(' ')[1])
         except:
             print(scheduled_path+'gpu_record.txt')
+            print(lines[-2])
+            print(lines[-1])
             temp = lines[-2].split('\t')
             schedule_max_memory_used = float(temp[2].split(' ')[1])
         all_schedule_max_memory_used.append(schedule_max_memory_used)
@@ -65,4 +70,4 @@ def get_result(raw_workload, repeat_times):
 
 
 if __name__ == '__main__':
-    get_result('Inception V3 fixed/', 1)
+    get_result('VGG fixed/', 3)
