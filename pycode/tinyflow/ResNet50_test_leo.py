@@ -220,4 +220,5 @@ def run_exp(workloads):
                 path = raw_path + 'vanilla'
                 print(path)
             main(path, repeat, jobs_num, batch_size, GPU, ResNet50)
-        get_result(raw_path, 3)
+        get_result(raw_path, repeat)
+

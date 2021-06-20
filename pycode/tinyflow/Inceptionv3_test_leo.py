@@ -1,4 +1,4 @@
-GPU = 0
+GPU = 1
 import os
 import sys
 os.environ['CUDA_VISIBLE_DEVICES'] = f'{GPU}'
@@ -574,7 +574,7 @@ class Inceptionv3():
         return 0
 
 def run_exp(workloads):
-    # workloads = [['./log/Inception V3 fixed x2/', 3, 3, 2]]
+    # workloads = [['./log/Inception V3 test x2/', 3, 3, 2]]
     for path, repeat, jobs_num, batch_size in workloads:
         raw_path = path
         for i in range(2):
@@ -585,4 +585,7 @@ def run_exp(workloads):
                 path = raw_path + 'vanilla'
                 print(path)
             main(path, repeat, jobs_num, batch_size, GPU, Inceptionv3)
-        get_result(raw_path, 3)
+        get_result(raw_path, repeat)
+
+if __name__ == '__main__':
+    run_exp([['./log/Inception V3 test/', 1, 1, 16], ['./log/Inception V3 test x1/', 1, 1, 2], ['./log/Inception V3 test x2/', 1, 2, 2], ['./log/Inception V3 test x3/', 1, 3, 2]])

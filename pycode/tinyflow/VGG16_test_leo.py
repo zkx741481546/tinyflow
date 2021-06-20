@@ -1,4 +1,4 @@
-GPU = 0
+GPU = 1
 import os
 os.environ['CUDA_VISIBLE_DEVICES'] = f'{GPU}'
 import sys
@@ -194,8 +194,9 @@ def run_exp(workloads):
                 path = raw_path + 'vanilla'
                 print(path)
             main(path, repeat, jobs_num, batch_size, GPU, VGG16)
-        get_result(raw_path, 3)
+        get_result(raw_path, repeat)
 
 
 if __name__ == '__main__':
-    run_exp([['./log/VGG passive /', 3, 1, 16], ['./log/VGG passive x1/', 3, 1, 2], ['./log/VGG passive x2/', 3, 2, 2], ['./log/VGG passive x3/', 3, 3, 2]])
+    # run_exp([['./log/VGG test/', 1, 1, 16], ['./log/VGG test x1/', 1, 1, 2], ['./log/VGG test x2/', 1, 2, 2], ['./log/VGG test x3/', 1, 3, 2]])
+    run_exp([['./log/VGG test x1/', 1, 1, 2], ['./log/VGG test x2/', 1, 2, 2], ['./log/VGG test x3/', 1, 3, 2]])
