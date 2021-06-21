@@ -10,7 +10,7 @@ def get_result(raw_workload, repeat_times):
     all_schedule_time_cost = []
     all_memory_saved_to_extra_overhead_ratio = []
     for i in range(repeat_times):
-        workload = raw_workload + f'/repeat_{i}'
+        workload = raw_workload + f'repeat_{i}'
         vanilla_path = f'./{workload}/vanilla/'
         scheduled_path = f'./{workload}/schedule/'
         with open(vanilla_path + 'gpu_record.txt', 'r') as f:
@@ -64,4 +64,4 @@ def get_result(raw_workload, repeat_times):
 
 
 if __name__ == '__main__':
-    get_result('VGG fixed x1/', 1)
+    get_result('VGG leo1 /', 1)
