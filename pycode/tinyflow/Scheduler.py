@@ -512,6 +512,9 @@ class MemoryAnalyzer:
                         wait_to_be_released.append(event)
                     else:
                         last_input_tensor_access = event
+                    if event.tensor not in in_gpu_tensors:
+                        in_gpu_tensors.add(event.tensor)
+                        memory_used += event.tensor.size
             elif isinstance(event, SwapTask):
                 # 使用按照结束时间排序的时间轴进行倒序查找
                 last_event = None
@@ -642,7 +645,7 @@ def get_framework_info(info, logged_time, job_id):
             tensor_access_list.append(input_access)
         global_time += time_cost
 
-    tensors = list(tensors.values())
+    tensors = list(sorted(list(tensors.values()), key=lambda x: x.size, reverse=True))
     global_tensors[job_id] = tensors
     tensor_access_list = sorted(tensor_access_list, key=lambda x: x.time)
     dic = defaultdict(list)
@@ -757,6 +760,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
     swapped_in_access = set()
     recomputations = []
     recomputation_tensor = set()
+
     # key：tensor，value：[所有释放这个张量的重计算对应的在recomputations中的index]
     # 上一轮没有成功的swap_out时为False
     swapped_flag = True
@@ -791,6 +795,11 @@ def generate_scheduling_plan(logged_times, gpu: int):
             for tensor in max_tensors:
                 # 对该张量进行swap_out计划的安排
                 is_new_parameter = tensor.is_parameter and tensor_access_by_tensor[tensor.job_id][tensor][0].operation_name in optimizer_op and len(tensor_access_by_tensor[tensor.job_id][tensor]) == 1
+                tensor_index = global_tensors[tensor.job_id].index(tensor)
+                priority = False
+                if tensor_index < 0.1 * len(global_tensors[tensor.job_id]) and tensor.size > 0.1 * max_memory:
+                    print(f'set priority for tensor_{tensor}')
+                    priority = True
                 if not is_new_parameter:
                     if swap_out_number[tensor.job_id] <= swap_out_number_limits[tensor.job_id] and len(tensor_access_by_tensor[tensor.job_id][tensor]) > 1:
                         # swapped_out表示所有可能的swap_in已经调度过了
@@ -829,7 +838,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
                                             # 找到后面第一个访问
                                             if access.start_time >= swap_out_task.end_time:
                                                 have_next_ITA = True
-                                                if can_next_input_access_swap_in(i, all_access_of_tensor, swap_out_task, swap_scheduler):
+                                                if can_next_input_access_swap_in(i, all_access_of_tensor, swap_out_task, swap_scheduler) or priority:
                                                     swapped_out_tensor.add(tensor)
                                                     swap_out_dict[tensor] = swap_out_task
                                                     swapped_in_access.add(access)
@@ -862,7 +871,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
                                     if i == 0 or access in swapped_in_access:
                                         continue
                                     else:
-                                        if can_next_input_access_swap_in(i, all_access_of_tensor, swap_out_task, swap_scheduler):
+                                        if can_next_input_access_swap_in(i, all_access_of_tensor, swap_out_task, swap_scheduler) or priority:
                                             # print(f'成功{access}')
                                             swapped_in_access.add(access)
                                             if all_access_of_tensor[i - 1].start_time > swap_out_task.end_time:

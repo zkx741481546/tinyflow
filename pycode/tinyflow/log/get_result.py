@@ -61,7 +61,8 @@ def get_result(raw_workload, repeat_times):
                 f'\nvanilla_time_cost:{all_vanilla_time_cost.mean()} +- {all_vanilla_time_cost.std()}'
                 f'\nschedule_time_cost:{all_schedule_time_cost.mean()} +- {all_schedule_time_cost.std()}'
                 f'\nefficiency:{all_saved_ratio.mean() / all_extra_overhead.mean()}')
+        print(f'result写入./{raw_workload}/repeat_{repeat_times}_result.txt成功')
 
 
 if __name__ == '__main__':
-    get_result('VGG leo1 /', 1)
+    get_result('VGG leo1/', 2)
