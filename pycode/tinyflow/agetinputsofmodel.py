@@ -1,3 +1,14 @@
+import matplotlib
+# matplotlib.use('Agg')
+import numpy as np
+import os
+from keras import Model, models
+from keras.callbacks import EarlyStopping, ModelCheckpoint
+
+from keras.models import Sequential, load_model
+from keras.layers import Dense, Conv1D, MaxPool1D, Dropout, Flatten
+from matplotlib import cm
+from tensorboard.plugins.hparams import keras
 import numpy as np
 
 load_list = ['convolution_2d_forward_VALID', 'convolution_backward_filter_2d_VALID',
@@ -16,11 +27,7 @@ load_list = ['convolution_2d_forward_VALID', 'convolution_backward_filter_2d_VAL
 
 
 # inputsshape是[],对应new_node.inputs = [node_A, node_B]的shape
-
 def getinputsofmodel(node, inputsshape):
-
-    opname = "Error"
-
     if node.name == "Convolution2DForward":
         if node.padding == "VALID":
             opname = 'convolution_2d_forward_VALID'
@@ -90,7 +97,7 @@ def getinputsofmodel(node, inputsshape):
         if node.type == "NCHW":
             opname = 'broadcast_to_NCHW'
             inputsofmodel = [inputsshape[1][0], inputsshape[1][1], inputsshape[1][2]]
-    if node.name == "BroadcastToGradient" or node.name == "ReduceSumOp":
+    if node.name == "BroadcastToGradient":
         if node.type == "NHWC":
             opname = 'reduce_sum_new_NHWC'
             inputsofmodel = [inputsshape[0][0], inputsshape[0][1]]
@@ -172,7 +179,8 @@ def getinputsofmodel(node, inputsshape):
     if node.name == "SgdOp":
         opname = 'sgd_update'
         inputsofmodel = [inputsshape[0][1], inputsshape[0][0], inputsshape[0][2]]
-    if node.name == "*" or node.name == "Flatten" or node.name == "FlattenGradient" or node.name == "Squeeze":
+    if node.name == "*" or node.name == "Flatten" or node.name == "FlattenGradient" or node.name == "Squeeze" \
+            or node.name == "SqueezeGradient":
         opname = 'matrix_elementwise_multiply_by_const'
         n = inputsshape[0][0]
         m = inputsshape[0][1]
@@ -183,11 +191,50 @@ def getinputsofmodel(node, inputsshape):
     if node.name == "Zeroslike" or node.name == "Oneslike":
         opname = 'array_set'
         n = inputsshape[0][0]
-        m = inputsshape[0][1]
+        m = 1
+        if len(inputsshape[0]) == 2:
+            m = inputsshape[0][1]
         if len(inputsshape[0]) == 4:
             n = inputsshape[0][0] * inputsshape[0][1]
             m = inputsshape[0][2] * inputsshape[0][3]
         inputsofmodel = [m, n]
-
-    assert not opname == "Error", node.name
     return opname, inputsofmodel
+
+
+def create_model(n):
+    model = Sequential()
+    model.add(Dense(units=2048, activation='tanh', input_dim=n))
+    model.add(Dense(units=2048, activation='tanh'))
+    model.add(Dense(units=1, activation='relu'))
+    return model
+
+
+def load(opname, n):
+    model = create_model(n)
+    model.load_weights('../../res/model_parameter/' + opname + '_model.hdf5', by_name=True, skip_mismatch=True)
+    return model
+
+
+def gettime(node, inputsshape):
+    list = getinputsofmodel(node, inputsshape)
+    if len(list) == 2:
+        opname = list[0]
+        inputsofmodel = np.array(list[1])
+        file_handle = open('../../res/data_bn/' + opname + '_mean_and_std.txt', mode='r')
+        model = load(opname, len(file_handle.readlines()) + 1)
+        file_handle.close()
+        time = model.predict(inputsofmodel.reshape(1, inputsofmodel.shape[0], 1), verbose=1)
+    if len(list) == 3:
+        opname1 = list[0]
+        opname2 = list[1]
+        inputsofmodel = np.array(list[2])
+        file_handle1 = open('../../res/data_bn/' + opname1 + '_mean_and_std.txt', mode='r')
+        model1 = load(opname1, len(file_handle1.readlines()) + 1)
+        file_handle1.close()
+        time1 = model1.predict(inputsofmodel.reshape(1, inputsofmodel.shape[0], 1), verbose=1)
+        file_handle2 = open('../../res/data_bn/' + opname2 + '_mean_and_std.txt', mode='r')
+        model2 = load(opname2, len(file_handle2.readlines()) + 1)
+        file_handle2.close()
+        time2 = model2.predict(inputsofmodel.reshape(1, inputsofmodel.shape[0], 1), verbose=1)
+        time = time1 + time2
+    return time

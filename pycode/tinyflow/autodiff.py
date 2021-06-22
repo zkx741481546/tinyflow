@@ -2424,7 +2424,12 @@ class Executor(object):
                     input_shape = []
                     for input_node in node.inputs:
                         input_shape.append(self.node_to_shape_map[input_node])
-                    tmp = getinputsofmodel(node, input_shape)
+                    tmp = gettime(node, input_shape)
+
+                    # try:
+                    #     tmp = gettime(node, input_shape)
+                    # except:
+                    #     print("Error Occurring when calculating " + str(node.name) + "\n" + str(input_shape) + "\n")
                     print(tmp)
 
                 node_inputs = []

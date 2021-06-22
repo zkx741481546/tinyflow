@@ -61,8 +61,6 @@ def test1():
     loss = ad.crossEntropy_loss(y, y_)
 
     inputs = [[10, 10], [10, 10]]
-    tmp = getinputsofmodel(z5, inputs)
-    print(tmp)
 
 
 def test2():
