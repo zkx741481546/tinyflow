@@ -273,7 +273,7 @@ def mnist_mlp(executor_ctx, num_epochs, print_loss_val_each_epoch, top_control_q
 
 
     lr = 1.0e-3
-    f1 = open("./log/gpu_time.txt", "w+")
+    f1 = open("log/VGG x2 new/scheduled/gpu_time.txt", "w+")
     for i in range(num_epochs):
         print("epoch %d" % i)
         if i==1:
@@ -402,7 +402,7 @@ class GPURecord(threading.Thread):
         threading.Thread.__init__(self)
         pynvml.nvmlInit()
         self.handle = pynvml.nvmlDeviceGetHandleByIndex(GPU)
-        self.f = open("./log/gpu_record.txt", "w+")
+        self.f = open("log/VGG x2 new/scheduled/gpu_record.txt", "w+")
         # todo 临时用作释放的计数器
         self.times = 0
         self.max_gpu_memory = 0

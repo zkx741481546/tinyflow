@@ -1,18 +1,13 @@
-import numpy as np
-from pycode.tinyflow import mainV2 as mp
-from pycode.tinyflow import autodiff as ad
-from pycode.tinyflow import ndarray
-import threading, pynvml, multiprocessing, os, datetime, time
-from multiprocessing import Process
+GPU = 1
+import os
+import sys
 
+os.environ['CUDA_VISIBLE_DEVICES'] = f'{GPU}'
+sys.path.append('../../')
+from pycode.tinyflow import autodiff as ad
 from pycode.tinyflow.log.get_result import get_result
 from util import *
 from agetinputsofmodel import *
-
-# with open('./log_path.txt', 'r') as f:
-#     raw_log_path = f.readlines()[0]
-GPU = load_gpu()
-os.environ['CUDA_VISIBLE_DEVICES'] = f'{GPU}'
 
 
 class Inceptionv3():
@@ -20,7 +15,6 @@ class Inceptionv3():
     def __init__(self, num_step, batch_size, gpu_num, log_path, job_id):
         os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_num)
         self.gpu_num = gpu_num
-
         self.dropout_rate = 0.5
         self.image_channel = 3
         self.image_size = 299
@@ -35,9 +29,8 @@ class Inceptionv3():
         node_after = self.ad.activation_forward_op(node_new, model, "relu")
         return node_after
 
-    def inception_v3(self, executor_ctx, top_control_queue, top_message_queue, n_class, X_val, y_val):
+    def run(self, executor_ctx, top_control_queue, top_message_queue, n_class, X_val, y_val):
         gpu_record = GPURecord(self.log_path)
-        start_time = datetime.datetime.now()
         X = self.ad.Placeholder("inputs")
         y_ = self.ad.Placeholder("y_")
         filterb_1 = self.ad.Variable("filterb_1")
@@ -562,107 +555,49 @@ class Inceptionv3():
         for i in range(self.num_step):
             print("step", i)
             if self.job_id == 0:
-                if i == 79:
+                if i == 139:
                     gpu_record.start()
                     start_time = time.time()
-                if i == 99:
-                    gpu_record.stop()
-                    f1.write(f'time_cost:{time.time() - start_time}')
-                    f1.flush()
-                    f1.close()
             feed_dict[X] = ndarray.array(X_val, ctx=executor_ctx)
             feed_dict[y_] = ndarray.array(y_val, ctx=executor_ctx)
             res = executor.run(feed_dict=feed_dict)
             loss_val = res[0]
-
             feed_dict = res[1]
+        if self.job_id==0:
+            gpu_record.stop()
+            f1.write(f'time_cost:{time.time() - start_time}')
+            f1.flush()
+            f1.close()
+        print(loss_val)
 
         print("success")
+        if not top_message_queue.empty():
+            top_message_queue.get()
+        if not top_control_queue.empty():
+            top_control_queue.get()
         top_message_queue.close()
         top_control_queue.close()
+        top_control_queue.join_thread()
+        top_message_queue.join_thread()
         return 0
 
 
-def run_workload(GPU, batch_size, num_step, log_path, top_control_queue_list, top_message_queue_list, job_id, executor_ctx):
-    top_control_queue = multiprocessing.Queue()
-    top_control_queue_list.append(top_control_queue)
-    top_message_queue = multiprocessing.Queue()
-    top_message_queue_list.append(top_message_queue)
-
-    gpu_num = GPU
-    inceptionv3 = Inceptionv3(num_step=num_step, batch_size=batch_size, gpu_num=gpu_num, log_path=log_path, job_id=job_id)
-    X_val = np.random.normal(loc=0, scale=0.1, size=(
-        batch_size, 3, 299, 299))  # number = batch_size  channel = 3  image_size = 224*224
-
-    y_val = np.random.normal(loc=0, scale=0.1, size=(batch_size, 1000))  # n_class = 1000
-
-    p = Process(target=inceptionv3.inception_v3,
-                args=(executor_ctx, top_control_queue, top_message_queue, 1000, X_val, y_val))
-    return p
-
-
-def main(raw_log_path, repeat_times, job_number, batch_size):
-    for t in range(repeat_times):
-        print(f'repeat_time:{t}')
-        global_message_queue = multiprocessing.Queue()
-        global_control_queue = multiprocessing.Queue()
-
-        top_control_queue_list = []
-        top_message_queue_list = []
-        executor_ctx = ndarray.gpu(0)
-        print_loss_val_each_epoch = True
-        path_list = list(os.path.split(raw_log_path))
-        path_list.insert(1, f'repeat_{t}')
-        log_path = os.path.join(*path_list)
-        if not os.path.exists(log_path):
-            os.makedirs(log_path)
-        gpu_num = GPU
-        batch_size = 32
-        num_step = 100
-
-        job_number = 1
-        job_pool = [run_workload(GPU, batch_size, num_step, log_path, top_control_queue_list, top_message_queue_list, job_id, executor_ctx) for job_id in range(job_number)]
-        for job in job_pool:
-            job.start()
-
-        if 'schedule' in log_path:
-            scheduler = Process(target=mp.multiprocess_init, args=(global_message_queue, global_control_queue))
-            scheduler.start()
-            while True in [job.is_alive() for job in job_pool]:
-                for i in range(job_number):
-                    if not top_message_queue_list[i].empty():
-                        # print("job ", i, "message")
-                        global_message_queue.put([i, top_message_queue_list[i].get()])
-                if not global_control_queue.empty():
-                    global_control = global_control_queue.get()
-                    for i in range(job_number):
-                        if i in global_control:
-                            print("job ", i, "control")
-                            top_control_queue_list[i].put(global_control[i])
-            for q in top_message_queue_list:
-                q.close()
-            for q in top_control_queue_list:
-                q.close()
-            scheduler.terminate()
-        else:
-            while True in [job.is_alive() for job in job_pool]:
-                for i in range(job_number):
-                    if not top_message_queue_list[i].empty():
-                        top_message_queue_list[i].get()
-        for job in job_pool:
-            job.terminate()
-
-
-if __name__ == '__main__':
-    workloads = [['./log/Inception fixed/', 3, 1, 32], ['./log/Inception fixed x1/', 3, 1, 2], ['./log/Inception fixed x2/', 3, 2, 2], ['./log/Inception fixed x3/', 3, 3, 2]]
+def run_exp(workloads):
+    # workloads = [['./log/Inception V3 fixed x2/', 3, 3, 2]]
     for path, repeat, jobs_num, batch_size in workloads:
         raw_path = path
         for i in range(2):
             if i == 0:
                 path = raw_path + 'schedule'
+                schedule = True
                 print(path)
             else:
                 path = raw_path + 'vanilla'
+                schedule = False
                 print(path)
-            main(path, repeat, jobs_num, batch_size)
-        get_result(raw_path, 3)
+            main(path, repeat, jobs_num, batch_size, GPU, Inceptionv3)
+        get_result(raw_path, repeat)
+
+
+if __name__ == '__main__':
+    run_exp([['./log/Inception V3 x2/', 3, 2, 2], ['./log/Inception V3 x3/', 3, 3, 2]])
