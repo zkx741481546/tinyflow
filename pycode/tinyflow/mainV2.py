@@ -618,7 +618,7 @@ def get_framework_info(info, logged_time, job_id):
     # tensor_id: execution time of operator which generate the tensor
     operator_execution_time = []
     # for output_tensor_id, input_tensor_id, output_tensor_size, operation_name, is_parameter, shape, inputs_of_model in info:
-    for tensor_info, input_tensor_id, operation_name, operation_id, is_parameter, inputs_of_model in info:
+    for tensor_info, input_tensor_id, operation_name, operation_id, is_parameter, inputs_of_model, _ in info:
         # is_parameter: 生成的张量是否为参数
         # 输入的为Byte
         # 转换为MB
@@ -999,7 +999,8 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                 #     pickle.dump(global_graphs, f1)
 
                 for i in range(tensor_num):
-                    logged_times[job_id_in].append([1])
+                    print(message_graph[i][6])
+                    logged_times[job_id_in].append([message_graph[i][6]])
                 # logged_times[job_id] = [[50, 0.01], [50, 0.01], [50, 351], [50, 0.01], [50, 87], [50, 136], [50, 98], [50, 0.01], [50, 77], [50, 0.01], [50, 23], [50, 85], [50, 33], [50, 0.01], [50, 63], [50, 0.01], [50, 23],
                 #      [50, 71], [50, 0.01], [50, 80], [50, 65], [50, 56], [50, 69], [50, 56], [50, 203], [50, 28], [50, 66], [50, 60], [50, 66], [50, 29], [50, 75], [50, 62], [50, 32], [50, 24], [50, 81],
                 #      [50, 114], [50, 50], [50, 42], [50, 707], [50, 554], [50, 121]]

@@ -1,5 +1,6 @@
 import matplotlib
 # matplotlib.use('Agg')
+from pynvml import *
 import numpy as np
 import os
 from keras import Model, models
@@ -10,6 +11,8 @@ from keras.layers import Dense, Conv1D, MaxPool1D, Dropout, Flatten
 from matplotlib import cm
 from tensorboard.plugins.hparams import keras
 import numpy as np
+
+from pycode.tinyflow.util import load_gpu
 
 load_list = ['convolution_2d_forward_VALID', 'convolution_backward_filter_2d_VALID',
              'convolution_backward_data_2d_VALID',
@@ -71,9 +74,15 @@ def getinputsofmodel(node, inputsshape):
     if node.name == "BNForward":
         opname = 'bn_forward_pre_activation'
         inputsofmodel = [inputsshape[0][0], inputsshape[0][1], inputsshape[0][2]]
+    if node.name == "FullyBNForward":
+        opname = 'bn_forward_pre_activation'
+        inputsofmodel = [inputsshape[0][0], inputsshape[0][1], 1]
     if node.name == "BNBackward":
         opname = 'bn_backward_pre_activation'
         inputsofmodel = [inputsshape[0][0], inputsshape[0][1], inputsshape[0][2]]
+    if node.name == "FullyBNBackward":
+        opname = 'bn_backward_pre_activation'
+        inputsofmodel = [inputsshape[0][0], inputsshape[0][1], 1]
     if node.name == "Pooling2DForward":
         if node.poolingMode == "max":
             opname = 'pooling_2d_forward_max'
@@ -116,7 +125,12 @@ def getinputsofmodel(node, inputsshape):
     # 这个node的计算用了两个gpuop
     if node.name == "AdamOp":
         opname0 = 'adam_mv'
-        inputsofmodel0 = [inputsshape[0][1], inputsshape[0][0], inputsshape[0][2]]
+        if (len(inputsshape[0]) == 2):
+            inputsofmodel0 = [inputsshape[0][1], inputsshape[0][0], 1]
+        elif (len(inputsshape[0]) == 1):
+            inputsofmodel0 = [1, inputsshape[0][0], 1]
+        else:
+            inputsofmodel0 = [inputsshape[0][1], inputsshape[0][0], inputsshape[0][2]]
         opname1 = 'adam_compute'
         return opname0, opname1, inputsofmodel0
     if node.name == "ActivationForward":
@@ -125,28 +139,28 @@ def getinputsofmodel(node, inputsshape):
             inputsofmodel = [inputsshape[0][0], inputsshape[0][1], inputsshape[0][2]]
         if node.activationMode == "softmax":
             opname = 'activation_forward_softmax'
-            inputsofmodel = [inputsshape[0][0], inputsshape[0][1], inputsshape[0][2]]
+            inputsofmodel = [inputsshape[0][0], inputsshape[0][1]*inputsshape[0][2]]
     if node.name == "FullyActivationForward":
         if node.activationMode == "relu":
             opname = 'activation_forward_relu'
             inputsofmodel = [inputsshape[0][0], inputsshape[0][1], 1]
         if node.activationMode == "softmax":
             opname = 'activation_forward_softmax'
-            inputsofmodel = [inputsshape[0][0], inputsshape[0][1], 1]
+            inputsofmodel = [inputsshape[0][0], inputsshape[0][1]]
     if node.name == "ActivationBackward":
         if node.activationMode == "relu":
             opname = 'activation_backward_relu'
             inputsofmodel = [inputsshape[0][0], inputsshape[0][1], inputsshape[0][2]]
         if node.activationMode == "softmax":
             opname = 'activation_backward_softmax'
-            inputsofmodel = [inputsshape[0][0], inputsshape[0][1], inputsshape[0][2]]
+            inputsofmodel = [inputsshape[0][0], inputsshape[0][1]*inputsshape[0][2]]
     if node.name == "FullyActivationBackward":
         if node.activationMode == "relu":
             opname = 'activation_backward_relu'
             inputsofmodel = [inputsshape[0][0], inputsshape[0][1], 1]
         if node.activationMode == "softmax":
             opname = 'activation_backward_softmax'
-            inputsofmodel = [inputsshape[0][0], inputsshape[0][1], 1]
+            inputsofmodel = [inputsshape[0][0], inputsshape[0][1]]
     if node.name == "MatMul":
         opname = 'matrix_multiply'
         n1 = inputsshape[0][0]
@@ -215,26 +229,35 @@ def load(opname, n):
     return model
 
 
+# 第几块gpu
+i = load_gpu()
+handle = nvmlDeviceGetHandleByIndex(i)
+
+
 def gettime(node, inputsshape):
+    tmp = nvmlDeviceGetUtilizationRates(handle)
+    tmp = float(tmp.gpu)
     list = getinputsofmodel(node, inputsshape)
     if len(list) == 2:
         opname = list[0]
+        list[1].insert(0, tmp)
         inputsofmodel = np.array(list[1])
         file_handle = open('../../res/data_bn/' + opname + '_mean_and_std.txt', mode='r')
         model = load(opname, len(file_handle.readlines()) + 1)
         file_handle.close()
-        time = model.predict(inputsofmodel.reshape(1, inputsofmodel.shape[0], 1), verbose=1)
+        time = model.predict(inputsofmodel.reshape(1, inputsofmodel.shape[0]), verbose=1)
     if len(list) == 3:
         opname1 = list[0]
         opname2 = list[1]
+        list[2].insert(0, tmp)
         inputsofmodel = np.array(list[2])
         file_handle1 = open('../../res/data_bn/' + opname1 + '_mean_and_std.txt', mode='r')
         model1 = load(opname1, len(file_handle1.readlines()) + 1)
         file_handle1.close()
-        time1 = model1.predict(inputsofmodel.reshape(1, inputsofmodel.shape[0], 1), verbose=1)
+        time1 = model1.predict(inputsofmodel.reshape(1, inputsofmodel.shape[0]), verbose=1)
         file_handle2 = open('../../res/data_bn/' + opname2 + '_mean_and_std.txt', mode='r')
         model2 = load(opname2, len(file_handle2.readlines()) + 1)
         file_handle2.close()
-        time2 = model2.predict(inputsofmodel.reshape(1, inputsofmodel.shape[0], 1), verbose=1)
+        time2 = model2.predict(inputsofmodel.reshape(1, inputsofmodel.shape[0]), verbose=1)
         time = time1 + time2
-    return time
+    return time[0][0]

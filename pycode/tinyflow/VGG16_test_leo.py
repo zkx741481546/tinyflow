@@ -260,7 +260,7 @@ def main(raw_log_path, repeat_times, job_number, batch_size):
 
 if __name__ == '__main__':
     # workloads = [['./log/VGG fixed/', 3, 1, 32], ['./log/VGG fixed x1/', 3, 1, 2], ['./log/VGG fixed x2/', 3, 2, 2], ['./log/VGG fixed x3/', 3, 3, 2]]
-    workloads = [['./log/VGG fixed/', 3, 1, 16]]
+    workloads = [['./log/VGG fixed/', 1, 1, 16]]
     for path, repeat, jobs_num, batch_size in workloads:
         raw_path = path
         for i in range(2):

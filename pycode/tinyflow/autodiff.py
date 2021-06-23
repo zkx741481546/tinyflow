@@ -951,8 +951,8 @@ class Convolution2DForwardOp(Op):
         return memorytoSaving
 
     def gradient(self, node, output_grad):
-        return [convolution_2d_backward_op(node.inputs[0], node.inputs[1], output_grad, 0, node.cudnnlist),
-                convolution_2d_backward_op(node.inputs[0], node.inputs[1], output_grad, 1, node.cudnnlist)]
+        return [convolution_2d_backward_op(node.inputs[0], node.inputs[1], output_grad, 0, node.padding, node.u, node.v, node.cudnnlist),
+                convolution_2d_backward_op(node.inputs[0], node.inputs[1], output_grad, 1, node.padding, node.u, node.v, node.cudnnlist)]
 
     def infer_shape(self, node, input_shapes, cudnnHandle):
         outshapes, node.cudnnlist[0] = gpu_op.convolution_2d_forward_get_out_shape(input_shapes[0], input_shapes[1],
@@ -963,13 +963,15 @@ class Convolution2DForwardOp(Op):
 
 
 class Convolution2DBackwardOp(Op):
-    def __call__(self, node_A, node_B, node_C, type, cudnnlist):
+    def __call__(self, node_A, node_B, node_C, type, padding, u, v, cudnnlist):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A, node_B, node_C]
         new_node.name = "Convolution2DBackward"
         # 0 is dinput, 1 is dfilter
         new_node.type = type
-
+        new_node.padding = padding
+        new_node.u = u
+        new_node.v = v
         new_node.cudnnlist = cudnnlist
 
         return new_node
@@ -1345,7 +1347,7 @@ class DropoutForwardOp(Op):
         return memorytoSaving
 
     def gradient(self, node, output_grad):
-        return [dropout_backward_op(output_grad, node.reserveSpace_p, node.cudnnlist)]
+        return [dropout_backward_op(output_grad, node.dropout, node.reserveSpace_p, node.cudnnlist)]
 
     def infer_shape(self, node, input_shapes, cudnnHandle):
         node.inputd[0] = gpu_op.get_input_descriptor(input_shapes[0], node.dataformat)
@@ -1353,10 +1355,11 @@ class DropoutForwardOp(Op):
 
 
 class DropoutBackwardOp(Op):
-    def __call__(self, node_A, reserveSpace_p, cudnnlist):
+    def __call__(self, node_A, dropout, reserveSpace_p, cudnnlist):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
         new_node.name = "DropoutBackward"
+        new_node.dropout = dropout
         new_node.reserveSpace_p = reserveSpace_p
         new_node.cudnnlist = cudnnlist
         return new_node
@@ -1400,7 +1403,7 @@ class FullyDropoutForwardOp(Op):
         return memorytoSaving
 
     def gradient(self, node, output_grad):
-        return [fullydropout_backward_op(output_grad, node.reserveSpace_p, node.cudnnlist)]
+        return [fullydropout_backward_op(output_grad, node.dropout, node.reserveSpace_p, node.cudnnlist)]
 
     def infer_shape(self, node, input_shapes, cudnnHandle):
         newinputshapes = (input_shapes[0][0], 1, input_shapes[0][1])
@@ -1409,10 +1412,11 @@ class FullyDropoutForwardOp(Op):
 
 
 class FullyDropoutBackwardOp(Op):
-    def __call__(self, node_A, reserveSpace_p, cudnnlist):
+    def __call__(self, node_A, dropout, reserveSpace_p, cudnnlist):
         new_node = Op.__call__(self)
         new_node.inputs = [node_A]
         new_node.name = "FullyDropoutBackward"
+        new_node.dropout = dropout
         new_node.reserveSpace_p = reserveSpace_p
         new_node.cudnnlist = cudnnlist
         return new_node
@@ -2418,19 +2422,25 @@ class Executor(object):
             return_list = []
             for node in self.topo_order:
 
+                operation_run_time = 1e-5
+
                 # todo 初始化时进行初始运行时间的预测
                 if node.index not in index_to_gpu_map:
                     print(node.index)
                     input_shape = []
                     for input_node in node.inputs:
                         input_shape.append(self.node_to_shape_map[input_node])
-                    tmp = gettime(node, input_shape)
-
+                    print(node.name)
+                    # temp = getinputsofmodel(node, input_shape)
+                    try:
+                        operation_run_time = gettime(node, input_shape)
+                    except:
+                        print("NOT FOUND")
                     # try:
                     #     tmp = gettime(node, input_shape)
                     # except:
                     #     print("Error Occurring when calculating " + str(node.name) + "\n" + str(input_shape) + "\n")
-                    print(tmp)
+                    print(operation_run_time)
 
                 node_inputs = []
                 for node_input in node.inputs:
@@ -2460,7 +2470,7 @@ class Executor(object):
                         tensor_list.append((node.inputs[i].index + self.total_node,
                                             np.prod(self.node_to_shape_map[node.inputs[i]]) * 4,
                                             self.node_to_shape_map[node.inputs[i]]))
-                return_element = [tensor_list, node_inputs, operation_name, node.index, is_input, []]
+                return_element = [tensor_list, node_inputs, operation_name, node.index, is_input, [], operation_run_time]
                 return_list.append(return_element)
             self.top_message_queue.put([0, return_list])
         else:
