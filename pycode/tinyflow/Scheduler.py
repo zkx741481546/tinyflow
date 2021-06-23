@@ -777,7 +777,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
         max_memory_footprint.append(max_memory)
         # 最后三次迭代的峰值，做一阶差分，结果的最大值大于上一次峰值的0.05%以上或迭代次数小于200轮才继续~`
         if len(max_memory_footprint) > 3 and max([max_memory_footprint[i] - max_memory_footprint[i + 1] for i in range(len(max_memory_footprint) - 3, len(max_memory_footprint) - 1)]) < max_memory_footprint[
-            -1] * 0.0005 and iter > 300:
+            -1] * 0.0005 and iter > 100:
             break
         if iter == 0:
             original_memory_used = max_memory
@@ -952,7 +952,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
     memory_saved_ratio = format((1 - last_memory_used / original_memory_used) * 100, '.2f')
     print(f'memory_saved_ratio:{memory_saved_ratio}%')
     print(f'swap ratio:{len(swap_scheduler[0]) / len(global_tensors)}')
-    print(f'recomputations:{recomputations}')
+    # print(f'recomputations:{recomputations}')
     return generate_swap_recomputation_release_order(tensor_access_by_tensor, swap_scheduler, recomputations, job_num)
 
 
@@ -1024,7 +1024,7 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                 # print("total time new is", total_time_new)
                 # print("total time old is", total_time_old)
 
-                if change_rate > 0.5:
+                if change_rate > 0.3:
                     is_replan = True
                 else:
                     is_replan = False
@@ -1037,7 +1037,6 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                 if log_repeat > 0 and (is_replan or (not second_schedule_finished)):
 
                     second_schedule_finished = True
-
                     # with open("../../logged_times", "wb") as f1:
                     #     pickle.dump(logged_times, f1)
 

@@ -1,4 +1,4 @@
-GPU = 0
+GPU = 1
 import os
 import sys
 os.environ['CUDA_VISIBLE_DEVICES'] = f'{GPU}'
@@ -189,24 +189,30 @@ class ResNet50():
         for i in range(self.num_step):
             print("step", i)
             if self.job_id == 0:
-                if i == 79:
+                if i == 139:
                     gpu_record.start()
                     start_time = time.time()
-                if i == 99:
-                    gpu_record.stop()
-                    f1.write(f'time_cost:{time.time() - start_time}')
-                    f1.flush()
-                    f1.close()
             feed_dict[X] = ndarray.array(X_val, ctx=executor_ctx)
             feed_dict[y_] = ndarray.array(y_val, ctx=executor_ctx)
             res = executor.run(feed_dict=feed_dict)
             loss_val = res[0]
             feed_dict = res[1]
-            print(loss_val)
+        if self.job_id == 0:
+            gpu_record.stop()
+            f1.write(f'time_cost:{time.time() - start_time}')
+            f1.flush()
+            f1.close()
+        print(loss_val)
 
         print("success")
+        if not top_message_queue.empty():
+            top_message_queue.get()
+        if not top_control_queue.empty():
+            top_control_queue.get()
         top_message_queue.close()
         top_control_queue.close()
+        top_control_queue.join_thread()
+        top_message_queue.join_thread()
         return 0
 
 def run_exp(workloads):
@@ -220,4 +226,4 @@ def run_exp(workloads):
                 path = raw_path + 'vanilla'
                 print(path)
             main(path, repeat, jobs_num, batch_size, GPU, ResNet50)
-        get_result(raw_path, 3)
+        get_result(raw_path, repeat)

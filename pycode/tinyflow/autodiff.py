@@ -12,8 +12,6 @@ import datetime
 
 import os
 
-
-
 index_to_cpu_map = {}
 index_to_cpu_flag = {}
 index_to_gpu_map = {}
@@ -137,7 +135,7 @@ class MemoryManager(threading.Thread):
 
                 # print("swaping node " + str(node_index) + " to gpu")
 
-                    # print("swap in 和 passive import 重合")
+                # print("swap in 和 passive import 重合")
                 # print("swap finish: node " + str(node_index) + " to " + str(move_to_gpu))
                 # print((time2 - time1).microseconds)
 
@@ -145,8 +143,6 @@ class MemoryManager(threading.Thread):
             #     print(index_to_gpu_map[28].asnumpy())
             # if 28 in index_to_cpu_flag:
             #     print(index_to_cpu_map[28].asnumpy())
-
-
 
 
 class Node(object):
@@ -658,7 +654,6 @@ class BroadcastToGradientOp(Op):
         # gpu_op.broadcast_to_backward(input_vals[0], output_val, node.type)
 
         # tic = time.time()
-
 
         memorytoSaving = gpu_op.reduce_sum_new(input_vals[0], output_val, node.cudnnlist[0], cudnnHandle, cudaStream)
 
@@ -1457,7 +1452,6 @@ class FullyActivationForwardOp(Op):
 
         gpu_op.activation_forward(input_vals[0], output_val, node.activationMode, node.cudnnlist[0], cudnnHandle, cudaStream)
 
-
         # print("fullyactivation_end")
         return 0
 
@@ -1483,7 +1477,6 @@ class FullyActivationBackwardOp(Op):
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
         # print("FullyActivationBackwardOp_start")
         assert use_numpy == False
-
 
         gpu_op.activation_backward(input_vals[0], output_val, input_vals[2], input_vals[1], node.activationMode,
                                    node.cudnnlist[0], cudnnHandle, cudaStream)
@@ -2052,8 +2045,8 @@ class AdamOp(Op):
         new_node.name = "AdamOp"
         new_node.b1 = b1
         new_node.b2 = b2
-        new_node.b1t = b1t #list
-        new_node.b2t = b2t #list
+        new_node.b1t = b1t  # list
+        new_node.b2t = b2t  # list
         new_node.e = e
         new_node.learning_rate = learning_rate
         return new_node
@@ -2073,6 +2066,7 @@ class AdamOp(Op):
     def infer_shape(self, node, input_shapes, cudnnHandle):
         return input_shapes[0]
 
+
 class CrossOp(Op):
     def __call__(self, node_A, node_B, ismean):
         new_node = Op.__call__(self)
@@ -2091,12 +2085,13 @@ class CrossOp(Op):
     def gradient(self, node, output_grad):
         grad_A = cross_backward_op(node.inputs[0], node.inputs[1], output_grad, node.meanfloat)
         grad_B = zeroslike_op(node.inputs[1])
-        return [grad_A,grad_B]
+        return [grad_A, grad_B]
 
     def infer_shape(self, node, input_shapes, cudnnHandle):
         if node.ismean:
             node.meanfloat[0] = 1. / gpu_op.get_shape_size(input_shapes[0])
         return input_shapes[0]
+
 
 class CrossBackwardOp(Op):
     def __call__(self, node_A, node_B, node_C, meanfloat):
@@ -2117,10 +2112,6 @@ class CrossBackwardOp(Op):
 
     def infer_shape(self, node, input_shapes, cudnnHandle):
         return input_shapes[0]
-
-
-
-
 
 
 def dense(X, W, b):
@@ -2149,14 +2140,12 @@ def conv3withbias(input, filter, bias, dataformat, padding, stride1, stride2, st
     cb = c + b
     return cb
 
-def crossEntropy_loss(input,y_,ismean=True):
 
-    new_node = cross_op(input,y_,ismean)
+def crossEntropy_loss(input, y_, ismean=True):
+    new_node = cross_op(input, y_, ismean)
 
     return reduce_sum_op(new_node)
-    #return reduce_mean_op(new_node)
-
-
+    # return reduce_mean_op(new_node)
 
 
 # Create global singletons of operators.
@@ -2272,7 +2261,7 @@ class Executor(object):
         # 根据这个topo_order算
         self.topo_order = find_topo_sort(self.eval_node_list)
         self.topo_order = swapadam(self.topo_order)
-        #按网络顺序
+        # 按网络顺序
         self.Variable_node_list.reverse()
         self.eval_node_list = []
         self.eval_node_list.append(targetloss)
@@ -2284,9 +2273,9 @@ class Executor(object):
             order_m.append(self.Variable_node_to_mv[node][0])
             order_v.append(self.Variable_node_to_mv[node][1])
 
-        #平时要返回的nodelist
-        #[loss, 变量按网络顺序, 变量对应的m，变量对应的v,结果y]
-        self.eval_node_list = self.eval_node_list + order_var +order_m +order_v
+        # 平时要返回的nodelist
+        # [loss, 变量按网络顺序, 变量对应的m，变量对应的v,结果y]
+        self.eval_node_list = self.eval_node_list + order_var + order_m + order_v
         self.eval_node_list.append(self.y)
         self.node_to_shape_map = None
         self.feed_shapes = None
@@ -2309,7 +2298,6 @@ class Executor(object):
         # print("最后输出index：")
         # for node in self.eval_node_list:
         #     print(node.index)
-
 
         # todo 此处hard code，后续需要修改
         self.ctx_cpu = ndarray.cpu(0)
@@ -2412,7 +2400,6 @@ class Executor(object):
                 index_to_cpu_flag[node.index + self.total_node] = False
                 index_to_cpu_map[node.index + self.total_node] = ndarray.empty(value.shape, self.ctx_cpu)
 
-
         # collect shapes for all placeholders
         # for i in index_to_gpu_map.keys():
         #     feed_shapes[self.topo_order[i]] = index_to_gpu_map[i].shape
@@ -2446,8 +2433,8 @@ class Executor(object):
                 if node == self.eval_node_list[0]:
                     is_input = 1
 
-            # 新的返回信息
-            # output_tensor_id, input_tensor_id, output_tensor_size, operation_name, is_parameter, is_input_or_output, shape, inputs_of_model
+                # 新的返回信息
+                # output_tensor_id, input_tensor_id, output_tensor_size, operation_name, is_parameter, is_input_or_output, shape, inputs_of_model
                 tensor_list = []
                 if operation_name != "AdamOp":
                     tensor_list = [(node.index, node_size, self.node_to_shape_map[node])]
@@ -2479,6 +2466,13 @@ class Executor(object):
         for node in self.topo_order:
             node.array_status = 0
 
+        # global have_got_control_message
+        # if self.schedule and not have_got_control_message:
+        #     if self.top_control_queue.empty():
+        #         while self.top_control_queue.empty():
+        #             time.sleep(0.1)
+        #         print('got control message')
+        #     have_got_control_message = True
 
         if not self.top_control_queue.empty():
             global have_got_control_message
@@ -2635,7 +2629,6 @@ class Executor(object):
             for n in node.inputs:
                 if index_to_gpu_map[n.index] is None:
 
-
                     if swaping_index == n.index and swaping_to_gpu == 1:
                         # todo 如果当前swap正好是需要passive的，等待swap
                         while index_to_gpu_map[n.index] is None:
@@ -2671,7 +2664,6 @@ class Executor(object):
                     input_node = node.inputs[i]
                     index_to_gpu_map[input_node.index + self.total_node] = index_to_gpu_map[input_node.index]
                     index_to_gpu_map[input_node.index] = None
-
 
                 t2 = datetime.datetime.now()
                 node.runtime = (t2 - t1).microseconds / 1000
@@ -2768,9 +2760,6 @@ class Executor(object):
             # print("node: " + str(node.index) + "computing")
             # print(index_to_gpu_map[0].asnumpy())
 
-
-
-
         # adam更新参数
         self.b1t[0] = self.b1t[0] * self.b1
         self.b2t[0] = self.b2t[0] * self.b2
@@ -2802,7 +2791,6 @@ class Executor(object):
         else:
             eval_return_list.append(index_to_gpu_map[self.eval_node_list[0].index])
 
-
         for n in feed_dict:
             if n.name == "X" or n.name == "y_":
                 continue
@@ -2816,8 +2804,6 @@ class Executor(object):
         if total_swap_in != 0:
             # pass
             print("passive swap所占的比例为" + str(passive_swap_in / total_swap_in))
-
-
 
         return eval_return_list
         # return [index_to_gpu_map[n.index] for n in self.eval_node_list]
@@ -2891,13 +2877,12 @@ def topo_sort_dfs(node, visited, topo_order):
         topo_sort_dfs(n, visited, topo_order)
     topo_order.append(node)
 
-def get_Variable_node_list(node):
 
+def get_Variable_node_list(node):
     visited = set()
     Variable_order = []
     Variable_sort_dfs(node, visited, Variable_order)
     return Variable_order
-
 
 
 def Variable_sort_dfs(node, visited, Variable_order):
@@ -2915,25 +2900,21 @@ def Variable_sort_dfs(node, visited, Variable_order):
         Variable_order.append(node)
 
 
-
-def getcomputelist(Variable_node_list, Variable_node_grad_list, b1, b2, b1t, b2t, e,learning_rate):
-
+def getcomputelist(Variable_node_list, Variable_node_grad_list, b1, b2, b1t, b2t, e, learning_rate):
     computelist = []
     mv = []
     Variable_node_to_mv = {}
     for i in range(len(Variable_node_list)):
-        m = Variable(Variable_node_list[i].name+'m')
-        v = Variable(Variable_node_list[i].name+'v')
+        m = Variable(Variable_node_list[i].name + 'm')
+        v = Variable(Variable_node_list[i].name + 'v')
         mv.append(m)
         mv.append(v)
-        Variable_node_to_mv[Variable_node_list[i]] = (m,v)
-        adamnode = adam_op(Variable_node_list[i],m,v,Variable_node_grad_list[i], b1, b2, b1t, b2t, e, learning_rate)
-        adamnode.issgd = 1#代表不用为这个点加内存
+        Variable_node_to_mv[Variable_node_list[i]] = (m, v)
+        adamnode = adam_op(Variable_node_list[i], m, v, Variable_node_grad_list[i], b1, b2, b1t, b2t, e, learning_rate)
+        adamnode.issgd = 1  # 代表不用为这个点加内存
         computelist.append(adamnode)
 
-    return computelist,mv,Variable_node_to_mv
-
-
+    return computelist, mv, Variable_node_to_mv
 
 
 def swapadam(topoorder):
@@ -2947,15 +2928,14 @@ def swapadam(topoorder):
                     j = j - 1
                     continue
                 if filter in topoorder[j].inputs:
-
                     break
                 j = j - 1
 
             tmp = topoorder[i]
             topoorder.remove(tmp)
-            topoorder.insert(j,tmp)
+            topoorder.insert(j, tmp)
     for i in range(len(topoorder)):
-        print(i,topoorder[i])
+        print(i, topoorder[i])
     return topoorder
 
 

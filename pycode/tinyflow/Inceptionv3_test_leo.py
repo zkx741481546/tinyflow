@@ -1,18 +1,19 @@
-GPU = 0
+GPU = 1
 import os
 import sys
+
 os.environ['CUDA_VISIBLE_DEVICES'] = f'{GPU}'
 sys.path.append('../../')
 from pycode.tinyflow import autodiff as ad
 from pycode.tinyflow.log.get_result import get_result
 from util import *
 
+
 class Inceptionv3():
 
     def __init__(self, num_step, batch_size, gpu_num, log_path, job_id):
         os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_num)
         self.gpu_num = gpu_num
-
         self.dropout_rate = 0.5
         self.image_channel = 3
         self.image_size = 299
@@ -29,7 +30,6 @@ class Inceptionv3():
 
     def run(self, executor_ctx, top_control_queue, top_message_queue, n_class, X_val, y_val):
         gpu_record = GPURecord(self.log_path)
-        start_time = datetime.datetime.now()
         X = self.ad.Placeholder("inputs")
         y_ = self.ad.Placeholder("y_")
         filterb_1 = self.ad.Variable("filterb_1")
@@ -553,25 +553,32 @@ class Inceptionv3():
         for i in range(self.num_step):
             print("step", i)
             if self.job_id == 0:
-                if i == 79:
+                if i == 139:
                     gpu_record.start()
                     start_time = time.time()
-                if i == 99:
-                    gpu_record.stop()
-                    f1.write(f'time_cost:{time.time() - start_time}')
-                    f1.flush()
-                    f1.close()
             feed_dict[X] = ndarray.array(X_val, ctx=executor_ctx)
             feed_dict[y_] = ndarray.array(y_val, ctx=executor_ctx)
             res = executor.run(feed_dict=feed_dict)
             loss_val = res[0]
-
             feed_dict = res[1]
+        if self.job_id==0:
+            gpu_record.stop()
+            f1.write(f'time_cost:{time.time() - start_time}')
+            f1.flush()
+            f1.close()
+        print(loss_val)
 
         print("success")
+        if not top_message_queue.empty():
+            top_message_queue.get()
+        if not top_control_queue.empty():
+            top_control_queue.get()
         top_message_queue.close()
         top_control_queue.close()
+        top_control_queue.join_thread()
+        top_message_queue.join_thread()
         return 0
+
 
 def run_exp(workloads):
     # workloads = [['./log/Inception V3 fixed x2/', 3, 3, 2]]
@@ -580,9 +587,15 @@ def run_exp(workloads):
         for i in range(2):
             if i == 0:
                 path = raw_path + 'schedule'
+                schedule = True
                 print(path)
             else:
                 path = raw_path + 'vanilla'
+                schedule = False
                 print(path)
             main(path, repeat, jobs_num, batch_size, GPU, Inceptionv3)
-        get_result(raw_path, 3)
+        get_result(raw_path, repeat)
+
+
+if __name__ == '__main__':
+    run_exp([['./log/Inception V3 x2/', 3, 2, 2], ['./log/Inception V3 x3/', 3, 3, 2]])
