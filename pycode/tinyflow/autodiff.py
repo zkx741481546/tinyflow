@@ -2410,9 +2410,7 @@ class Executor(object):
         # collect shapes for all placeholders
         # for i in index_to_gpu_map.keys():
         #     feed_shapes[self.topo_order[i]] = index_to_gpu_map[i].shape
-
         if self.feed_shapes is None:
-            # todo 向上层返回需要的信息
             self.infer_shape(feed_shapes)
             self.feed_shapes = feed_shapes
 
@@ -2420,64 +2418,70 @@ class Executor(object):
             for node in self.node_to_shape_map:
                 index_to_cpu_map[node.index] = ndarray.empty(self.node_to_shape_map[node], self.ctx_cpu)
 
-            return_list = []
-            for node in self.topo_order:
+            # todo 向上层返回需要的信息
+            if 'schedule' in self.log_path:
+                return_list = []
+                for node in self.topo_order:
 
-                operation_run_time = 1e-5
+                    operation_run_time = 1e-5
 
-                # todo 初始化时进行初始运行时间的预测
-                if node.index not in index_to_gpu_map:
-                    print(node.index)
-                    input_shape = []
-                    for input_node in node.inputs:
-                        input_shape.append(self.node_to_shape_map[input_node])
-                    print(node.name)
-                    # temp = getinputsofmodel(node, input_shape)
-                    operation_run_time = gettime(node, input_shape)
+                    # todo 初始化时进行初始运行时间的预测
+                    if node.index not in index_to_gpu_map:
+                        # print(node.index)
+                        input_shape = []
+                        for input_node in node.inputs:
+                            input_shape.append(self.node_to_shape_map[input_node])
+                        # print(node.name)
+                        # temp = getinputsofmodel(node, input_shape)
+                        operation_run_time = gettime(node, input_shape)
+                        if operation_run_time - 0.0 < 1e-10:
+                            operation_run_time = 1e-5
 
-                    # try:
-                    #     operation_run_time = gettime(node, input_shape)
-                    # except:
-                    #     print("NOT FOUND")
-                    print(operation_run_time)
 
-                node_inputs = []
-                for node_input in node.inputs:
-                    node_inputs.append(node_input.index)
-                node_size = np.prod(self.node_to_shape_map[node]) * 4
-                # print("node" + str(node.index) + " size: " + str(node_size))
+                        # try:
+                        #     operation_run_time = gettime(node, input_shape)
+                        # except:
+                        #     print("NOT FOUND")
+                        # print(operation_run_time)
 
-                # if len(self.node_to_shape_map[node]) == 1:
-                #     node_size = self.node_to_shape_map[node][0] * 4
-                # else:
-                #     node_size = self.node_to_shape_map[node][0] * self.node_to_shape_map[node][1] * 4
-                operation_name = node.name
-                is_input = 0
-                if node.index in index_to_gpu_map:
-                    if node.name != "X" and node.name != "y_":
+                    node_inputs = []
+                    for node_input in node.inputs:
+                        node_inputs.append(node_input.index)
+                    node_size = np.prod(self.node_to_shape_map[node]) * 4
+                    # print("node" + str(node.index) + " size: " + str(node_size))
+
+                    # if len(self.node_to_shape_map[node]) == 1:
+                    #     node_size = self.node_to_shape_map[node][0] * 4
+                    # else:
+                    #     node_size = self.node_to_shape_map[node][0] * self.node_to_shape_map[node][1] * 4
+                    operation_name = node.name
+                    is_input = 0
+                    if node.index in index_to_gpu_map:
+                        if node.name != "X" and node.name != "y_":
+                            is_input = 1
+                    if node == self.eval_node_list[0]:
                         is_input = 1
-                if node == self.eval_node_list[0]:
-                    is_input = 1
 
-                # 新的返回信息
-                # output_tensor_id, input_tensor_id, output_tensor_size, operation_name, is_parameter, is_input_or_output, shape, inputs_of_model
-                tensor_list = []
-                if operation_name != "AdamOp":
-                    tensor_list = [(node.index, node_size, self.node_to_shape_map[node])]
-                else:
-                    for i in range(3):
-                        tensor_list.append((node.inputs[i].index + self.total_node,
-                                            np.prod(self.node_to_shape_map[node.inputs[i]]) * 4,
-                                            self.node_to_shape_map[node.inputs[i]]))
-                return_element = [tensor_list, node_inputs, operation_name, node.index, is_input, []]
-                return_list.append(return_element)
-            self.top_message_queue.put([0, return_list])
+                    # 新的返回信息
+                    # output_tensor_id, input_tensor_id, output_tensor_size, operation_name, is_parameter, is_input_or_output, shape, inputs_of_model
+                    tensor_list = []
+                    if operation_name != "AdamOp":
+                        tensor_list = [(node.index, node_size, self.node_to_shape_map[node])]
+                    else:
+                        for i in range(3):
+                            tensor_list.append((node.inputs[i].index + self.total_node,
+                                                np.prod(self.node_to_shape_map[node.inputs[i]]) * 4,
+                                                self.node_to_shape_map[node.inputs[i]]))
+                    return_element = [tensor_list, node_inputs, operation_name, node.index, is_input, [], operation_run_time / 1000]
+                    return_list.append(return_element)
+                self.top_message_queue.put([0, return_list])
         else:
-            return_list = []
-            for i in range(len(self.topo_order)):
-                return_element = (i, self.topo_order[i].runtime)
-                return_list.append(return_element)
-            self.top_message_queue.put([1, return_list])
+            if 'schedule' in self.log_path:
+                return_list = []
+                for i in range(len(self.topo_order)):
+                    return_element = (i, self.topo_order[i].runtime)
+                    return_list.append(return_element)
+                self.top_message_queue.put([1, return_list])
 
         # infer shape if feed_shapes changed since last run
         # e.g. call run() on test data after trainng
@@ -2500,14 +2504,7 @@ class Executor(object):
         #         print('got control message')
         #     have_got_control_message = True
 
-        if not self.top_control_queue.empty():
-            global have_got_control_message
-            have_got_control_message = True
-            # print("get control message")
-            # todo 解析从上游传入的控制信息。
-
-            top_swap_list, top_release_list, top_recomputation_list = self.top_control_queue.get()
-
+        def solve_control_message(top_swap_list, top_release_list, top_recomputation_list):
             # 顺序为(start_node, start_node_type, start_time, node_id, move_to_gpu)
             # 此处保证start_time按照顺序排布
 
@@ -2568,11 +2565,31 @@ class Executor(object):
             #     print(node.release_list)
             # print("update control message")
 
+        global have_got_control_message
+
+        if (not have_got_control_message) and 'schedule' in self.log_path:
+            print("等待调度")
+            top_swap_list, top_release_list, top_recomputation_list = self.top_control_queue.get(block=True)
+            solve_control_message(top_swap_list, top_release_list, top_recomputation_list)
+            have_got_control_message = True
+
+        if not self.top_control_queue.empty():
+            have_got_control_message = True
+            print("get control message")
+            # todo 解析从上游传入的控制信息。
+
+            top_swap_list, top_release_list, top_recomputation_list = self.top_control_queue.get()
+            solve_control_message(top_swap_list, top_release_list, top_recomputation_list)
+
         total_swap_in = 0
         passive_swap_in = 0
         time_old = datetime.datetime.now()
 
         # Traverse graph in topo order and compute values for all nodes.
+
+
+
+
         for node in self.topo_order:
 
             # print(node.index)

@@ -90,7 +90,7 @@ def main(raw_log_path, repeat_times, job_number, batch_size, GPU, model):
             job.start()
 
         if 'schedule' in log_path:
-            scheduler = Process(target=mp.multiprocess_init, args=(global_message_queue, global_control_queue))
+            scheduler = Process(target=mp.multiprocess_init, args=(global_message_queue, global_control_queue, job_number))
             scheduler.start()
             while True in [job.is_alive() for job in job_pool]:
                 for i in range(job_number):

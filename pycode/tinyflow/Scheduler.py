@@ -956,7 +956,7 @@ def generate_scheduling_plan(logged_times, gpu: int):
     return generate_swap_recomputation_release_order(tensor_access_by_tensor, swap_scheduler, recomputations, job_num)
 
 
-def multiprocess_init(global_message_queue: multiprocessing.Queue, global_control_queue: multiprocessing.Queue):
+def multiprocess_init(global_message_queue: multiprocessing.Queue, global_control_queue: multiprocessing.Queue, total_job_number):
     # swap_order = [(20, 0, 20, 0)]
     # control_messages = []
     # control_message = [swap_order, [], []]
@@ -997,19 +997,19 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                 #     pickle.dump(global_graphs, f1)
 
                 for i in range(tensor_num):
-                    print(message_graph[i][6])
+                    # print(message_graph[i][6])
                     logged_times[job_id_in].append([message_graph[i][6]])
-                # logged_times[job_id] = [[50, 0.01], [50, 0.01], [50, 351], [50, 0.01], [50, 87], [50, 136], [50, 98], [50, 0.01], [50, 77], [50, 0.01], [50, 23], [50, 85], [50, 33], [50, 0.01], [50, 63], [50, 0.01], [50, 23],
-                #      [50, 71], [50, 0.01], [50, 80], [50, 65], [50, 56], [50, 69], [50, 56], [50, 203], [50, 28], [50, 66], [50, 60], [50, 66], [50, 29], [50, 75], [50, 62], [50, 32], [50, 24], [50, 81],
-                #      [50, 114], [50, 50], [50, 42], [50, 707], [50, 554], [50, 121]]
+
                 s = time.time()
-                release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
-                print(f'time:{time.time() - s}')
-                control_messages = []
-                for i in range(job_num):
-                    control_message = [swap_order[i], release_order[i], recomputation_order[i]]
-                    control_messages.append(control_message)
-                    # global_control_queue.put(control_messages)
+                if job_num == total_job_number:
+                    release_order, swap_order, recomputation_order = generate_scheduling_plan(logged_times, 0)
+                    print(f'time:{time.time() - s}')
+                    control_messages = {}
+                    for i in range(job_num):
+                        print(swap_order)
+                        control_message = [swap_order[i], release_order[i], recomputation_order[i]]
+                        control_messages[map_in_to_out[i]] = control_message
+                    global_control_queue.put(control_messages)
             else:
 
                 job_id_in = map_out_to_in[job_id]

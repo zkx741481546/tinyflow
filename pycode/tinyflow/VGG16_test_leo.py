@@ -206,4 +206,4 @@ def run_exp(workloads):
 
 
 if __name__ == '__main__':
-    run_exp([['./log/VGG bs1/', 3, 1, 2]])
+    run_exp([['./log/VGG bs1/', 1, 1, 2]])
