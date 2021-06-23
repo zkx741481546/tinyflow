@@ -1,4 +1,4 @@
-GPU = 1
+GPU = 3
 import os
 import sys
 

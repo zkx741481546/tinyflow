@@ -1,4 +1,4 @@
-GPU = 1
+GPU = 3
 import os
 import sys
 
@@ -600,4 +600,4 @@ def run_exp(workloads):
 
 
 if __name__ == '__main__':
-    run_exp([['./log/Inception V3 x2/', 3, 2, 2], ['./log/Inception V3 x3/', 3, 3, 2]])
+    run_exp([['./log/Inception V3 x2/', 3, 1, 2], ['./log/Inception V3 x3/', 3, 1, 2]])

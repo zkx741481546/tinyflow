@@ -1,6 +1,8 @@
-GPU = 1
+GPU = 3
+
 import os
 os.environ['CUDA_VISIBLE_DEVICES'] = f'{GPU}'
+
 import sys
 sys.path.append('../../')
 from pycode.tinyflow import autodiff as ad
@@ -204,4 +206,4 @@ def run_exp(workloads):
 
 
 if __name__ == '__main__':
-    run_exp([['./log/VGG bs1/', 3, 1, 1]])
+    run_exp([['./log/VGG bs1/', 3, 1, 2]])

@@ -12,6 +12,8 @@ import datetime
 
 import os
 
+from .agetinputsofmodel import gettime
+
 index_to_cpu_map = {}
 index_to_cpu_flag = {}
 index_to_gpu_map = {}
@@ -2431,14 +2433,12 @@ class Executor(object):
                         input_shape.append(self.node_to_shape_map[input_node])
                     print(node.name)
                     # temp = getinputsofmodel(node, input_shape)
-                    try:
-                        operation_run_time = gettime(node, input_shape)
-                    except:
-                        print("NOT FOUND")
+                    operation_run_time = gettime(node, input_shape)
+
                     # try:
-                    #     tmp = gettime(node, input_shape)
+                    #     operation_run_time = gettime(node, input_shape)
                     # except:
-                    #     print("Error Occurring when calculating " + str(node.name) + "\n" + str(input_shape) + "\n")
+                    #     print("NOT FOUND")
                     print(operation_run_time)
 
                 node_inputs = []

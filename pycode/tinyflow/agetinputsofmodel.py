@@ -12,7 +12,6 @@ from matplotlib import cm
 from tensorboard.plugins.hparams import keras
 import numpy as np
 
-from pycode.tinyflow.util import load_gpu
 
 load_list = ['convolution_2d_forward_VALID', 'convolution_backward_filter_2d_VALID',
              'convolution_backward_data_2d_VALID',
@@ -183,7 +182,7 @@ def getinputsofmodel(node, inputsshape):
     if node.name == "ConcatForward":
         opname = 'concat_forward'
         inputsofmodel = [inputsshape[0][0], inputsshape[0][1]]
-    if node.name == "ConcatBackward":
+    if node.name == "Concatbackward":
         if node.type == 0:
             opname = 'concat_a_backward'
             inputsofmodel = [inputsshape[0][0], inputsshape[0][1]]
@@ -230,7 +229,9 @@ def load(opname, n):
 
 
 # 第几块gpu
-i = load_gpu()
+i = int(os.environ['CUDA_VISIBLE_DEVICES'])
+print("Now on GPU" + str(i))
+nvmlInit()
 handle = nvmlDeviceGetHandleByIndex(i)
 
 
