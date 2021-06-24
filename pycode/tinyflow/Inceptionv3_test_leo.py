@@ -1,4 +1,4 @@
-GPU = 1
+GPU = 3
 import os
 import sys
 
@@ -7,7 +7,6 @@ sys.path.append('../../')
 from pycode.tinyflow import autodiff as ad
 from pycode.tinyflow.log.get_result import get_result
 from util import *
-from agetinputsofmodel import *
 
 
 class Inceptionv3():

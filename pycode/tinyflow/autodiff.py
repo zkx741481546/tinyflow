@@ -19,6 +19,7 @@ index_to_cpu_flag = {}
 index_to_gpu_map = {}
 swaping_index = 0
 swaping_to_gpu = 0
+have_no_swap_order = False
 swap_finish_event = threading.Event()
 swap_out_onetime_num = 0
 swap_out_onetime_finish_event = threading.Event()
@@ -2517,6 +2518,14 @@ class Executor(object):
                 control_node.recompute_list = []
                 control_node.release_list = []
 
+            # todo 特殊处理 swap队列为空的情况
+
+            global have_no_swap_order
+
+            if len(top_swap_list) == 0:
+                have_no_swap_order = True
+            else:
+                have_no_swap_order = False
             for i in range(len(top_swap_list)):
 
                 swap_message = top_swap_list[i]
@@ -2823,9 +2832,12 @@ class Executor(object):
         return_feed_dict = {}
 
         if have_got_control_message:
-            # print("等待同步")
-            swap_finish_event.wait()
+            if not have_no_swap_order:
+                # print("等待同步")
+                swap_finish_event.wait()
         # print("同步完成")
+        swap_out_onetime_num = 0
+
 
         n = self.eval_node_list[0]
         assert not index_to_gpu_map[n.index] is None
