@@ -84,7 +84,7 @@ def main(raw_log_path, repeat_times, job_number, batch_size, GPU, model):
         if not os.path.exists(log_path):
             os.makedirs(log_path)
 
-        num_step = 150
+        num_step = 50
         job_pool = [run_workload(GPU, batch_size, num_step, log_path, top_control_queue_list, top_message_queue_list, job_id, executor_ctx, model) for job_id in range(job_number)]
         for job in job_pool:
             job.start()

@@ -11,7 +11,7 @@ from keras.layers import Dense, Conv1D, MaxPool1D, Dropout, Flatten
 from matplotlib import cm
 from tensorboard.plugins.hparams import keras
 import numpy as np
-
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 load_list = ['convolution_2d_forward_VALID', 'convolution_backward_filter_2d_VALID',
              'convolution_backward_data_2d_VALID',

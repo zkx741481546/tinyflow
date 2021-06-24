@@ -1,4 +1,4 @@
-GPU = 3
+GPU = 1
 import os
 import sys
 
@@ -554,16 +554,15 @@ class Inceptionv3():
             f1 = open(f"{self.log_path}/gpu_time.txt", "w+")
         for i in range(self.num_step):
             print("step", i)
-            if self.job_id == 0:
-                if i == 139:
-                    gpu_record.start()
-                    start_time = time.time()
+            if self.job_id == 0 and i==29:
+                gpu_record.start()
+                start_time = time.time()
             feed_dict[X] = ndarray.array(X_val, ctx=executor_ctx)
             feed_dict[y_] = ndarray.array(y_val, ctx=executor_ctx)
             res = executor.run(feed_dict=feed_dict)
             loss_val = res[0]
             feed_dict = res[1]
-        if self.job_id==0:
+        if self.job_id == 0:
             gpu_record.stop()
             f1.write(f'time_cost:{time.time() - start_time}')
             f1.flush()

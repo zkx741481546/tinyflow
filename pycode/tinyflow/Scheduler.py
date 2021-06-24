@@ -1006,7 +1006,7 @@ def multiprocess_init(global_message_queue: multiprocessing.Queue, global_contro
                     print(f'time:{time.time() - s}')
                     control_messages = {}
                     for i in range(job_num):
-                        print(swap_order)
+                        # print(swap_order)
                         control_message = [swap_order[i], release_order[i], recomputation_order[i]]
                         control_messages[map_in_to_out[i]] = control_message
                     global_control_queue.put(control_messages)

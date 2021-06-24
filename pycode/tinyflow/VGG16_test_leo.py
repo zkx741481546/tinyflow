@@ -1,4 +1,4 @@
-GPU = 3
+GPU = 1
 
 import os
 os.environ['CUDA_VISIBLE_DEVICES'] = f'{GPU}'
@@ -163,10 +163,9 @@ class VGG16():
             f1 = open(f"{self.log_path}/gpu_time.txt", "w+")
         for i in range(self.num_step):
             print("step", i)
-            if self.job_id == 0:
-                if i == 139:
-                    gpu_record.start()
-                    start_time = time.time()
+            if self.job_id == 0 and i==29:
+                gpu_record.start()
+                start_time = time.time()
             feed_dict[X] = ndarray.array(X_val, ctx=executor_ctx)
             feed_dict[y_] = ndarray.array(y_val, ctx=executor_ctx)
             res = executor.run(feed_dict=feed_dict)
@@ -206,4 +205,4 @@ def run_exp(workloads):
 
 
 if __name__ == '__main__':
-    run_exp([['./log/VGG bs1/', 1, 1, 2]])
+    run_exp([['./log/VGG x1/', 1, 1, 2]])
