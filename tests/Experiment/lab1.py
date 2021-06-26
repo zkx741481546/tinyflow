@@ -8,7 +8,7 @@ sys.path.append('../../')
 from tests.Experiment import VGG16_test, ResNet50_test, DenseNet_test, InceptionV3_test, InceptionV4_test
 import random, time
 
-from tests.Experiment.log.result import get_result
+from tests.Experiment.log.result import get_result, get_vanilla_max_memory
 
 gpu = 1
 os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu)
@@ -38,33 +38,33 @@ def Experiment1():
     net_names = ['VGG', 'InceptionV3', 'InceptionV4', 'ResNet', 'DenseNet']
     budget = {
         'VGG': {
-            1: {2: 2494.0, 16: 4076.67},
-            2: {2: 4815.67},
-            3: {2: 6566.0}
+            1: {2: 0.22208359326263252, 16: 0.35208730663276117},
+            2: {2: 0.19237962387315288},
+            3: {2: 0.27293590820311870}
         },
         'InceptionV3': {
-            1: {2: 1062.0, 16: 2145.33},
-            2: {2: 2085.0},
-            3: {2: 2757.33}
+            1: {2: 0.32010243277848915, 16: 0.61289546493444},
+            2: {2: 0.32633013374338454},
+            3: {2: 0.35945254515962777}
         },
         'InceptionV4': {
-            1: {2: 1398.0, 16: 3186.67},
-            2: {2: 2862.33},
-            3: {2: 3224.67}
+            1: {2: 0.5225409836065574, 16: 0.6867833038464058},
+            2: {2: 0.45604206164519817},
+            3: {2: 0.5785264272890184}
         },
         'ResNet': {
-            1: {2: 1191.33, 16: 1617.33},
-            2: {2: 2115.0},
-            3: {2: 2869.33}
+            1: {2: 0.7243808225403319, 16: 0.7243808225403319},
+            2: {2: 0.37206134328305823},
+            3: {2: 0.41238891975049113}
         },
         'DenseNet': {
-            1: {2: 1140.67, 16: 2222.0, },
-            2: {2: 2287.0},
-            3: {2: 3426.67}
+            1: {2: 0.3807455664133188, 16: 0.7594717471314137},
+            2: {2: 0.3228169116367175},
+            3: {2: 0.31907608729118836}
         }
     }
     for net_id in range(5):
-        repeat_times = 1
+        repeat_times = 3
         print("Experiment1 start")
         net_name = net_names[net_id]
         for i, num_net in enumerate([1, 1, 2, 3]):
@@ -83,14 +83,13 @@ def Experiment1():
                 # net_id = random.randint(0, 4) #net_id随机选取网络种类 0:vgg16, 1:inceptionv3, 2:inceptionv4, 3:resNet, 4:denseNet
                 nets.append(net_id)
             print("选取的网络", list(map(lambda x: net_names[x], nets)))
+            vanilla_max_memory = 0
             for t in range(repeat_times):
                 print(f'repeat_times:{t}')
                 for type in range(3):  # type是调度方式的选择, 0.不调度，1.capuchin 2.vdnn
-                    if type != 1:
-                        continue
                     need_tosave = 0
                     if type == 1:
-                        bud = budget[net_name][num_net][batch_size]
+                        bud = vanilla_max_memory * (1-budget[net_name][num_net][batch_size])
                         # 总显存=预算+need_tosave(额外占用空间)
                         need_tosave = 11019 - bud
                         print(f'need_tosave:{need_tosave}')
@@ -115,8 +114,10 @@ def Experiment1():
                         job.start()
                     for job in job_pool:
                         job.join()
-                    print(len(outspace))
-            print(f'get_result:{need_tosave}')
+                    if type==0:
+                        vanilla_max_memory = get_vanilla_max_memory(path, repeat_times=repeat_times)
+                    # print(len(outspace))
+            # print(f'get_result:{need_tosave}')
             get_result(path, repeat_times=repeat_times, need_tosave=need_tosave)
             print("Experiment1 finish")
 

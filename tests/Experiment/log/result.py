@@ -130,3 +130,21 @@ def get_result(path, repeat_times, net_order=0, need_tosave=0):
     res.writelines(f'memory_saved:{all_capuchin_MSR.mean()} +- {all_capuchin_MSR.std()}\n')
     res.writelines(f'extra_overhead:{all_capuchin_EOR.mean()} +- {all_capuchin_EOR.std()}\n')
     res.writelines(f'efficiency:{all_capuchin_MSR.mean()/all_capuchin_EOR.mean()}\n\n')
+
+
+def get_vanilla_max_memory(path, repeat_times, net_order=0):
+    all_vanilla_max_memory = []
+    for re_t in range(repeat_times):
+        res = open(f'{path}result.txt', 'w')
+        with open(f'{path}type0_repeat_time={re_t}_net_order={net_order}_record_2.txt', 'r') as f:
+            lines = f.readlines()
+        vanilla_max_memory = 0
+        for line in lines:
+            memory = float(line.split('\t')[1].split(' ')[1])
+            if memory > vanilla_max_memory:
+                vanilla_max_memory = memory
+        all_vanilla_max_memory.append(vanilla_max_memory)
+    all_vanilla_max_memory = np.array(all_vanilla_max_memory)
+    return all_vanilla_max_memory.mean()
+
+
