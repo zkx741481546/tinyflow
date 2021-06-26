@@ -56,6 +56,7 @@ class Node(object):
         self.FT = []
         self.swapouttime = 0
         self.swapintime = 0
+        self.peekaccess=[]
 
     def __add__(self, other):
         """Adding two nodes return a new node."""

@@ -5,7 +5,7 @@ from tests.Experiment import record_GPU
 tinyflow_path = "../../pycode/tinyflow/"
 
 class Inceptionv3(threading.Thread):
-    def __init__(self, num_step, type, batch_size, gpu_num, file_name, need_tosave=None):
+    def __init__(self, num_step, type, batch_size, gpu_num, path, file_name, need_tosave=None):
         self.need_tosave = need_tosave
         os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_num)
         self.gpu_num = gpu_num
@@ -18,11 +18,12 @@ class Inceptionv3(threading.Thread):
         self.batch_size = batch_size
         self.type = type
         self.is_capu = False
+        self.path = path
         self.file_name = file_name
-        self.f1 = open('./log/' + 'type' + str(type) + '_InceptionV3_' + file_name + '_record_1.txt', 'w')
-        self.f3 = open('./log/' + 'type' + str(type) + '_InceptionV3_' + file_name + '_record_3.txt', 'w')
-        self.f6 = open('./log/' + 'type' + str(type) + '_InceptionV3_' + file_name + '_record_6.txt', 'w')
-        self.f7 = open('./log/' + 'type' + str(type) + '_InceptionV3_' + file_name + '_record_7.txt', 'w')
+        self.f1 = open(self.path + 'type' + str(type) + file_name + '_record_1.txt', 'w')
+        self.f3 = open(self.path + 'type' + str(type) + file_name + '_record_3.txt', 'w')
+        self.f6 = open(self.path + 'type' + str(type) + file_name + '_record_6.txt', 'w')
+        self.f7 = open(self.path + 'type' + str(type) + file_name + '_record_7.txt', 'w')
         self.type = type
         if type == 0:
             self.autodiff_name = "autodiff.py"
@@ -33,7 +34,7 @@ class Inceptionv3(threading.Thread):
             self.is_capu = True
         elif type == 2:
             self.autodiff_name = "autodiff_vdnn.py"
-            self.TrainExecute_name = "TrainExecuteAdam_vDNNall.py"
+            self.TrainExecute_name = "TrainExecuteAdam_vDNNconv.py"
         elif type == 3:
             self.autodiff_name = "autodiff.py"
             self.TrainExecute_name = "TrainExecuteAdam.py"
@@ -595,7 +596,7 @@ class Inceptionv3(threading.Thread):
 
         return 0
     def run(self):
-         record = record_GPU.record("InceptionV3", self.type, self.gpu_num, self.file_name)
+         record = record_GPU.record("InceptionV3", self.type, self.gpu_num, self.path, self.file_name)
          record.start()
          print("InceptionV3" + " type" + str(self.type) + " start")
 

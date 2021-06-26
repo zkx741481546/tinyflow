@@ -66,6 +66,7 @@ class TrainExecutor(object):
         self.hit_count = 0
         self.swap_count = 0
         self.node_order = []
+        self.outspace=None
 
 
     def infer_shape(self, feed_shapes):
@@ -112,9 +113,10 @@ class TrainExecutor(object):
 
     #feed_dict为np数组
     def run(self, feed_dict, Accuracy_node = None ,convert_to_numpy_ret_vals=False):
-
-
         if self.isfirstrun == 0:
+            if self.need_tosave != None:
+                need_sqrt = int(pow(self.need_tosave / 4, 0.5))
+                self.outspace = ndarray.array(np.ones((need_sqrt, need_sqrt)) * 0.01, ctx=self.ctx)
             endtime = time.time()
             pciin, pciout = gpu_op.testPcie()
             pciin=pciin*1024
@@ -168,6 +170,7 @@ class TrainExecutor(object):
 
                     ret = ndarray.array(feed_dict[node], ctx=self.ctx)
                     if isinstance(ret, int):
+                        self.getpeekaccess()
                         need_tomem += ret
                         # 返回的int意味着内存不够，此时ret是申请失败的cudamalloc（，size）的size，同理见ndarray的初始化函数，这里被动模式
                         for i in range(len(self.topo_order)):
@@ -193,6 +196,7 @@ class TrainExecutor(object):
                     ret = ndarray.empty(self.node_to_shape_map[node], ctx=self.ctx)
                     t2=time.time()
                     if isinstance(ret, int):
+                        self.getpeekaccess()
                         need_tomem += ret
                         # 返回的int意味着内存不够，此时ret是申请失败的cudamalloc（，size）的size，同理见ndarray的初始化函数，这里被动模式
                         for i in range(len(self.topo_order)):
@@ -241,6 +245,7 @@ class TrainExecutor(object):
                 memorytoSaving = node.op.compute(node, input_vals, node_val, self.cudnnHandle, self.cublasHandle, self.cudaStream)
                 toc=time.time()
                 if memorytoSaving != 0:
+                    self.getpeekaccess()
                     need_tomem += memorytoSaving
                     # 返回的int意味着内存不够，此时ret是申请失败的cudamalloc（，size）的size，同理见ndarray的初始化函数，这里被动模式
                     for dnode in self.topo_order:
@@ -277,10 +282,7 @@ class TrainExecutor(object):
                     out_id = node.use_access_id[node.access_count-1]
                     outtime = self.capu.tensor_access_list[out_id][2]
                     node.FT.append(endtime-(outtime+node.swapouttime))
-            if self.need_tosave==None:
-               self.capu.hybrid_policy(need_tomem,endtime)
-            else:
-               self.capu.hybrid_policy(self.need_tosave,endtime)
+            self.capu.hybrid_policy(need_tomem,endtime)
 
 
             #把结果输出了： [loss,变量按网络顺序],这里只是输出value，并不保证一定在gpu中
@@ -313,9 +315,11 @@ class TrainExecutor(object):
             node_computed = set()
             # 日志记录
             self.node_order.append("\nrun:")
-
+            if self.outspace!=None:
+                x=self.outspace.asnumpy()
             # 开始运行
             for i in range(len(self.topo_order)):
+                # print(i,self.topo_order[i].name)
                 node = self.topo_order[i]
                 self.node_order.append("index:" + str(i) + "\t" + node.name + "\ttime:" + str(datetime.datetime.now()))
                 # 已经被计算过了
@@ -486,7 +490,7 @@ class TrainExecutor(object):
             self.b2t[0] = self.b2t[0] * self.b2
 
             self.access_index=0
-
+            # print((self.swap_count,self.hit_count))
             self.clear()
             return result_output
 
@@ -655,6 +659,8 @@ class TrainExecutor(object):
                                    + "\t" + n.name + "\ttime:" + str(datetime.datetime.now()))
         (node_index, node_val) = self.have_done_queue.get(block=True)  # get the node from GPU
         if isinstance(node_val, int):
+            if self.isfirstrun==0:
+                self.getpeekaccess()
             for dnode in self.topo_order:
                 if self.isevict(dnode, node):
                     self.tensor_evict(dnode)
@@ -693,7 +699,10 @@ class TrainExecutor(object):
         self.capu.add_tensor_access_info(access_node.index,access_node.access_count,time.time())
         access_node.use_access_id.append(len(self.capu.tensor_access_list)-1)
 
-
+    def getpeekaccess(self):
+        for i in range(len(self.topo_order)):
+            if(self.topo_order[i].array_status==1):
+                self.topo_order[i].peekaccess.append(self.topo_order[i].access_count)
 
 
 

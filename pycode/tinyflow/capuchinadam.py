@@ -35,8 +35,8 @@ class capuchin:
                 if node.access_count > 1:
                     # print(node.access_count-1,":")
                     for i in range(0,node.access_count):
-                    
-                       self.candidates.append((node.index,node.FT[i],i))
+                       if  i+1 in node.peekaccess :
+                         self.candidates.append((node.index,node.FT[i],i))
 
             # 位于高峰也加入，咋判断高峰
             #排序,从大到小 FT
