@@ -66,7 +66,6 @@ class TrainExecutor(object):
         self.hit_count = 0
         self.swap_count = 0
         self.node_order = []
-        self.outspace=None
 
 
     def infer_shape(self, feed_shapes):
@@ -114,9 +113,7 @@ class TrainExecutor(object):
     #feed_dict为np数组
     def run(self, feed_dict, Accuracy_node = None ,convert_to_numpy_ret_vals=False):
         if self.isfirstrun == 0:
-            if self.need_tosave != None:
-                need_sqrt = int(pow(self.need_tosave / 4, 0.5))
-                self.outspace = ndarray.array(np.ones((need_sqrt, need_sqrt)) * 0.01, ctx=self.ctx)
+
             endtime = time.time()
             pciin, pciout = gpu_op.testPcie()
             pciin=pciin*1024
@@ -315,8 +312,9 @@ class TrainExecutor(object):
             node_computed = set()
             # 日志记录
             self.node_order.append("\nrun:")
-            if self.outspace!=None:
-                x=self.outspace.asnumpy()
+            # if self.outspace!=None:
+            #     for i in range(len(self.outspace)):
+            #        x=self.outspace[i].asnumpy()
             # 开始运行
             for i in range(len(self.topo_order)):
                 # print(i,self.topo_order[i].name)

@@ -1,6 +1,9 @@
 import os
 import sys
 
+import numpy as np
+from pycode.tinyflow import ndarray
+
 sys.path.append('../../')
 from tests.Experiment import VGG16_test, ResNet50_test, DenseNet_test, InceptionV3_test, InceptionV4_test
 import random, time
@@ -8,10 +11,12 @@ import random, time
 from tests.Experiment.log.result import get_result
 
 gpu = 1
+os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu)
 
 
 def generate_job(num_step, net_id, type, batch_size, path, need_tosave, file_name=""):
     need_tosave *= 1e6
+
     if net_id == 0:
         vgg16 = VGG16_test.VGG16(num_step=num_step, type=type, batch_size=batch_size, gpu_num=gpu, path=path, file_name=file_name, n_class=1000, need_tosave=need_tosave)
         return vgg16
@@ -58,8 +63,8 @@ def Experiment1():
             3: {2: 3426.67}
         }
     }
-    for net_id in range(2, 5):
-        repeat_times = 3
+    for net_id in range(5):
+        repeat_times = 1
         print("Experiment1 start")
         net_name = net_names[net_id]
         for i, num_net in enumerate([1, 1, 2, 3]):
@@ -81,11 +86,28 @@ def Experiment1():
             for t in range(repeat_times):
                 print(f'repeat_times:{t}')
                 for type in range(3):  # type是调度方式的选择, 0.不调度，1.capuchin 2.vdnn
-                    if type!=1:
+                    if type != 1:
                         continue
-                    bud = budget[net_name][num_net][batch_size]
-                    # 总显存=预算+need_tosave(额外占用空间)
-                    need_tosave = 11019-bud
+                    need_tosave = 0
+                    if type == 1:
+                        bud = budget[net_name][num_net][batch_size]
+                        # 总显存=预算+need_tosave(额外占用空间)
+                        need_tosave = 11019 - bud
+                        print(f'need_tosave:{need_tosave}')
+                        outspace = []
+                        size = need_tosave * 1e6 / 4
+                        gctx = ndarray.gpu(0)
+                        while size > 0:
+                            if size > 10000 * 10000:
+                                outspace.append(ndarray.array(np.ones((10000, 10000)) * 0.01, ctx=gctx))
+                                size -= 10000 * 10000
+                            else:
+                                need_sqrt = int(pow(size, 0.5))
+                                if need_sqrt <= 0:
+                                    break
+                                outspace.append(ndarray.array(np.ones((need_sqrt, need_sqrt)) * 0.01, ctx=gctx))
+                                size -= need_sqrt * need_sqrt
+                        print('finish extra matrix generation')
                     job_pool = [
                         generate_job(num_step=50, net_id=net_id, type=type, batch_size=batch_size, path=path, file_name=f"_repeat_time={t}_net_order={i}", need_tosave=need_tosave) for
                         i, net_id in enumerate(nets)]
@@ -93,6 +115,8 @@ def Experiment1():
                         job.start()
                     for job in job_pool:
                         job.join()
+                    print(len(outspace))
+            print(f'get_result:{need_tosave}')
             get_result(path, repeat_times=repeat_times, need_tosave=need_tosave)
             print("Experiment1 finish")
 

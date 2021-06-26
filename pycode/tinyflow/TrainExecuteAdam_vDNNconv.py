@@ -1,17 +1,11 @@
 from __future__ import absolute_import
 import time
 import numpy as np
-from . import ndarray, gpu_op, memoryManager
+from pycode.tinyflow  import ndarray, gpu_op, memoryManager
 import random
 import queue
-from . import autodiff_vdnn as ad
-import os
-import pynvml
-
-# os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-
-
-
+from pycode.tinyflow import autodiff_vdnn as ad
+import datetime, queue, os, time, sys
 
 class TrainExecutor(object):
     """Executor computes values for given set of nodes in computation graph."""
@@ -65,7 +59,11 @@ class TrainExecutor(object):
         self.memoryManager = memoryManager.MemoryManager(self.will_do_queue, self.have_done_queue)
         self.memoryManager.start()
 
-
+        #日志记录
+        self.start_finish_time = 0
+        self.hit_count = 0
+        self.swap_count = 0
+        self.node_order = []
 
 
     def infer_shape(self, feed_shapes):
@@ -130,10 +128,19 @@ class TrainExecutor(object):
 
             #存已经被计算过的node
             node_computed = set()
+
+            # 日志记录
+            self.start_finish_time = datetime.datetime.now()
+            self.node_order.append("topo_order:")
+            for i in range(len(self.topo_order)):
+                self.node_order.append("index:" + str(i) + "\t" + self.topo_order[i].name)
+            self.node_order.append("\nrun:")
+
             #开始运行
             for i in range(len(self.topo_order)):
                 # time.sleep(3)
                 node = self.topo_order[i]
+                self.node_order.append("index:" + str(i) + "\t" + node.name + "\ttime:" + str(datetime.datetime.now()))
 
                 # print("")
                 # print(node, " ", node.index)
@@ -218,6 +225,9 @@ class TrainExecutor(object):
                             # print("input.index", n.index)
                             self.will_do_queue.put((n.index, self.node_to_arr_map[n]))
                             n.array_status = 2  # CPU to GPU
+                            self.hit_count = self.hit_count + 1
+                            self.node_order.append("swap_in\t" + "index:" + str(n.index)
+                                                   + "\t" + n.name + "\ttime:" + str(datetime.datetime.now()))
 
                 for n in node.inputs:   # 计算前确保输入已经放在GPU
                     if n.array_status == 0:  # on CPU
@@ -225,6 +235,10 @@ class TrainExecutor(object):
                         print("显存", self.topo_order[n.index], n.index)
                         self.will_do_queue.put((n.index, self.node_to_arr_map[n]))
                         n.array_status = 2  # CPU to GPU
+                        self.node_order.append("swap_in\t" + "index:" + str(n.index)
+                                               + "\t" + n.name + "\ttime:" + str(datetime.datetime.now()))
+
+
                 for n in node.inputs:
                     while n.array_status != 1:
                         (node_index, node_val) = self.have_done_queue.get(block=True)  # get the node from GPU
@@ -232,8 +246,20 @@ class TrainExecutor(object):
                         self.node_to_arr_map[self.topo_order[node_index]] = node_val
                         if ndarray.is_gpu_ctx(node_val.ctx):
                             self.topo_order[node_index].array_status = 1
+                            self.swap_count = self.swap_count + 1
+                            self.node_order.append("finish_swap_in\t"
+                                                   + "index:" + str(node_index) + "\t" + self.topo_order[node_index].name
+                                                   + "\ttime:" + str(datetime.datetime.now()))
                         else:
                             self.topo_order[node_index].array_status = 0
+                            self.node_order.append("finish_swap_out\t"
+                                                   + "index:" + str(node_index) + "\t" + self.topo_order[node_index].name
+                                                   + "\ttime:" + str(datetime.datetime.now()))
+                    # if node.name == "AdamOp":
+                    #     print("input_node", n)
+                    #     print(np.prod(self.node_to_shape_map[node]) * 4)
+
+
 
                 #放inputs的ndarray，
                 input_vals = []
@@ -251,6 +277,8 @@ class TrainExecutor(object):
                             self.will_do_queue.put((n.index, self.node_to_arr_map[n]))
                             n.array_status = 3  # GPU to CPU
                             self.node_to_arr_map[n] = None
+                        self.node_order.append("swap_out\t" + "index:" + str(n.index)
+                                               + "\t" + n.name + "\ttime:" + str(datetime.datetime.now()))
 
 
                 #除了SgdOp，其他的点此时要保证在gpu中
@@ -277,6 +305,10 @@ class TrainExecutor(object):
                             self.node_to_arr_map[self.topo_order[node_index]] = node_val
                             if ndarray.is_gpu_ctx(node_val.ctx):
                                 self.topo_order[node_index].array_status = 1
+                                self.swap_count = self.swap_count + 1
+                                self.node_order.append("finish_swap_in\t"
+                                                       + "index:" + str(node_index) + "\t" + self.topo_order[node_index].name
+                                                       + "\ttime:" + str(datetime.datetime.now()))
                             else:
                                 self.topo_order[node_index].array_status = 0
                             print("成功搬到内存", self.topo_order[node_index], node_index, self.topo_order[node_index].array_status)
@@ -313,6 +345,7 @@ class TrainExecutor(object):
             # for node in self.topo_order:
             for i in range(len(self.topo_order)):
                 node = self.topo_order[i]
+                self.node_order.append("index:" + str(i) + "\t" + node.name + "\ttime:" + str(datetime.datetime.now()))
 
 
                 # 已经被计算过了
@@ -378,20 +411,33 @@ class TrainExecutor(object):
                         if n.array_status == 0:  # on CPU
                             self.will_do_queue.put((n.index, self.node_to_arr_map[n]))
                             n.array_status = 2  # CPU to GPU
+                            self.hit_count = self.hit_count + 1
+                            self.node_order.append("swap_in\t" + "index:" + str(n.index)
+                                                   + "\t" + n.name + "\ttime:" + str(datetime.datetime.now()))
 
                 for n in node.inputs:   #计算前确保输入已经放在GPU
                     if n.array_status == 0:  # on CPU
                         # print("n.index", n.index)
                         self.will_do_queue.put((n.index, self.node_to_arr_map[n]))
                         n.array_status = 2  # CPU to GPU
+                        self.node_order.append("swap_in\t" + "index:" + str(n.index)
+                                               + "\t" + n.name + "\ttime:" + str(datetime.datetime.now()))
                 for n in node.inputs:
                     while n.array_status != 1:
                         (node_index, node_val) = self.have_done_queue.get(block=True)  # get the node from GPU
                         self.node_to_arr_map[self.topo_order[node_index]] = node_val
                         if ndarray.is_gpu_ctx(node_val.ctx):
                             self.topo_order[node_index].array_status = 1
+                            self.swap_count = self.swap_count + 1
+                            self.node_order.append("finish_swap_in\t"
+                                                   + "index:" + str(node_index) + "\t" + self.topo_order[node_index].name
+                                                   + "\ttime:" + str(datetime.datetime.now()))
                         else:
                             self.topo_order[node_index].array_status = 0
+                            self.node_order.append("finish_swap_out\t"
+                                                   + "index:" + str(node_index) + "\t" + self.topo_order[node_index].name
+                                                   + "\ttime:" + str(datetime.datetime.now()))
+
 
                 # 放inputs的ndarray，
                 input_vals = []
@@ -407,6 +453,8 @@ class TrainExecutor(object):
                             self.will_do_queue.put((n.index, self.node_to_arr_map[n]))
                             n.array_status = 3  # GPU to CPU
                             self.node_to_arr_map[n] = None
+                        self.node_order.append("swap_out\t" + "index:" + str(n.index)
+                                               + "\t" + n.name + "\ttime:" + str(datetime.datetime.now()))
 
 
                 # 除了SgdOp，其他的点此时要保证在gpu中
@@ -437,8 +485,15 @@ class TrainExecutor(object):
                             self.node_to_arr_map[self.topo_order[node_index]] = node_val
                             if ndarray.is_gpu_ctx(node_val.ctx):
                                 self.topo_order[node_index].array_status = 1
+                                self.swap_count = self.swap_count + 1
+                                self.node_order.append("finish_swap_in\t"
+                                                       + "index:" + str(node_index) + "\t" + self.topo_order[node_index].name
+                                                       + "\ttime:" + str(datetime.datetime.now()))
                             else:
                                 self.topo_order[node_index].array_status = 0
+                                self.node_order.append("finish_swap_out\t"
+                                                       + "index:" + str(node_index) + "\t" + self.topo_order[node_index].name
+                                                       + "\ttime:" + str(datetime.datetime.now()))
 
             # 把结果输出了： [loss,变量按网络顺序],这里只是输出value，并不保证一定在gpu中
             # 但是如果这里value是None的话，他会报错
@@ -457,8 +512,14 @@ class TrainExecutor(object):
             self.b2t[0] = self.b2t[0] * self.b2
             return result_output
 
+    def get_start_finish_time(self):
+        return self.start_finish_time
 
+    def get_hit(self):
+        return self.hit_count, self.swap_count
 
+    def get_node_order(self):
+        return self.node_order
 
 
 
