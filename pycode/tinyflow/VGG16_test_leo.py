@@ -1,4 +1,4 @@
-GPU = 1
+GPU = 3
 
 import os
 os.environ['CUDA_VISIBLE_DEVICES'] = f'{GPU}'
@@ -193,16 +193,18 @@ class VGG16():
 def run_exp(workloads):
     for path, repeat, jobs_num, batch_size in workloads:
         raw_path = path
-        for i in range(2):
-            if i == 0:
-                path = raw_path + 'schedule'
-                print(path)
-            else:
-                path = raw_path + 'vanilla'
-                print(path)
-            main(path, repeat, jobs_num, batch_size, GPU, VGG16)
-        get_result(raw_path, repeat)
+        # for i in range(2):
+        #     if i == 0:
+        #         path = raw_path + 'schedule'
+        #         print(path)
+        #     else:
+        #         path = raw_path + 'vanilla'
+        #         print(path)
+        path = raw_path + 'vanilla'
+        main(path, repeat, jobs_num, batch_size, GPU, VGG16)
+
+        # get_result(raw_path, repeat)
 
 
 if __name__ == '__main__':
-    run_exp([['./log/VGG x1/', 1, 1, 2]])
+    run_exp([['./log/VGG x1/', 1, 1, 16]])
