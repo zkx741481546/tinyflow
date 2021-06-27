@@ -31,20 +31,11 @@ class MemoryManager(threading.Thread):
             else:
                 node_ndarray_new = ndarray.empty(node_ndarray.shape, self.gpu_ctx)
 
+            if (isinstance(node_ndarray_new, int)):
+                print("内存超限")
+                assert 0
+
             node_ndarray.copyto(node_ndarray_new, self.cudaSwapStream)
             self.have_done_queue.put((node_index, node_ndarray_new))
-            # print(1)
-            # import time
-            # time.sleep(5)
-            # print(2)
-            # if ndarray.is_gpu_ctx(node_ndarray.ctx):
-            #     node_ndarray.free_gpu()
-
-            node_ndarray = None
-            node_ndarray_new = None
-
-            # print("finish")
-
-
 
 

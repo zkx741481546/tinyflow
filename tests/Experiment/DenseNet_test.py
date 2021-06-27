@@ -37,7 +37,7 @@ class DenseNet121(threading.Thread):
             self.is_capu = True
         elif type == 2:
             self.autodiff_name = "autodiff_vdnn.py"
-            self.TrainExecute_name = "TrainExecuteAdam_vDNNconv.py"
+            self.TrainExecute_name = "TrainExecuteAdam_vDNNall.py"
         elif type == 3:
             self.autodiff_name = "autodiff.py"
             self.TrainExecute_name = "TrainExecuteAdam.py"

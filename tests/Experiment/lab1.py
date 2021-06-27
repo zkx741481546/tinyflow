@@ -63,7 +63,7 @@ def Experiment1():
             3: {2: 0.31907608729118836}
         }
     }
-    for net_id in range(5):
+    for net_id in range(2, 5):
         repeat_times = 3
         print("Experiment1 start")
         net_name = net_names[net_id]
@@ -84,6 +84,7 @@ def Experiment1():
                 nets.append(net_id)
             print("选取的网络", list(map(lambda x: net_names[x], nets)))
             vanilla_max_memory = 0
+            need_tosave_list = []
             for t in range(repeat_times):
                 print(f'repeat_times:{t}')
                 for type in range(3):  # type是调度方式的选择, 0.不调度，1.capuchin 2.vdnn
@@ -93,6 +94,7 @@ def Experiment1():
                         # 总显存=预算+need_tosave(额外占用空间)
                         need_tosave = 11019 - bud
                         print(f'need_tosave:{need_tosave}')
+                        need_tosave_list.append(need_tosave)
                         outspace = []
                         size = need_tosave * 1e6 / 4
                         gctx = ndarray.gpu(0)
@@ -114,11 +116,15 @@ def Experiment1():
                         job.start()
                     for job in job_pool:
                         job.join()
+                    if type == 1:
+                        for i in range(len(outspace)-1,-1,-1):
+                            outspace.pop(i)
+                            # m.free_gpu()
                     if type==0:
                         vanilla_max_memory = get_vanilla_max_memory(path, repeat_times=repeat_times)
                     # print(len(outspace))
             # print(f'get_result:{need_tosave}')
-            get_result(path, repeat_times=repeat_times, need_tosave=need_tosave)
+            get_result(path, repeat_times=repeat_times, need_tosave=need_tosave_list)
             print("Experiment1 finish")
 
 
