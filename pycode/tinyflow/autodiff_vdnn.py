@@ -47,7 +47,6 @@ class Node(object):
         self.isw = 0
         self.is_conv = 0
         self.is_conv_input = 0
-
     def __add__(self, other):
         """Adding two nodes return a new node."""
         if isinstance(other, Node):

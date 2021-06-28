@@ -1282,8 +1282,7 @@ class FullyDropoutForwardOp(Op):
                                                                                                 node.dataformat,
                                                                                                 node.dropout, node.seed[0],
                                                                                                 node.inputd[0], cudnnHandle, cudaStream)
-        if err == 8:
-            memorytoSaving += 200
+
         return memorytoSaving
 
     def gradient(self, node, output_grad):

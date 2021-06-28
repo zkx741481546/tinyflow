@@ -676,13 +676,13 @@ def dropout_forward(input,output,dataformat,dropout,seed,inputd, cudnnHandle, cu
     cudnnlist = ctypes.pointer(cudnnlist)
     memorytoSaving = ctypes.c_int(0)
     memorytoSaving = ctypes.pointer(memorytoSaving)
-    error_code = _LIB.DLGpuDropoutForward(input.handle, output.handle, dataformat, dropout, seed, reserveSpace_p, inputd, cudnnlist,
+    err=_LIB.DLGpuDropoutForward(input.handle, output.handle, dataformat, dropout, seed, reserveSpace_p, inputd, cudnnlist,
                              cudnnHandle,memorytoSaving, cudaStream)
     memorytoSaving = _LIB.getInt(memorytoSaving)
 
 
 
-    return reserveSpace_p,cudnnlist,memorytoSaving, error_code
+    return reserveSpace_p,cudnnlist,memorytoSaving,err
 
 
 def dropout_backward(doutput,dinput,reserveSpace_p,cudnnlist, cudnnHandle, cudaStream):

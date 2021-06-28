@@ -19,7 +19,7 @@ def get_result(path, repeat_times, net_order=0, need_tosave=None):
     all_capuchin_BCR = []
 
     for re_t in range(repeat_times):
-        # res = open(f'{path}result.txt', 'w')
+        res = open(f'{path}result.txt', 'w')
         with open(f'{path}type0_repeat_time={re_t}_net_order={net_order}_record_2.txt', 'r') as f:
             lines = f.readlines()
         vanilla_max_memory = 0

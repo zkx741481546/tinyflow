@@ -36,18 +36,6 @@ if (err != CUDNN_STATUS_SUCCESS) {\
 } \
 }
 
-#define CUDNN_CALL_EXC(f) { \
-cudnnStatus_t err = (f); \
-if(err == CUDNN_STATUS_EXECUTION_FAILED){\
-        return CUDNN_STATUS_EXECUTION_FAILED;\
-}\
-if (err != CUDNN_STATUS_SUCCESS) {\
-    \
-        std::cout << "    Error occurred: " << err << std::endl; \
-        std::exit(1); \
-} \
-}
-
 //��-
 __global__ void matrix_array_set_kernel(int count,
                                         float *arr,
@@ -3615,12 +3603,26 @@ int DLGpuDropoutForward(const DLArrayHandle input,
     cudnnDropoutDescriptor_t dropout_descriptor;
     CUDNN_CALL(cudnnCreateDropoutDescriptor(&dropout_descriptor));
     //printf("before\n");
-    CUDNN_CALL_EXC(cudnnSetDropoutDescriptor(dropout_descriptor,
+    cudnnStatus_t err=cudnnSetDropoutDescriptor(dropout_descriptor,
         handle,
         dropout,
         states,
         stateSizeInBytes,
-        seed));
+        seed);
+     if(err == CUDNN_STATUS_EXECUTION_FAILED){\
+       // printf("出错了");
+        *memorytoSaving = 100*1048576;
+          cudaFree(states);
+          cudaFree(*reserveSpace_p);
+          return 0;
+    }\
+    if (err != CUDNN_STATUS_SUCCESS) {\
+        \
+            std::cout << "    Error occurred: " << err << std::endl; \
+            std::exit(1); \
+    } \
+    //printf("正确了");
+   // printf("%d,err",err);
     //printf("after\n");
 
     CUDNN_CALL(cudnnDropoutForward(handle,

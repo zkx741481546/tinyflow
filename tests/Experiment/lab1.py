@@ -10,6 +10,7 @@ import random, time
 
 from tests.Experiment.log.result import get_result, get_vanilla_max_memory
 import pickle as pkl
+
 gpu = 1
 os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu)
 
@@ -68,7 +69,7 @@ def Experiment1():
         print("Experiment1 start")
         net_name = net_names[net_id]
         for i, num_net in enumerate([1, 1, 2, 3]):
-            # if net_id==2 and i!=3:
+            # if i!=1 :
             #     continue
             if i == 0:
                 batch_size = 16
@@ -94,13 +95,14 @@ def Experiment1():
                     #     continue
                     need_tosave = 0
                     if type == 1:
-                        bud = vanilla_max_memory * (1-budget[net_name][num_net][batch_size])
+                        bud = vanilla_max_memory * (1 - budget[net_name][num_net][batch_size])
                         # 总显存=预算+need_tosave(额外占用空间)
                         need_tosave = 11019 - bud
+                        # need_tosave -= 100
                         print(f'need_tosave:{need_tosave}')
                         need_tosave_list.append(need_tosave)
                         outspace = []
-                        size = need_tosave * 1e6 / 4
+                        size = need_tosave * pow(2, 20) / 4
                         gctx = ndarray.gpu(0)
                         while size > 0:
                             if size > 10000 * 10000:
@@ -121,10 +123,10 @@ def Experiment1():
                     for job in job_pool:
                         job.join()
                     if type == 1:
-                        for i in range(len(outspace)-1,-1,-1):
+                        for i in range(len(outspace) - 1, -1, -1):
                             outspace.pop(i)
                             # m.free_gpu()
-                    if type==0:
+                    if type == 0:
                         vanilla_max_memory = get_vanilla_max_memory(path, repeat_times=repeat_times)
                         # info.update({net_id: {i: {t: vanilla_max_memory}}})
                         # with open('cache.pkl','wb') as f:
