@@ -24,22 +24,24 @@ batch_size_workloads_col = {'VGG x1': 0, 'VGG bs4': 1, 'VGG bs8': 2, 'VGG': 3, '
                             'ResNet x1': 0, 'ResNet50 bs4': 1, 'ResNet50 bs8': 2, 'ResNet': 3, 'ResNet50 bs32': 4,
                             'DenseNet x1': 0, 'DenseNet bs4': 1, 'DenseNet bs8': 2, 'DenseNet': 3}
 title = ['saved_ratio', 'extra_overhead', 'vanilla_max_memory_used', 'schedule_max_memory_used', 'vanilla_time_cost', 'schedule_time_cost', 'efficiency']
-baseline_title = ['vanilla','max_memory','time','','vDNN', 'max_memory','time','memory_saved','extra_overhead','efficiency','','Capuchin', 'max_memory','time','memory_saved','extra_overhead','efficiency']
+baseline_title = ['vanilla', 'max_memory', 'time', '', 'vDNN', 'max_memory', 'time', 'memory_saved', 'extra_overhead', 'efficiency', '', 'Capuchin', 'max_memory', 'time', 'memory_saved', 'extra_overhead',
+                  'efficiency']
 
-def get_row(path):
-    if 'VGG' in path:
-        row = 0
-    elif 'InceptionV3' in path or 'Inception V3' in path:
-        row = 1
-    elif 'InceptionV4' in path or 'Inception V4' in path:
-        row = 2
-    elif 'ResNet' in path:
-        row = 3
-    elif 'DenseNet' in path:
-        row = 4
+
+def get_row(path_):
+    if 'VGG' in path_:
+        row_ = 0
+    elif 'InceptionV3' in path_ or 'Inception V3' in path_:
+        row_ = 1
+    elif 'InceptionV4' in path_ or 'Inception V4' in path_:
+        row_ = 2
+    elif 'ResNet' in path_:
+        row_ = 3
+    elif 'DenseNet' in path_:
+        row_ = 4
     else:
-        raise Exception(f'not supported workload:{path}')
-    return row
+        raise Exception(f'not supported workload:{path_}')
+    return row_
 
 
 if __name__ == '__main__':
@@ -108,7 +110,7 @@ if __name__ == '__main__':
             temp = line.replace(baseline_title[i] + ':', '')
             mean = format(float(temp.split(' ')[0]), '.4f')
             # 分隔
-            if i==3 or i==10:
+            if i == 3 or i == 10:
                 continue
             if 'x1' in path:
                 col = 0
@@ -119,16 +121,17 @@ if __name__ == '__main__':
             else:
                 raise Exception(f'unsupported workload:{path}')
             # vDNN
-            if 4<=i<=9:
-                row = get_row(path)+5
+            if 4 <= i <= 9:
+                row = get_row(path) + 5
                 if i == 7:
                     MSR[row, col] = mean
                 elif i == 8:
                     EOR[row, col] = mean
                 elif i == 9:
                     CBR[row, col] = mean
-            elif 11<=i:
-                row = get_row(path)+10
+            # Capuchin
+            elif 11 <= i:
+                row = get_row(path) + 10
                 if i == 14:
                     MSR[row, col] = mean
                 elif i == 15:
