@@ -9,7 +9,7 @@ from tests.Experiment import VGG16_test, ResNet50_test, DenseNet_test, Inception
 import random, time
 
 from tests.Experiment.log.result import get_result, get_vanilla_max_memory
-
+import pickle as pkl
 gpu = 1
 os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu)
 
@@ -88,6 +88,8 @@ def Experiment1():
             for t in range(repeat_times):
                 print(f'repeat_times:{t}')
                 for type in range(3):  # type是调度方式的选择, 0.不调度，1.capuchin 2.vdnn
+                    # if type==1:
+                    #     continue
                     need_tosave = 0
                     if type == 1:
                         bud = vanilla_max_memory * (1-budget[net_name][num_net][batch_size])
@@ -122,6 +124,9 @@ def Experiment1():
                             # m.free_gpu()
                     if type==0:
                         vanilla_max_memory = get_vanilla_max_memory(path, repeat_times=repeat_times)
+                        # info.update({net_id: {i: {t: vanilla_max_memory}}})
+                        # with open('cache.pkl','wb') as f:
+                        #     pkl.dump(info, f)
                     # print(len(outspace))
             # print(f'get_result:{need_tosave}')
             get_result(path, repeat_times=repeat_times, need_tosave=need_tosave_list)

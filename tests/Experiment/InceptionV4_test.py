@@ -35,7 +35,7 @@ class Inceptionv4(threading.Thread):
             self.is_capu = True
         elif type == 2:
             self.autodiff_name = "autodiff_vdnn.py"
-            self.TrainExecute_name = "TrainExecuteAdam_vDNNall.py"
+            self.TrainExecute_name = "TrainExecuteAdam_vDNNconv.py"
         elif type == 3:
             self.autodiff_name = "autodiff.py"
             self.TrainExecute_name = "TrainExecuteAdam.py"
@@ -349,7 +349,7 @@ class Inceptionv4(threading.Thread):
             time2 = datetime.datetime.now()
             print("epoch", i + 1, "use", time2 - time1
                   , "\tstart", time1, "\tend", time2, file=self.f1)
-            print("InceptionV4 num_step", i)
+            print(f"InceptionV4 num_step {i}, time:{time2-time1}")
         start_finish_time = t.get_start_finish_time()
         print("start_time ", start_time, "\nstart_finish_time", start_finish_time, file=self.f3)
         hit_count, swap_count = t.get_hit()

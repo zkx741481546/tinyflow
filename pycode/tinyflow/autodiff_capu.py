@@ -50,13 +50,13 @@ class Node(object):
 
         # 里面装的node，初始化为inputs的那几个node
         self.srcs = []
-        self.use_access_id=[]
+        self.use_access_id = []
         self.rp_t_order = []
         # self.shape
         self.FT = []
         self.swapouttime = 0
         self.swapintime = 0
-        self.peekaccess=[]
+        self.peekaccess = []
 
     def __add__(self, other):
         """Adding two nodes return a new node."""
@@ -534,7 +534,6 @@ class BroadcastToGradientOp(Op):
 
         # tic = time.time()
 
-
         memorytoSaving = gpu_op.reduce_sum_new(input_vals[0], output_val, node.cudnnlist[0], cudnnHandle, cudaStream)
 
         return memorytoSaving
@@ -960,7 +959,7 @@ class FlattenOp(Op):
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
         assert use_numpy == False
-        input_vals[0].copyto(output_val,cudaStream)
+        input_vals[0].copyto(output_val, cudaStream)
         return 0
 
     def gradient(self, node, output_grad):
@@ -984,7 +983,7 @@ class FlattenGradientOp(Op):
 
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
         assert use_numpy == False
-        input_vals[1].copyto(output_val,cudaStream)
+        input_vals[1].copyto(output_val, cudaStream)
         return 0
 
     def gradient(self, node, output_grad):
@@ -1224,10 +1223,10 @@ class DropoutForwardOp(Op):
         assert use_numpy == False
         assert isinstance(input_vals[0], ndarray.NDArray)
         node.seed[0] = random.randint(0, 100)
-        node.reserveSpace_p[0], node.cudnnlist[0], memorytoSaving = gpu_op.dropout_forward(input_vals[0], output_val,
-                                                                                           node.dataformat,
-                                                                                           node.dropout, node.seed[0],
-                                                                                           node.inputd[0], cudnnHandle, cudaStream)
+        node.reserveSpace_p[0], node.cudnnlist[0], memorytoSaving, err = gpu_op.dropout_forward(input_vals[0], output_val,
+                                                                                                node.dataformat,
+                                                                                                node.dropout, node.seed[0],
+                                                                                                node.inputd[0], cudnnHandle, cudaStream)
         return memorytoSaving
 
     def gradient(self, node, output_grad):
@@ -1279,10 +1278,12 @@ class FullyDropoutForwardOp(Op):
         input = input_vals[0]
         # inputs = input.reshape((input.shape[0], 1, input.shape[1]))
 
-        node.reserveSpace_p[0], node.cudnnlist[0], memorytoSaving = gpu_op.dropout_forward(input, output_val,
-                                                                                           node.dataformat,
-                                                                                           node.dropout, node.seed[0],
-                                                                                           node.inputd[0], cudnnHandle, cudaStream)
+        node.reserveSpace_p[0], node.cudnnlist[0], memorytoSaving, err = gpu_op.dropout_forward(input, output_val,
+                                                                                                node.dataformat,
+                                                                                                node.dropout, node.seed[0],
+                                                                                                node.inputd[0], cudnnHandle, cudaStream)
+        if err == 8:
+            memorytoSaving += 200
         return memorytoSaving
 
     def gradient(self, node, output_grad):
@@ -1332,7 +1333,6 @@ class FullyActivationForwardOp(Op):
 
         gpu_op.activation_forward(input_vals[0], output_val, node.activationMode, node.cudnnlist[0], cudnnHandle, cudaStream)
 
-
         # print("fullyactivation_end")
         return 0
 
@@ -1358,7 +1358,6 @@ class FullyActivationBackwardOp(Op):
     def compute(self, node, input_vals, output_val, cudnnHandle, cublasHandle, cudaStream, use_numpy=False):
         # print("FullyActivationBackwardOp_start")
         assert use_numpy == False
-
 
         gpu_op.activation_backward(input_vals[0], output_val, input_vals[2], input_vals[1], node.activationMode,
                                    node.cudnnlist[0], cudnnHandle, cudaStream)
@@ -1817,7 +1816,8 @@ class ConcatForwardOp(Op):
         assert isinstance(input_vals[0], ndarray.NDArray)
         assert isinstance(input_vals[1], ndarray.NDArray)
         gpu_op.concat_forward(input_vals[0], input_vals[1], output_val, cudaStream)
-        return  0
+        return 0
+
     def gradient(self, node, output_grad):
         return [concat_backward_op(node.inputs[0], node.inputs[1], output_grad, 0),
                 concat_backward_op(node.inputs[0], node.inputs[1], output_grad, 1)]
@@ -1847,6 +1847,7 @@ class ConcatBackwardOp(Op):
         if node.type == 1:
             gpu_op.concat_b_backward(input_vals[0], input_vals[1], input_vals[2], output_val, cudaStream)
         return 0
+
     def gradient(self, node, output_grad):
         raise NotImplementedError
 
@@ -1927,8 +1928,8 @@ class AdamOp(Op):
         new_node.name = "AdamOp"
         new_node.b1 = b1
         new_node.b2 = b2
-        new_node.b1t = b1t #list
-        new_node.b2t = b2t #list
+        new_node.b1t = b1t  # list
+        new_node.b2t = b2t  # list
         new_node.e = e
         new_node.learning_rate = learning_rate
         return new_node
@@ -1948,6 +1949,7 @@ class AdamOp(Op):
     def infer_shape(self, node, input_shapes, cudnnHandle):
         return input_shapes[0]
 
+
 class CrossOp(Op):
     def __call__(self, node_A, node_B, ismean):
         new_node = Op.__call__(self)
@@ -1966,12 +1968,13 @@ class CrossOp(Op):
     def gradient(self, node, output_grad):
         grad_A = cross_backward_op(node.inputs[0], node.inputs[1], output_grad, node.meanfloat)
         grad_B = zeroslike_op(node.inputs[1])
-        return [grad_A,grad_B]
+        return [grad_A, grad_B]
 
     def infer_shape(self, node, input_shapes, cudnnHandle):
         if node.ismean:
             node.meanfloat[0] = 1. / gpu_op.get_shape_size(input_shapes[0])
         return input_shapes[0]
+
 
 class CrossBackwardOp(Op):
     def __call__(self, node_A, node_B, node_C, meanfloat):
@@ -1992,10 +1995,6 @@ class CrossBackwardOp(Op):
 
     def infer_shape(self, node, input_shapes, cudnnHandle):
         return input_shapes[0]
-
-
-
-
 
 
 def dense(X, W, b):
@@ -2024,14 +2023,12 @@ def conv3withbias(input, filter, bias, dataformat, padding, stride1, stride2, st
     cb = c + b
     return cb
 
-def crossEntropy_loss(input,y_,ismean=True):
 
-    new_node = cross_op(input,y_,ismean)
+def crossEntropy_loss(input, y_, ismean=True):
+    new_node = cross_op(input, y_, ismean)
 
     return reduce_sum_op(new_node)
-    #return reduce_mean_op(new_node)
-
-
+    # return reduce_mean_op(new_node)
 
 
 # Create global singletons of operators.
@@ -2109,6 +2106,7 @@ def nodelist_to_name(nodelist):
     for node in nodelist:
         nodename.append(node.name)
     return nodename
+
 
 #
 # class Executor(object):
@@ -2607,13 +2605,12 @@ def topo_sort_dfs(node, visited, topo_order):
         topo_sort_dfs(n, visited, topo_order)
     topo_order.append(node)
 
-def get_Variable_node_list(node):
 
+def get_Variable_node_list(node):
     visited = set()
     Variable_order = []
     Variable_sort_dfs(node, visited, Variable_order)
     return Variable_order
-
 
 
 def Variable_sort_dfs(node, visited, Variable_order):
@@ -2631,25 +2628,21 @@ def Variable_sort_dfs(node, visited, Variable_order):
         Variable_order.append(node)
 
 
-
-def getcomputelist(Variable_node_list, Variable_node_grad_list, b1, b2, b1t, b2t, e,learning_rate):
-
+def getcomputelist(Variable_node_list, Variable_node_grad_list, b1, b2, b1t, b2t, e, learning_rate):
     computelist = []
     mv = []
     Variable_node_to_mv = {}
     for i in range(len(Variable_node_list)):
-        m = Variable(Variable_node_list[i].name+'m')
-        v = Variable(Variable_node_list[i].name+'v')
+        m = Variable(Variable_node_list[i].name + 'm')
+        v = Variable(Variable_node_list[i].name + 'v')
         mv.append(m)
         mv.append(v)
-        Variable_node_to_mv[Variable_node_list[i]] = (m,v)
-        adamnode = adam_op(Variable_node_list[i],m,v,Variable_node_grad_list[i], b1, b2, b1t, b2t, e, learning_rate)
-        adamnode.issgd = 1#代表不用为这个点加内存
+        Variable_node_to_mv[Variable_node_list[i]] = (m, v)
+        adamnode = adam_op(Variable_node_list[i], m, v, Variable_node_grad_list[i], b1, b2, b1t, b2t, e, learning_rate)
+        adamnode.issgd = 1  # 代表不用为这个点加内存
         computelist.append(adamnode)
 
-    return computelist,mv,Variable_node_to_mv
-
-
+    return computelist, mv, Variable_node_to_mv
 
 
 def swapadam(topoorder):
@@ -2663,15 +2656,14 @@ def swapadam(topoorder):
                     j = j - 1
                     continue
                 if filter in topoorder[j].inputs:
-
                     break
                 j = j - 1
 
             tmp = topoorder[i]
             topoorder.remove(tmp)
-            topoorder.insert(j,tmp)
+            topoorder.insert(j, tmp)
     for i in range(len(topoorder)):
-        print(i,topoorder[i])
+        print(i, topoorder[i])
     return topoorder
 
 

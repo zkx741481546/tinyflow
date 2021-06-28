@@ -1,5 +1,5 @@
 # from pycode.tinyflow import autodiff_vdnn as ad
-# from pycode.tinyflow import gpu_op, train, ndarray, TrainExecute, TrainExecute_Adam_vDNNall
+# from pycode.tinyflow import gpu_op, train, ndarray, TrainExecute, TrainExecute_Adam_vDNNconv
 import numpy as np
 import imp, os, threading, datetime
 from tests.Experiment import record_GPU
@@ -37,7 +37,7 @@ class DenseNet121(threading.Thread):
             self.is_capu = True
         elif type == 2:
             self.autodiff_name = "autodiff_vdnn.py"
-            self.TrainExecute_name = "TrainExecuteAdam_vDNNall.py"
+            self.TrainExecute_name = "TrainExecuteAdam_vDNNconv.py"
         elif type == 3:
             self.autodiff_name = "autodiff.py"
             self.TrainExecute_name = "TrainExecuteAdam.py"
