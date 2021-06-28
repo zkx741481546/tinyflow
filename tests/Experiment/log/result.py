@@ -55,7 +55,7 @@ def get_result(path, repeat_times, net_order=0, need_tosave=None):
         time = float(lines[0])
         all_vdnn_time.append(time)
         memory_saved = 1 - max_memory / vanilla_max_memory
-        extra_overhead = 1 - vanilla_time / time
+        extra_overhead = time/vanilla_time-1
         all_vdnn_MSR.append(memory_saved)
         all_vdnn_EOR.append(extra_overhead)
         all_vdnn_BCR.append(memory_saved / extra_overhead)
@@ -85,7 +85,7 @@ def get_result(path, repeat_times, net_order=0, need_tosave=None):
         time = float(lines[0])
         all_capuchin_time.append(time)
         memory_saved = 1 - max_memory / vanilla_max_memory
-        extra_overhead = 1 - vanilla_time / time
+        extra_overhead = time/vanilla_time-1
         all_capuchin_MSR.append(memory_saved)
         all_capuchin_EOR.append(extra_overhead)
         all_capuchin_BCR.append(memory_saved / extra_overhead)
@@ -146,4 +146,4 @@ def get_vanilla_max_memory(path, repeat_times, net_order=0):
 
 
 if __name__ == '__main__':
-    get_result('./InceptionV4/', repeat_times=3, need_tosave=[5770.907183725366,5771.339125520944,6711.676414494596])
+    get_result('./VGG/', repeat_times=3, need_tosave=[5770.907183725366,5771.339125520944,6711.676414494596])
