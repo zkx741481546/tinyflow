@@ -68,6 +68,8 @@ def Experiment1():
         print("Experiment1 start")
         net_name = net_names[net_id]
         for i, num_net in enumerate([1, 1, 2, 3]):
+            if net_id==2 and i!=3:
+                continue
             if i == 0:
                 batch_size = 16
                 net_name_ = net_name
