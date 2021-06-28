@@ -46,6 +46,7 @@ class Node(object):
         self.issgd = 0
         self.isw = 0
         self.is_conv = 0
+        self.is_conv_input = 0
 
     def __add__(self, other):
         """Adding two nodes return a new node."""
@@ -1217,7 +1218,7 @@ class DropoutForwardOp(Op):
         assert use_numpy == False
         assert isinstance(input_vals[0], ndarray.NDArray)
         node.seed[0] = random.randint(0, 100)
-        node.reserveSpace_p[0], node.cudnnlist[0], memorytoSaving = gpu_op.dropout_forward(input_vals[0], output_val,
+        node.reserveSpace_p[0], node.cudnnlist[0], memorytoSaving, err = gpu_op.dropout_forward(input_vals[0], output_val,
                                                                                            node.dataformat,
                                                                                            node.dropout, node.seed[0],
                                                                                            node.inputd[0], cudnnHandle, cudaStream)
@@ -1272,7 +1273,7 @@ class FullyDropoutForwardOp(Op):
         input = input_vals[0]
         # inputs = input.reshape((input.shape[0], 1, input.shape[1]))
 
-        node.reserveSpace_p[0], node.cudnnlist[0], memorytoSaving = gpu_op.dropout_forward(input, output_val,
+        node.reserveSpace_p[0], node.cudnnlist[0], memorytoSaving, err = gpu_op.dropout_forward(input, output_val,
                                                                                            node.dataformat,
                                                                                            node.dropout, node.seed[0],
                                                                                            node.inputd[0], cudnnHandle, cudaStream)

@@ -66,6 +66,7 @@ class TrainExecutor(object):
         self.hit_count = 0
         self.swap_count = 0
         self.node_order = []
+        self.outspace=[]
 
 
     def infer_shape(self, feed_shapes):
@@ -112,9 +113,8 @@ class TrainExecutor(object):
 
     #feed_dict为np数组
     def run(self, feed_dict, Accuracy_node = None ,convert_to_numpy_ret_vals=False):
-
-
         if self.isfirstrun == 0:
+
             endtime = time.time()
             pciin, pciout = gpu_op.testPcie()
             pciin=pciin*1024
@@ -155,6 +155,7 @@ class TrainExecutor(object):
 
             #开始运行
             for i in range(len(self.topo_order)):
+
                 node = self.topo_order[i]
                 self.node_order.append("index:" + str(i) + "\t" + node.name + "\ttime:" + str(datetime.datetime.now()))
 
@@ -168,6 +169,7 @@ class TrainExecutor(object):
 
                     ret = ndarray.array(feed_dict[node], ctx=self.ctx)
                     if isinstance(ret, int):
+                        self.getpeekaccess()
                         need_tomem += ret
                         # 返回的int意味着内存不够，此时ret是申请失败的cudamalloc（，size）的size，同理见ndarray的初始化函数，这里被动模式
                         for i in range(len(self.topo_order)):
@@ -193,6 +195,7 @@ class TrainExecutor(object):
                     ret = ndarray.empty(self.node_to_shape_map[node], ctx=self.ctx)
                     t2=time.time()
                     if isinstance(ret, int):
+                        self.getpeekaccess()
                         need_tomem += ret
                         # 返回的int意味着内存不够，此时ret是申请失败的cudamalloc（，size）的size，同理见ndarray的初始化函数，这里被动模式
                         for i in range(len(self.topo_order)):
@@ -222,7 +225,7 @@ class TrainExecutor(object):
 
                 for n in node.inputs:
                     while n.array_status != 1:  # 没在GPU上的node取到GPU上
-                        self.passive_mode_getusefulnode(n,node)
+                        need_tomem+=self.passive_mode_getusefulnode(n,node)
 
                 #放inputs的ndarray，
                 input_vals = []
@@ -233,14 +236,15 @@ class TrainExecutor(object):
 
 
 
-
                 #除了SgdOp，其他的点此时要保证在gpu中
                 node_val = self.node_to_arr_map[node]
+
 
                 tic=time.time()
                 memorytoSaving = node.op.compute(node, input_vals, node_val, self.cudnnHandle, self.cublasHandle, self.cudaStream)
                 toc=time.time()
                 if memorytoSaving != 0:
+                    self.getpeekaccess()
                     need_tomem += memorytoSaving
                     # 返回的int意味着内存不够，此时ret是申请失败的cudamalloc（，size）的size，同理见ndarray的初始化函数，这里被动模式
                     for dnode in self.topo_order:
@@ -277,10 +281,7 @@ class TrainExecutor(object):
                     out_id = node.use_access_id[node.access_count-1]
                     outtime = self.capu.tensor_access_list[out_id][2]
                     node.FT.append(endtime-(outtime+node.swapouttime))
-            if self.need_tosave==None:
-               self.capu.hybrid_policy(need_tomem,endtime)
-            else:
-               self.capu.hybrid_policy(self.need_tosave,endtime)
+            self.capu.hybrid_policy(need_tomem,endtime)
 
 
             #把结果输出了： [loss,变量按网络顺序],这里只是输出value，并不保证一定在gpu中
@@ -309,12 +310,10 @@ class TrainExecutor(object):
 
 
         else:
-
             node_computed = set()
             # 日志记录
             self.node_order.append("\nrun:")
 
-            # 开始运行
             for i in range(len(self.topo_order)):
                 node = self.topo_order[i]
                 self.node_order.append("index:" + str(i) + "\t" + node.name + "\ttime:" + str(datetime.datetime.now()))
@@ -486,7 +485,7 @@ class TrainExecutor(object):
             self.b2t[0] = self.b2t[0] * self.b2
 
             self.access_index=0
-
+            # print((self.swap_count,self.hit_count))
             self.clear()
             return result_output
 
@@ -655,6 +654,9 @@ class TrainExecutor(object):
                                    + "\t" + n.name + "\ttime:" + str(datetime.datetime.now()))
         (node_index, node_val) = self.have_done_queue.get(block=True)  # get the node from GPU
         if isinstance(node_val, int):
+            if self.isfirstrun==0:
+                self.getpeekaccess()
+            m=node_val
             for dnode in self.topo_order:
                 if self.isevict(dnode, node):
                     self.tensor_evict(dnode)
@@ -665,7 +667,7 @@ class TrainExecutor(object):
             self.node_order.append("swap_in\t" + "index:" + str(node_index)
                                    + "\t" + self.topo_order[node_index].name + "\ttime:" + str(datetime.datetime.now()))
             self.topo_order[node_index].array_status = 2
-            return
+            return m
         self.node_to_arr_map[self.topo_order[node_index]] = node_val
         if ndarray.is_gpu_ctx(node_val.ctx):
             self.topo_order[node_index].array_status = 1
@@ -678,7 +680,7 @@ class TrainExecutor(object):
             self.node_order.append("finish_swap_out\t"
                                    + "index:" + str(node_index) + "\t" + self.topo_order[node_index].name
                                    + "\ttime:" + str(datetime.datetime.now()))
-
+        return 0
 
     def tensor_evict(self, access_node):
         self.will_do_queue.put((access_node.index, self.node_to_arr_map[access_node]))
@@ -693,8 +695,15 @@ class TrainExecutor(object):
         self.capu.add_tensor_access_info(access_node.index,access_node.access_count,time.time())
         access_node.use_access_id.append(len(self.capu.tensor_access_list)-1)
 
+    def getpeekaccess(self):
+        for i in range(len(self.topo_order)):
+            if(self.topo_order[i].array_status==1):
+                self.topo_order[i].peekaccess.append(self.topo_order[i].access_count)
 
-
+    def destroy_cudaStream(self):
+        gpu_op.destroy_cublasHandle(self.cublasHandle)
+        gpu_op.destroy_cudnnHandle(self.cudnnHandle)
+        gpu_op.destroy_cudaStream(self.cudaStream)
 
 
 def get_Variable_node_list(node):

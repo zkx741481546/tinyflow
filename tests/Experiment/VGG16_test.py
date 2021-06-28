@@ -2,10 +2,12 @@ import six.moves.cPickle as pickle
 import numpy as np
 import random, imp, threading, time, os, gzip, datetime, sys
 from tests.Experiment import record_GPU
+
 tinyflow_path = "../../pycode/tinyflow/"
 
+
 class VGG16(threading.Thread):
-    def __init__(self, num_step, type, batch_size, gpu_num, file_name,need_tosave=None):
+    def __init__(self, num_step, type, batch_size, gpu_num, path, file_name, n_class, need_tosave=None):
         self.need_tosave = need_tosave
         os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_num)
         self.gpu_num = gpu_num
@@ -16,11 +18,12 @@ class VGG16(threading.Thread):
         self.num_step = num_step
         self.batch_size = batch_size
         self.is_capu = False
+        self.path = path
         self.file_name = file_name
-        self.f1 = open('./log/' + 'type' + str(type) + '_VGG16_' + file_name + '_record_1.txt', 'w')
-        self.f3 = open('./log/' + 'type' + str(type) + '_VGG16_' + file_name + '_record_3.txt', 'w')
-        self.f6 = open('./log/' + 'type' + str(type) + '_VGG16_' + file_name + '_record_6.txt', 'w')
-        self.f7 = open('./log/' + 'type' + str(type) + '_VGG16_' + file_name + '_record_7.txt', 'w')
+        self.f1 = open(self.path + 'type' + str(type) + file_name + '_record_1.txt', 'w')
+        self.f3 = open(self.path + 'type' + str(type) + file_name + '_record_3.txt', 'w')
+        self.f6 = open(self.path + 'type' + str(type) + file_name + '_record_6.txt', 'w')
+        self.f7 = open(self.path + 'type' + str(type) + file_name + '_record_7.txt', 'w')
 
         self.type = type
         if type == 0:
@@ -32,19 +35,15 @@ class VGG16(threading.Thread):
             self.is_capu = True
         elif type == 2:
             self.autodiff_name = "autodiff_vdnn.py"
-            self.TrainExecute_name = "TrainExecuteAdam_vDNNall.py"
+            self.TrainExecute_name = "TrainExecuteAdam_vDNNconv.py"
         elif type == 3:
             self.autodiff_name = "autodiff.py"
             self.TrainExecute_name = "TrainExecuteAdam.py"
         self.ad = imp.load_source(self.autodiff_name, tinyflow_path + self.autodiff_name)
         self.TrainExecute = imp.load_source(self.autodiff_name, tinyflow_path + self.TrainExecute_name)
 
-    def vgg16(self, num_step ,n_class, X_val, y_val):
-
-        start_time = datetime.datetime.now()
-
-        X = self.ad.Placeholder("X")
-        y_ = self.ad.Placeholder("y_")
+        self.X = self.ad.Placeholder("X")
+        self.y_ = self.ad.Placeholder("y_")
         W1_1 = self.ad.Variable("W1_1")
         W1_2 = self.ad.Variable("W1_2")
         W2_1 = self.ad.Variable("W2_1")
@@ -66,7 +65,7 @@ class VGG16(threading.Thread):
         b8 = self.ad.Variable("b8")
 
         # conv 1
-        conv1_1 = self.ad.convolution_2d_forward_op(X, W1_1, "NCHW", "SAME", 1, 1)
+        conv1_1 = self.ad.convolution_2d_forward_op(self.X, W1_1, "NCHW", "SAME", 1, 1)
         act1_1 = self.ad.activation_forward_op(conv1_1, "NCHW", "relu")
 
         conv1_2 = self.ad.convolution_2d_forward_op(act1_1, W1_2, "NCHW", "SAME", 1, 1)
@@ -121,9 +120,9 @@ class VGG16(threading.Thread):
         # fc8
         fc8 = self.ad.dense(drop7, W8, b8)
         bn8 = self.ad.fullybn_forward_op(fc8, "NCHW")
-        y = self.ad.fullyactivation_forward_op(bn8, "NCHW", "softmax")
+        self.y = self.ad.fullyactivation_forward_op(bn8, "NCHW", "softmax")
 
-        loss = self.ad.crossEntropy_loss(y, y_)
+        self.loss = self.ad.crossEntropy_loss(self.y, self.y_)
 
         W1_1_val = np.random.normal(0.0, 0.1, (64, self.image_channel, 3, 3))
         W1_2_val = np.random.normal(0.0, 0.1, (64, 64, 3, 3))
@@ -138,13 +137,21 @@ class VGG16(threading.Thread):
         W5_1_val = np.random.normal(0.0, 0.1, (512, 512, 3, 3))
         W5_2_val = np.random.normal(0.0, 0.1, (512, 512, 3, 3))
         W5_3_val = np.random.normal(0.0, 0.1, (512, 512, 3, 3))
-        W6_val = np.random.normal(0.0, 0.1, (512 * int(self.image_size/32) * int(self.image_size/32), 4096))
+        W6_val = np.random.normal(0.0, 0.1, (512 * int(self.image_size / 32) * int(self.image_size / 32), 4096))
         # print("w6 size", sys.getsizeof(np.random.normal(0.0, 0.1, (512 * int(self.image_size/32) * int(self.image_size/32), 4096))) )
         W7_val = np.random.normal(0.0, 0.1, (4096, 4096)) * 0.001
         W8_val = np.random.normal(0.0, 0.1, (4096, n_class)) * 0.001
         b6_val = np.ones(4096) * 0.1
         b7_val = np.ones(4096) * 0.1
         b8_val = np.ones(n_class) * 0.1
+        self.feed_dict = {W1_1: W1_1_val, W1_2: W1_2_val, W2_1: W2_1_val, W2_2: W2_2_val
+            , W3_1: W3_1_val, W3_2: W3_2_val, W3_3: W3_3_val
+            , W4_1: W4_1_val, W4_2: W4_2_val, W4_3: W4_3_val
+            , W5_1: W5_1_val, W5_2: W5_2_val, W5_3: W5_3_val
+            , W6: W6_val, W7: W7_val, W8: W8_val
+            , b6: b6_val, b7: b7_val, b8: b8_val}
+
+    def vgg16(self, num_step, X_val, y_val):
 
         # ctx = ndarray.gpu(0)
         # for i in range(16):
@@ -152,55 +159,47 @@ class VGG16(threading.Thread):
         # for i in range(16):
         #     b_val[i] = ndarray.array(b_val[i], ctx)
         aph = 0.001
-        if self.is_capu == True and self.need_tosave!=None:
-            t = self.TrainExecute.TrainExecutor(loss, aph, self.need_tosave)
+        if self.is_capu == True and self.need_tosave != None:
+            t = self.TrainExecute.TrainExecutor(self.loss, aph, self.need_tosave)
         else:
-            t = self.TrainExecute.TrainExecutor(loss, aph)
-        t.init_Variable(
-            {W1_1: W1_1_val, W1_2: W1_2_val, W2_1: W2_1_val, W2_2: W2_2_val
-                , W3_1: W3_1_val, W3_2: W3_2_val, W3_3: W3_3_val
-                , W4_1: W4_1_val, W4_2: W4_2_val, W4_3: W4_3_val
-                , W5_1: W5_1_val, W5_2: W5_2_val, W5_3: W5_3_val
-                , W6: W6_val, W7: W7_val, W8: W8_val
-                , b6: b6_val, b7: b7_val, b8: b8_val})
-
+            t = self.TrainExecute.TrainExecutor(self.loss, aph)
+        t.init_Variable(self.feed_dict)
+        print('run')
+        start_time = datetime.datetime.now()
         for i in range(num_step):
-            time1 = datetime.datetime.now()
+            # time1 = datetime.datetime.now()
 
-            t.run({X: X_val, y_: y_val})
+            t.run({self.X: X_val, self.y_: y_val})
 
-            time2 = datetime.datetime.now()
+            # time2 = datetime.datetime.now()
 
-            print("epoch", i + 1, "use", time2 - time1
-                  , "\tstart", time1, "\tend", time2, file=self.f1)
+            # print("epoch", i + 1, "use", time2 - time1
+            #       , "\tstart", time1, "\tend", time2, file=self.f1)
             print("VGG16 num_step", i)
-
-
         start_finish_time = t.get_start_finish_time()
-        print("start_time ", start_time, "\nstart_finish_time", start_finish_time, file=self.f3)
+        print((start_finish_time-start_time).microseconds, file=self.f3)
         hit_count, swap_count = t.get_hit()
         print("hit_count ", hit_count, "\nswap_count", swap_count, file=self.f6)
         node_order = t.get_node_order()
         for i in node_order:
             print(i, file=self.f7)
-
+        t.destroy_cudaStream()
         self.f1.close()
         self.f3.close()
         self.f6.close()
         self.f7.close()
-
 
     def run(self):
 
         X_val = np.random.normal(loc=0, scale=0.1, size=(self.batch_size, 3, 224, 224))  # number = batch_size  channel = 3  image_size = 224*224
         y_val = np.random.normal(loc=0, scale=0.1, size=(self.batch_size, 1000))  # n_class = 1000
 
-        record = record_GPU.record("VGG16", self.type, self.gpu_num, self.file_name)
+        record = record_GPU.record("VGG16", self.type, self.gpu_num, self.path, self.file_name)
         record.start()
 
         print("VGG16" + " type" + str(self.type) + " start")
 
-        self.vgg16(num_step=self.num_step, n_class=1000, X_val=X_val, y_val=y_val)
+        self.vgg16(num_step=self.num_step, X_val=X_val, y_val=y_val)
 
         print("VGG16" + " type" + str(self.type) + " finish")
 

@@ -19,7 +19,7 @@ def Experiment4():
             for batch_size in (32, 128, 256):
                 # print(batch_size)
                 print("net_id:", net_id, "type:", type, "batch_size", batch_size)
-                net_run(num_step=10, net_id=net_id, type=type, batch_size=batch_size, file_name="batch_size=" + str(batch_size))
+                net_run(num_step=50, net_id=net_id, type=type, batch_size=batch_size, file_name="batch_size=" + str(batch_size))
     print("Experiment4 finish")
 
 Experiment4()

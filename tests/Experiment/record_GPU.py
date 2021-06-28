@@ -1,11 +1,12 @@
 import threading, pynvml, datetime, time
 
 class record(threading.Thread):
-    def __init__(self, net, type, gpu_num, file_name):
+    def __init__(self, net, type, gpu_num, path, file_name):
         threading.Thread.__init__(self)
         self.gpu_num = gpu_num
+        self.path = path
         # self.handle = handle
-        self.f2 = open('./log/' + 'type' + str(type) + '_' + net + '_'+ file_name + '_record_2.txt', 'w')
+        self.f2 = open(self.path + 'type' + str(type) + file_name + '_record_2.txt', 'w')
         self.flag = 0
     def run(self):
         while(True):

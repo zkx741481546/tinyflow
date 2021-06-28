@@ -1,12 +1,8 @@
 from __future__ import absolute_import
-import time
 import numpy as np
-from . import ndarray, gpu_op, memoryManager
-import random
-import queue
-from . import autodiff_vdnn as ad
-import os
-import pynvml
+from pycode.tinyflow import ndarray, gpu_op, memoryManager
+import queue, datetime, pynvml
+from pycode.tinyflow import autodiff_vdnn as ad
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
@@ -56,17 +52,28 @@ class TrainExecutor(object):
         self.isfirstrun = 0
         self.isc = 0
 
-        # 按照拓扑排序设定index
+        # 按照拓扑排序设定index, 标记卷积的input
         for i in range(len(self.topo_order)):
-            self.topo_order[i].index = i
+            node = self.topo_order[i]
+            node.index = i
+            if node.name == "Convolution2DForward" or node.name == "Convolution2DBackward" or \
+                node.name == "Convolution1DForward" or node.name == "Convolution1DBackward" or \
+                node.name == "Convolution3DForward" or node.name == "Convolution3DBackward":
+                for input_node in node.inputs:
+                    if input_node.isw == 0 or input_node.isw == 2:
+                        input_node.is_conv_input = 1
+
 
         self.will_do_queue = queue.Queue()
         self.have_done_queue = queue.Queue()
         self.memoryManager = memoryManager.MemoryManager(self.will_do_queue, self.have_done_queue)
         self.memoryManager.start()
 
-
-
+        # 日志记录
+        self.start_finish_time = 0
+        self.hit_count = 0
+        self.swap_count = 0
+        self.node_order = []
 
     def infer_shape(self, feed_shapes):
         """Given shapes of feed_dict nodes, infer shape for all nodes in graph.
@@ -81,13 +88,16 @@ class TrainExecutor(object):
         """
         self.node_to_shape_map = dict(feed_shapes)
 
+        sum_shapes = 0
+        sum_convs = 0
+        sum_var = 0
+
         for idx, node in enumerate(self.topo_order):
             if node in self.node_to_shape_map:
                 continue
             input_shapes = [self.node_to_shape_map[i] for i in node.inputs]
             assert None not in input_shapes
             self.node_to_shape_map[node] = node.op.infer_shape(node, input_shapes, self.cudnnHandle)
-            print(node, self.node_to_shape_map[node])
 
     #放出变量的np字典
     def init_Variable(self, feed_dict):
@@ -130,28 +140,21 @@ class TrainExecutor(object):
 
             #存已经被计算过的node
             node_computed = set()
+
+            # 日志记录
+            self.start_finish_time = datetime.datetime.now()
+            self.node_order.append("topo_order:")
+            for i in range(len(self.topo_order)):
+                self.node_order.append("index:" + str(i) + "\t" + self.topo_order[i].name)
+            self.node_order.append("\nrun:")
+
+
             #开始运行
             for i in range(len(self.topo_order)):
+
                 # time.sleep(3)
                 node = self.topo_order[i]
-
-                # print("")
-                # print(node, " ", node.index)
-
-                # count = 0
-                # for node1 in self.topo_order:
-                #     if node1 in self.node_to_arr_map:
-                #         if self.node_to_arr_map[node1] != None:
-                #             if ndarray.is_gpu_ctx(self.node_to_arr_map[node1].ctx):
-                #                 count = count + 1
-                # count2 = 0
-                # for node2 in self.will_do_queue.:
-                #     if ndarray.is_gpu_ctx(node2[1].ctx):
-                #         count2 = count2 + 1
-                # print(count)
-                #
-                # for ii in node.inputs:
-                #     print(" input:" ,ii, ii.index)
+                self.node_order.append("index:" + str(i) + "\t" + node.name + "\ttime:" + str(datetime.datetime.now()))
 
                 #已经被计算过了
                 if node in node_computed:
@@ -162,7 +165,7 @@ class TrainExecutor(object):
 
                     ret = ndarray.array(feed_dict[node], ctx=self.ctx)
                     while isinstance(ret, int):
-                        # 返回的int意味着内存不够，此时ret是申请失败的cudamalloc（，size）的size，同理见ndarray的初始化函数，这里被动模式
+                        print("内存超限")
                         assert 0
                         #解决了再声明内存
                         ret = ndarray.array(feed_dict[node], ctx=self.ctx)
@@ -178,26 +181,11 @@ class TrainExecutor(object):
                 if node.issgd == 0:
                     #给这个点申请内存
                     # 申请空间
-                    # pynvml.nvmlInit()
-                    # handle = pynvml.nvmlDeviceGetHandleByIndex(0)  # 0表示显卡标号
-                    # meminfo = pynvml.nvmlDeviceGetMemoryInfo(handle)
-                    # print(meminfo.total / 1024 ** 2)  # 总的显存大小
-                    # print(meminfo.used / 1024 ** 2)  # 已用显存大小
-                    # print(meminfo.free / 1024 ** 2)  # 剩余显存大小
 
                     ret = ndarray.empty(self.node_to_shape_map[node], ctx=self.ctx)
                     while isinstance(ret, int):
-                        # 返回的int意味着内存不够，此时ret是申请失败的cudamalloc（，size）的size，同理见ndarray的初始化函数，这里被动模式
                         # print(self.node_to_shape_map[node])
-                        #
-                        # pynvml.nvmlInit()
-                        # handle = pynvml.nvmlDeviceGetHandleByIndex(0)  # 0表示显卡标号
-                        # meminfo = pynvml.nvmlDeviceGetMemoryInfo(handle)
-                        # print(meminfo.total / 1024 ** 2)  # 总的显存大小
-                        # print(meminfo.used / 1024 ** 2)  # 已用显存大小
-                        # print(meminfo.free / 1024 ** 2)  # 剩余显存大小
-                        # ret = ndarray.empty((1, 1, 1, 1), ctx=self.ctx)
-                        # print(ret)
+                        print("内存超限")
                         assert 0
                         # 解决了再声明内存
                         ret = ndarray.empty(self.node_to_shape_map[node], ctx=self.ctx)
@@ -213,27 +201,39 @@ class TrainExecutor(object):
                 if prefeth_node_index != -1:
                     prefeth_node = self.topo_order[prefeth_node_index]
                     for n in prefeth_node.inputs:
-                        if n.array_status == 0 or n.array_status == 3:  # on CPU
-                            # print("pre node index", prefeth_node_index)
-                            # print("input.index", n.index)
+                        if n.array_status == 0:  # on CPU
                             self.will_do_queue.put((n.index, self.node_to_arr_map[n]))
                             n.array_status = 2  # CPU to GPU
+                            self.hit_count = self.hit_count + 1
+                            self.node_order.append("swap_in\t" + "index:" + str(n.index)
+                                                   + "\t" + n.name + "\ttime:" + str(datetime.datetime.now()))
 
                 for n in node.inputs:   # 计算前确保输入已经放在GPU
                     if n.array_status == 0:  # on CPU
 
-                        print("显存", self.topo_order[n.index], n.index)
+                        # print("显存", self.topo_order[n.index], n.index)
                         self.will_do_queue.put((n.index, self.node_to_arr_map[n]))
                         n.array_status = 2  # CPU to GPU
+                        self.node_order.append("swap_in\t" + "index:" + str(n.index)
+                                               + "\t" + n.name + "\ttime:" + str(datetime.datetime.now()))
                 for n in node.inputs:
                     while n.array_status != 1:
                         (node_index, node_val) = self.have_done_queue.get(block=True)  # get the node from GPU
-                        print("成功搬到显存", self.topo_order[node_index], node_index)
+                        # print("成功搬到显存", self.topo_order[node_index], node_index)
                         self.node_to_arr_map[self.topo_order[node_index]] = node_val
                         if ndarray.is_gpu_ctx(node_val.ctx):
                             self.topo_order[node_index].array_status = 1
+                            self.swap_count = self.swap_count + 1
+                            self.node_order.append("finish_swap_in\t"
+                                                   + "index:" + str(node_index) + "\t" + self.topo_order[
+                                                       node_index].name
+                                                   + "\ttime:" + str(datetime.datetime.now()))
                         else:
                             self.topo_order[node_index].array_status = 0
+                            self.node_order.append("finish_swap_out\t"
+                                                   + "index:" + str(node_index) + "\t" + self.topo_order[
+                                                       node_index].name
+                                                   + "\ttime:" + str(datetime.datetime.now()))
 
                 #放inputs的ndarray，
                 input_vals = []
@@ -242,15 +242,17 @@ class TrainExecutor(object):
                     if node.inputs:
                         input_vals.append(self.node_to_arr_map[input_node])
 
-                if node.is_conv == 1 or node.is_conv == 2:  # 如果该层是卷积正向,在计算前准备将当前层的输入移到CPU,(因为是node是dfs顺序,所以可以直接卸载当前层输入)
-                    for n in node.inputs:
-                        if n.isw == 1:  # 只卸载Xs,不卸载参数
-                            continue
+                for n in node.inputs:
+                    if n.is_conv_input == 1:  # 输入是卷积层的输入
+                        # print(node, n, n.is_conv_input)
+                        # print("开始卸载")
                         if n.array_status == 1:  # on GPU
-                            print("内存", self.topo_order[n.index], n.index)
+                            # print("内存", self.topo_order[n.index], n.index)
                             self.will_do_queue.put((n.index, self.node_to_arr_map[n]))
                             n.array_status = 3  # GPU to CPU
                             self.node_to_arr_map[n] = None
+                            self.node_order.append("swap_out\t" + "index:" + str(n.index)
+                                                   + "\t" + n.name + "\ttime:" + str(datetime.datetime.now()))
 
 
                 #除了SgdOp，其他的点此时要保证在gpu中
@@ -260,7 +262,7 @@ class TrainExecutor(object):
                 memorytoSaving = node.op.compute(node, input_vals, node_val, self.cudnnHandle, self.cublasHandle, self.cudaStream)
                 while memorytoSaving != 0:
                     #不等于0意味着运行需要的临时内存不够，memorytoSaving是申请失败的cudamalloc（，size）的size
-                    #这里运行被动模式
+                    print("内存超限")
                     assert 0
                     #解决了重新计算
                     memorytoSaving = node.op.compute(node, input_vals, node_val, self.cudnnHandle, self.cublasHandle, self.cudaStream)
@@ -268,18 +270,25 @@ class TrainExecutor(object):
                 #此点被计算过了
                 node_computed.add(node)
 
-                if node.is_conv == 1 or node.is_conv == 2:  # 计算后确保卷积的输入已经移到CPU
-                    for n in node.inputs:
-                        if n.isw == 1:  # 只卸载Xs,不卸载参数
-                            continue
+                for n in node.inputs:  # 计算后确保卷积的输入已经移到CPU
+                    if n.is_conv_input == 1:
+                        # print("卸载完成")
                         while n.array_status != 0:
                             (node_index, node_val) = self.have_done_queue.get(block=True)
                             self.node_to_arr_map[self.topo_order[node_index]] = node_val
                             if ndarray.is_gpu_ctx(node_val.ctx):
                                 self.topo_order[node_index].array_status = 1
+                                self.swap_count = self.swap_count + 1
+                                self.node_order.append("finish_swap_in\t"
+                                                       + "index:" + str(node_index) + "\t" + self.topo_order[
+                                                           node_index].name
+                                                       + "\ttime:" + str(datetime.datetime.now()))
                             else:
                                 self.topo_order[node_index].array_status = 0
-                            print("成功搬到内存", self.topo_order[node_index], node_index, self.topo_order[node_index].array_status)
+                                self.node_order.append("finish_swap_out\t"
+                                                       + "index:" + str(node_index) + "\t" + self.topo_order[
+                                                           node_index].name
+                                                       + "\ttime:" + str(datetime.datetime.now()))
 
             # 不是第一次了
             self.isfirstrun = 1
@@ -310,6 +319,12 @@ class TrainExecutor(object):
             node_computed = set()
             # 开始运行
 
+            # 日志记录
+            self.node_order.append("\nrun:")
+            for i in range(len(self.topo_order)):
+                node = self.topo_order[i]
+                self.node_order.append("index:" + str(i) + "\t" + node.name + "\ttime:" + str(datetime.datetime.now()))
+
             # for node in self.topo_order:
             for i in range(len(self.topo_order)):
                 node = self.topo_order[i]
@@ -327,7 +342,7 @@ class TrainExecutor(object):
                         # 没在GPU中,重新在GPU申请空间
                         ret = ndarray.array(feed_dict[node], ctx=self.ctx)
                         while isinstance(ret, int):
-                            # 返回的int意味着内存不够，此时ret是申请失败的cudamalloc（，size）的size，同理见ndarray的初始化函数，这里被动模式
+                            print("内存超限")
                             assert 0
                             # 解决了再声明内存
                             ret = ndarray.array(feed_dict[node], ctx=self.ctx)
@@ -359,14 +374,13 @@ class TrainExecutor(object):
                         # 申请空间
                         ret = ndarray.empty(self.node_to_shape_map[node], ctx=self.ctx)
                         while isinstance(ret, int):
-                            # 返回的int意味着内存不够，此时ret是申请失败的cudamalloc（，size）的size，同理见ndarray的初始化函数，这里被动模式
+                            print("内存超限")
                             assert 0
                             # 解决了再声明内存
                             ret = ndarray.empty(self.node_to_shape_map[node], ctx=self.ctx)
                         # 此时ret为ndarray
                         # value都存在self.node_to_arr_map
                         self.node_to_arr_map[node] = ret
-
                         node.array_status = 1
 
                 prefeth_node_index = self.find_prefetch_layer(i)  # 预取最近的层的输入
@@ -378,20 +392,34 @@ class TrainExecutor(object):
                         if n.array_status == 0:  # on CPU
                             self.will_do_queue.put((n.index, self.node_to_arr_map[n]))
                             n.array_status = 2  # CPU to GPU
+                            self.hit_count = self.hit_count + 1
+                            self.node_order.append("swap_in\t" + "index:" + str(n.index)
+                                                   + "\t" + n.name + "\ttime:" + str(datetime.datetime.now()))
 
                 for n in node.inputs:   #计算前确保输入已经放在GPU
                     if n.array_status == 0:  # on CPU
                         # print("n.index", n.index)
                         self.will_do_queue.put((n.index, self.node_to_arr_map[n]))
                         n.array_status = 2  # CPU to GPU
+                        self.node_order.append("swap_in\t" + "index:" + str(n.index)
+                                               + "\t" + n.name + "\ttime:" + str(datetime.datetime.now()))
                 for n in node.inputs:
                     while n.array_status != 1:
                         (node_index, node_val) = self.have_done_queue.get(block=True)  # get the node from GPU
                         self.node_to_arr_map[self.topo_order[node_index]] = node_val
                         if ndarray.is_gpu_ctx(node_val.ctx):
                             self.topo_order[node_index].array_status = 1
+                            self.swap_count = self.swap_count + 1
+                            self.node_order.append("finish_swap_in\t"
+                                                   + "index:" + str(node_index) + "\t" + self.topo_order[
+                                                       node_index].name
+                                                   + "\ttime:" + str(datetime.datetime.now()))
                         else:
                             self.topo_order[node_index].array_status = 0
+                            self.node_order.append("finish_swap_out\t"
+                                                   + "index:" + str(node_index) + "\t" + self.topo_order[
+                                                       node_index].name
+                                                   + "\ttime:" + str(datetime.datetime.now()))
 
                 # 放inputs的ndarray，
                 input_vals = []
@@ -399,14 +427,18 @@ class TrainExecutor(object):
                     # 此时要保证在gpu中
                     input_vals.append(self.node_to_arr_map[input_node])
 
-                if node.is_conv == 1 or node.is_conv == 2:  # 如果该层是卷积正向或反向，在计算前准备将当前层的输入移到CPU
-                    for n in node.inputs:
-                        if node.isw == 1:
-                            continue
+
+                for n in node.inputs:
+                    if n.is_conv_input == 1:  # 输入是卷积层的输入
+                        # print(node, n, n.is_conv_input)
+                        # print("开始卸载")
                         if n.array_status == 1:  # on GPU
+                            # print("内存", self.topo_order[n.index], n.index)
                             self.will_do_queue.put((n.index, self.node_to_arr_map[n]))
                             n.array_status = 3  # GPU to CPU
                             self.node_to_arr_map[n] = None
+                            self.node_order.append("swap_out\t" + "index:" + str(n.index)
+                                                   + "\t" + n.name + "\ttime:" + str(datetime.datetime.now()))
 
 
                 # 除了SgdOp，其他的点此时要保证在gpu中
@@ -415,7 +447,7 @@ class TrainExecutor(object):
                 memorytoSaving = node.op.compute(node, input_vals, node_val, self.cudnnHandle, self.cublasHandle, self.cudaStream)
                 while memorytoSaving != 0:
                     # 不等于0意味着运行需要的临时内存不够，memorytoSaving是申请失败的cudamalloc（，size）的size
-                    # 这里运行被动模式
+                    print("内存超限")
                     assert 0
                     # 解决了重新计算
                     memorytoSaving = node.op.compute(node, input_vals, node_val, self.cudnnHandle, self.cublasHandle, self.cudaStream)
@@ -423,22 +455,26 @@ class TrainExecutor(object):
                 # 此点被计算过了
                 node_computed.add(node)
 
-                if node.is_conv == 1 or node.is_conv == 2:  # 计算后确保卷积的输入已经移到CPU
-                    for n in node.inputs:
-                        if node.isw == 1:
-                            continue
+                for n in node.inputs:  # 计算后确保卷积的输入已经移到CPU
+                    if n.is_conv_input == 1:
+                        # print("卸载完成")
                         while n.array_status != 0:
-                            # print("node.index", node.index)
-                            # print("n.index", n.index)
-                            # print("n.name", n.name)
                             (node_index, node_val) = self.have_done_queue.get(block=True)
-                            # print("node_index", node_index)
-                            # print("node_val", node_val)
                             self.node_to_arr_map[self.topo_order[node_index]] = node_val
                             if ndarray.is_gpu_ctx(node_val.ctx):
                                 self.topo_order[node_index].array_status = 1
+                                self.swap_count = self.swap_count + 1
+                                self.node_order.append("finish_swap_in\t"
+                                                       + "index:" + str(node_index) + "\t" + self.topo_order[
+                                                           node_index].name
+                                                       + "\ttime:" + str(datetime.datetime.now()))
                             else:
                                 self.topo_order[node_index].array_status = 0
+                                self.node_order.append("finish_swap_out\t"
+                                                       + "index:" + str(node_index) + "\t" + self.topo_order[
+                                                           node_index].name
+                                                       + "\ttime:" + str(datetime.datetime.now()))
+
 
             # 把结果输出了： [loss,变量按网络顺序],这里只是输出value，并不保证一定在gpu中
             # 但是如果这里value是None的话，他会报错
@@ -457,8 +493,19 @@ class TrainExecutor(object):
             self.b2t[0] = self.b2t[0] * self.b2
             return result_output
 
+    def get_start_finish_time(self):
+        return self.start_finish_time
 
+    def get_hit(self):
+        return self.hit_count, self.swap_count
 
+    def get_node_order(self):
+        return self.node_order
+
+    def destroy_cudaStream(self):
+        gpu_op.destroy_cublasHandle(self.cublasHandle)
+        gpu_op.destroy_cudnnHandle(self.cudnnHandle)
+        gpu_op.destroy_cudaStream(self.cudaStream)
 
 
 
@@ -530,8 +577,7 @@ def swapadam(topoorder):
             tmp = topoorder[i]
             topoorder.remove(tmp)
             topoorder.insert(j,tmp)
-    for i in range(len(topoorder)):
-        print(i,topoorder[i])
+
     return topoorder
 
 
