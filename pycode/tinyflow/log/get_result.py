@@ -1,5 +1,5 @@
 import numpy as np
-
+import traceback
 
 def get_result(raw_workload, repeat_times):
     all_saved_ratio = []
@@ -41,7 +41,7 @@ def get_result(raw_workload, repeat_times):
             lines = f.readlines()
         schedule_time_cost = float(lines[0].replace('time_cost:', ''))
         all_schedule_time_cost.append(schedule_time_cost)
-        extra_overhead = 1 - vanilla_time_cost / schedule_time_cost
+        extra_overhead = schedule_time_cost/vanilla_time_cost - 1
         all_extra_overhead.append(extra_overhead)
         memory_saved_to_extra_overhead_ratio = saved_ratio / extra_overhead
         all_memory_saved_to_extra_overhead_ratio.append(memory_saved_to_extra_overhead_ratio)
@@ -64,4 +64,11 @@ def get_result(raw_workload, repeat_times):
 
 
 if __name__ == '__main__':
-    get_result('VGG fixed x1/', 1)
+    from MakeCSV import filelist
+    for p in filelist:
+        try:
+            get_result(p, 3)
+            print(f'完成{p}')
+        except Exception as e:
+            print(f'跳过path:{p}')
+            traceback.print_exc()

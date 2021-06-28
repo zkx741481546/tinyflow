@@ -1,11 +1,13 @@
 GPU = 1
 import os
 import sys
+
 os.environ['CUDA_VISIBLE_DEVICES'] = f'{GPU}'
 sys.path.append('../../')
 from pycode.tinyflow import autodiff as ad
 from pycode.tinyflow.log.get_result import get_result
 from util import *
+
 
 class ResNet50():
     def __init__(self, num_step, batch_size, gpu_num, log_path, job_id):
@@ -173,7 +175,7 @@ class ResNet50():
 
         # 只声明，不操作
         executor = self.ad.Executor(loss, y, 0.001, top_control_queue=top_control_queue,
-                                    top_message_queue=top_message_queue,log_path=self.log_path)
+                                    top_message_queue=top_message_queue, log_path=self.log_path)
 
         feed_dict_mv = {}
         for key, value in feed_dict.items():
@@ -188,7 +190,7 @@ class ResNet50():
             f1 = open(f"{self.log_path}/gpu_time.txt", "w+")
         for i in range(self.num_step):
             print("step", i)
-            if self.job_id == 0 and i==29:
+            if self.job_id == 0 and i == 29:
                 gpu_record.start()
                 start_time = time.time()
             feed_dict[X] = ndarray.array(X_val, ctx=executor_ctx)
@@ -214,6 +216,7 @@ class ResNet50():
         top_message_queue.join_thread()
         return 0
 
+
 def run_exp(workloads):
     for path, repeat, jobs_num, batch_size in workloads:
         raw_path = path
@@ -226,3 +229,7 @@ def run_exp(workloads):
                 print(path)
             main(path, repeat, jobs_num, batch_size, GPU, ResNet50)
         get_result(raw_path, repeat)
+
+
+if __name__ == '__main__':
+    run_exp([['./log/ResNet x1/', 3, 1, 2]])

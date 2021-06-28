@@ -1,0 +1,16 @@
+,x1,x2,x3
+TENSILE:VGG,1.9867,1.1081,1.5526
+TENSILE:Inception V3,0.8157,0.9801,4.7349
+TENSILE:Inception V4,0.928,2.4752,2.4202
+TENSILE:ResNet,0.6526,0.8297,0.9474
+TENSILE:DenseNet,4.2463,2.9314,2.9015
+vDNN:VGG,0.0,0.0,0.0
+vDNN:Inception V3,0.0,0.0,0.0
+vDNN:Inception V4,0.0,0.0,0.0
+vDNN:ResNet,0.0,0.0,0.0
+vDNN:DenseNet,0.0,0.0,0.0
+Capuchin:VGG,0.0,0.0,0.0
+Capuchin:Inception V3,0.0,0.0,0.0
+Capuchin:Inception V4,0.0,0.0,0.0
+Capuchin:ResNet,0.0,0.0,0.0
+Capuchin:DenseNet,0.0,0.0,0.0
