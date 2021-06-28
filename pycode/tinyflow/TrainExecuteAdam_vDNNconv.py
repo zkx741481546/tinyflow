@@ -502,7 +502,7 @@ class TrainExecutor(object):
     def get_node_order(self):
         return self.node_order
 
-    def destroy_cuda(self):
+    def destroy_cudaStream(self):
         gpu_op.destroy_cublasHandle(self.cublasHandle)
         gpu_op.destroy_cudnnHandle(self.cudnnHandle)
         gpu_op.destroy_cudaStream(self.cudaStream)

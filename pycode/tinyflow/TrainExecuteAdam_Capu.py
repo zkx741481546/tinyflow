@@ -66,6 +66,7 @@ class TrainExecutor(object):
         self.hit_count = 0
         self.swap_count = 0
         self.node_order = []
+        self.outspace=[]
 
 
     def infer_shape(self, feed_shapes):
@@ -154,6 +155,7 @@ class TrainExecutor(object):
 
             #开始运行
             for i in range(len(self.topo_order)):
+
                 node = self.topo_order[i]
                 self.node_order.append("index:" + str(i) + "\t" + node.name + "\ttime:" + str(datetime.datetime.now()))
 
@@ -223,7 +225,7 @@ class TrainExecutor(object):
 
                 for n in node.inputs:
                     while n.array_status != 1:  # 没在GPU上的node取到GPU上
-                        self.passive_mode_getusefulnode(n,node)
+                        need_tomem+=self.passive_mode_getusefulnode(n,node)
 
                 #放inputs的ndarray，
                 input_vals = []
@@ -234,9 +236,9 @@ class TrainExecutor(object):
 
 
 
-
                 #除了SgdOp，其他的点此时要保证在gpu中
                 node_val = self.node_to_arr_map[node]
+
 
                 tic=time.time()
                 memorytoSaving = node.op.compute(node, input_vals, node_val, self.cudnnHandle, self.cublasHandle, self.cudaStream)
@@ -308,16 +310,11 @@ class TrainExecutor(object):
 
 
         else:
-
             node_computed = set()
             # 日志记录
             self.node_order.append("\nrun:")
-            # if self.outspace!=None:
-            #     for i in range(len(self.outspace)):
-            #        x=self.outspace[i].asnumpy()
-            # 开始运行
+
             for i in range(len(self.topo_order)):
-                # print(i,self.topo_order[i].name)
                 node = self.topo_order[i]
                 self.node_order.append("index:" + str(i) + "\t" + node.name + "\ttime:" + str(datetime.datetime.now()))
                 # 已经被计算过了
@@ -659,6 +656,7 @@ class TrainExecutor(object):
         if isinstance(node_val, int):
             if self.isfirstrun==0:
                 self.getpeekaccess()
+            m=node_val
             for dnode in self.topo_order:
                 if self.isevict(dnode, node):
                     self.tensor_evict(dnode)
@@ -669,7 +667,7 @@ class TrainExecutor(object):
             self.node_order.append("swap_in\t" + "index:" + str(node_index)
                                    + "\t" + self.topo_order[node_index].name + "\ttime:" + str(datetime.datetime.now()))
             self.topo_order[node_index].array_status = 2
-            return
+            return m
         self.node_to_arr_map[self.topo_order[node_index]] = node_val
         if ndarray.is_gpu_ctx(node_val.ctx):
             self.topo_order[node_index].array_status = 1
@@ -682,7 +680,7 @@ class TrainExecutor(object):
             self.node_order.append("finish_swap_out\t"
                                    + "index:" + str(node_index) + "\t" + self.topo_order[node_index].name
                                    + "\ttime:" + str(datetime.datetime.now()))
-
+        return 0
 
     def tensor_evict(self, access_node):
         self.will_do_queue.put((access_node.index, self.node_to_arr_map[access_node]))
@@ -702,7 +700,7 @@ class TrainExecutor(object):
             if(self.topo_order[i].array_status==1):
                 self.topo_order[i].peekaccess.append(self.topo_order[i].access_count)
 
-    def destroy_cuda(self):
+    def destroy_cudaStream(self):
         gpu_op.destroy_cublasHandle(self.cublasHandle)
         gpu_op.destroy_cudnnHandle(self.cudnnHandle)
         gpu_op.destroy_cudaStream(self.cudaStream)
