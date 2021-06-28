@@ -47,7 +47,6 @@ class Inceptionv3(threading.Thread):
         node_after=self.ad.activation_forward_op(node_new, model, "relu")
         return  node_after
     def inception_v3(self):
-        start_time = datetime.datetime.now()
         X = self.ad.Placeholder("inputs")
         y_ = self.ad.Placeholder("y_")
         filterb_1 = self.ad.Variable("filterb_1")
@@ -574,21 +573,22 @@ class Inceptionv3(threading.Thread):
                                            filter3_3_2c: filter3_3_2_valc, filter3_3_2d: filter3_3_2_vald,
                                            filter3_3_3: filter3_3_3_val
             ,filtera1:filtera1val,W:W_val,b:b_val})
+        start_time = datetime.datetime.now()
         for i in range(self.num_step):
-            time1 = datetime.datetime.now()
+            # time1 = datetime.datetime.now()
             t.run({X: X_val, y_: y_val})
-            time2 = datetime.datetime.now()
-            print("epoch", i + 1, "use", time2 - time1
-                  , "\tstart", time1, "\tend", time2, file=self.f1)
+            # time2 = datetime.datetime.now()
+            # print("epoch", i + 1, "use", time2 - time1
+            #       , "\tstart", time1, "\tend", time2, file=self.f1)
             print("InceptionV3 num_step", i)
         start_finish_time = t.get_start_finish_time()
-        print("start_time ", start_time, "\nstart_finish_time", start_finish_time, file=self.f3)
+        print((start_finish_time-start_time).microseconds, file=self.f3)
         hit_count, swap_count = t.get_hit()
         print("hit_count ", hit_count, "\nswap_count", swap_count, file=self.f6)
         node_order = t.get_node_order()
         for i in node_order:
             print(i, file=self.f7)
-
+        t.destroy_cudaStream()
         self.f1.close()
         self.f3.close()
         self.f6.close()

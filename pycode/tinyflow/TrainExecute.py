@@ -277,7 +277,10 @@ class TrainExecutor(object):
                 result_output.append(self.node_to_arr_map[Accuracy_node])
             return result_output
 
-
+    def destroy_cuda(self):
+        gpu_op.destroy_cublasHandle(self.cublasHandle)
+        gpu_op.destroy_cudnnHandle(self.cudnnHandle)
+        gpu_op.destroy_cudaStream(self.cudaStream)
 
 
 

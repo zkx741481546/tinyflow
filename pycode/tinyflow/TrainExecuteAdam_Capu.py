@@ -702,6 +702,10 @@ class TrainExecutor(object):
             if(self.topo_order[i].array_status==1):
                 self.topo_order[i].peekaccess.append(self.topo_order[i].access_count)
 
+    def destroy_cuda(self):
+        gpu_op.destroy_cublasHandle(self.cublasHandle)
+        gpu_op.destroy_cudnnHandle(self.cudnnHandle)
+        gpu_op.destroy_cudaStream(self.cudaStream)
 
 
 def get_Variable_node_list(node):

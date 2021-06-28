@@ -63,13 +63,13 @@ def Experiment1():
             3: {2: 0.31907608729118836}
         }
     }
-    for net_id in range(2, 5):
+    for net_id in range(5):
         repeat_times = 3
         print("Experiment1 start")
         net_name = net_names[net_id]
         for i, num_net in enumerate([1, 1, 2, 3]):
-            if net_id==2 and i!=3:
-                continue
+            # if net_id==2 and i!=3:
+            #     continue
             if i == 0:
                 batch_size = 16
                 net_name_ = net_name

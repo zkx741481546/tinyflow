@@ -153,7 +153,6 @@ class VGG16(threading.Thread):
 
     def vgg16(self, num_step, X_val, y_val):
 
-        start_time = datetime.datetime.now()
         # ctx = ndarray.gpu(0)
         # for i in range(16):
         #     filters_val[i] = ndarray.array(filters_val[i], ctx)
@@ -166,25 +165,25 @@ class VGG16(threading.Thread):
             t = self.TrainExecute.TrainExecutor(self.loss, aph)
         t.init_Variable(self.feed_dict)
         print('run')
+        start_time = datetime.datetime.now()
         for i in range(num_step):
-            time1 = datetime.datetime.now()
+            # time1 = datetime.datetime.now()
 
             t.run({self.X: X_val, self.y_: y_val})
 
-            time2 = datetime.datetime.now()
+            # time2 = datetime.datetime.now()
 
-            print("epoch", i + 1, "use", time2 - time1
-                  , "\tstart", time1, "\tend", time2, file=self.f1)
+            # print("epoch", i + 1, "use", time2 - time1
+            #       , "\tstart", time1, "\tend", time2, file=self.f1)
             print("VGG16 num_step", i)
-
         start_finish_time = t.get_start_finish_time()
-        print("start_time ", start_time, "\nstart_finish_time", start_finish_time, file=self.f3)
+        print((start_finish_time-start_time).microseconds, file=self.f3)
         hit_count, swap_count = t.get_hit()
         print("hit_count ", hit_count, "\nswap_count", swap_count, file=self.f6)
         node_order = t.get_node_order()
         for i in node_order:
             print(i, file=self.f7)
-
+        t.destroy_cudaStream()
         self.f1.close()
         self.f3.close()
         self.f6.close()

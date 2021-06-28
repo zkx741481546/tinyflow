@@ -19,7 +19,7 @@ def get_result(path, repeat_times, net_order=0, need_tosave=None):
     all_capuchin_BCR = []
 
     for re_t in range(repeat_times):
-        res = open(f'{path}result.txt', 'w')
+        # res = open(f'{path}result.txt', 'w')
         with open(f'{path}type0_repeat_time={re_t}_net_order={net_order}_record_2.txt', 'r') as f:
             lines = f.readlines()
         vanilla_max_memory = 0
@@ -31,16 +31,9 @@ def get_result(path, repeat_times, net_order=0, need_tosave=None):
             except:
                 pass
         all_vanilla_max_memory.append(vanilla_max_memory)
-        with open(f'{path}type0_repeat_time={re_t}_net_order={net_order}_record_1.txt', 'r') as f:
+        with open(f'{path}type0_repeat_time={re_t}_net_order={net_order}_record_3.txt', 'r') as f:
             lines = f.readlines()
-        vanilla_time = 0
-        for line in lines:
-            try:
-                t = line.split('\t')[0].split(' ')[3]
-                t = datetime.datetime.strptime(t, '%H:%M:%S.%f').second * 1000000 + datetime.datetime.strptime(t, '%H:%M:%S.%f').microsecond
-                vanilla_time += t
-            except:
-                pass
+        vanilla_time = float(lines[0])
         all_vanilla_time.append(vanilla_time)
         # res.writelines('vanilla:\n')
         # res.writelines(f'max_memory:{vanilla_max_memory}\n')
@@ -57,17 +50,9 @@ def get_result(path, repeat_times, net_order=0, need_tosave=None):
             except:
                 pass
         all_vdnn_max_memory.append(max_memory)
-        with open(f'{path}type2_repeat_time={re_t}_net_order={net_order}_record_1.txt', 'r') as f:
+        with open(f'{path}type2_repeat_time={re_t}_net_order={net_order}_record_3.txt', 'r') as f:
             lines = f.readlines()
-        time = 0
-        for line in lines:
-            try:
-                t = line.split('\t')[0].split(' ')[3]
-                # t = datetime.datetime.strptime(t, '%H:%M:%S.%f').microsecond
-                t = datetime.datetime.strptime(t, '%H:%M:%S.%f').second * 1000000 + datetime.datetime.strptime(t, '%H:%M:%S.%f').microsecond
-                time += t
-            except:
-                pass
+        time = float(lines[0])
         all_vdnn_time.append(time)
         memory_saved = 1 - max_memory / vanilla_max_memory
         extra_overhead = 1 - vanilla_time / time
@@ -95,17 +80,9 @@ def get_result(path, repeat_times, net_order=0, need_tosave=None):
         if need_tosave is not None and len(need_tosave)>0:
             max_memory -= need_tosave[re_t]
         all_capuchin_max_memory.append(max_memory)
-        with open(f'{path}type1_repeat_time={re_t}_net_order={net_order}_record_1.txt', 'r') as f:
+        with open(f'{path}type1_repeat_time={re_t}_net_order={net_order}_record_3.txt', 'r') as f:
             lines = f.readlines()
-        time = 0
-        for line in lines:
-            try:
-                t = line.split('\t')[0].split(' ')[3]
-                # t = datetime.datetime.strptime(t, '%H:%M:%S.%f').microsecond
-                t = datetime.datetime.strptime(t, '%H:%M:%S.%f').second * 1000000 + datetime.datetime.strptime(t, '%H:%M:%S.%f').microsecond
-                time += t
-            except:
-                pass
+        time = float(lines[0])
         all_capuchin_time.append(time)
         memory_saved = 1 - max_memory / vanilla_max_memory
         extra_overhead = 1 - vanilla_time / time
@@ -169,4 +146,4 @@ def get_vanilla_max_memory(path, repeat_times, net_order=0):
 
 
 if __name__ == '__main__':
-    get_result('./VGG/', repeat_times=3, need_tosave=[5770.907183725366,5771.339125520944,6711.676414494596])
+    get_result('./InceptionV4/', repeat_times=3, need_tosave=[5770.907183725366,5771.339125520944,6711.676414494596])
