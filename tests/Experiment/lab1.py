@@ -98,11 +98,12 @@ def Experiment1():
                         bud = vanilla_max_memory * (1 - budget[net_name][num_net][batch_size])
                         # 总显存=预算+need_tosave(额外占用空间)
                         need_tosave = 11019 - bud
-                        # need_tosave -= 100
+                        # if net_id == 2 and i == 3:
+                        #     need_tosave -= 500
                         print(f'need_tosave:{need_tosave}')
                         need_tosave_list.append(need_tosave)
                         outspace = []
-                        size = need_tosave * pow(2, 20) / 4
+                        size = need_tosave * 1e6 / 4
                         gctx = ndarray.gpu(0)
                         while size > 0:
                             if size > 10000 * 10000:
