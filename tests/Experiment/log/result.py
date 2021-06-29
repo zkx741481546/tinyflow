@@ -91,7 +91,7 @@ def get_result(path, repeat_times, net_order=0, need_tosave=None):
         all_capuchin_BCR.append(memory_saved / extra_overhead)
 
     all_vanilla_max_memory = np.array(all_vanilla_max_memory)
-    all_vanilla_time = np.array(all_vdnn_time)
+    all_vanilla_time = np.array(all_vanilla_time)
 
     all_vdnn_max_memory = np.array(all_vdnn_max_memory)
     all_vdnn_time = np.array(all_vdnn_time)
@@ -146,4 +146,4 @@ def get_vanilla_max_memory(path, repeat_times, net_order=0):
 
 
 if __name__ == '__main__':
-    get_result('./VGG/', repeat_times=3, need_tosave=[5770.907183725366,5771.339125520944,6711.676414494596])
+    get_result('./VGG/', repeat_times=1, need_tosave=[5770.907183725366,5771.339125520944,6711.676414494596])
