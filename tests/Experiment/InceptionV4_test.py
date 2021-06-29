@@ -351,7 +351,7 @@ class Inceptionv4(threading.Thread):
             #       , "\tstart", time1, "\tend", time2, file=self.f1)
             print(f"InceptionV4 num_step {i}")
         start_finish_time = datetime.datetime.now()
-        print((start_finish_time-start_time).microseconds, file=self.f3)
+        print((start_finish_time-start_time).total_seconds(), file=self.f3)
         hit_count, swap_count = t.get_hit()
         print("hit_count ", hit_count, "\nswap_count", swap_count, file=self.f6)
         node_order = t.get_node_order()
