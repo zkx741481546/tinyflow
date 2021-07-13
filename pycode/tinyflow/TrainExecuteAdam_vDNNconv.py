@@ -67,6 +67,7 @@ class TrainExecutor(object):
         self.will_do_queue = queue.Queue()
         self.have_done_queue = queue.Queue()
         self.memoryManager = memoryManager.MemoryManager(self.will_do_queue, self.have_done_queue)
+        self.memoryManager.setDaemon(True)
         self.memoryManager.start()
 
         # 日志记录

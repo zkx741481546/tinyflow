@@ -4,8 +4,7 @@ import numpy as np
 from pycode.tinyflow import ndarray, gpu_op
 from pycode.tinyflow import autodiff as ad
 import os, datetime
-
-
+from line_profiler_pycharm import profile
 
 class TrainExecutor(object):
     """Executor computes values for given set of nodes in computation graph."""
@@ -59,6 +58,8 @@ class TrainExecutor(object):
         self.swap_count = 0
         self.node_order = []
 
+    def quit(self):
+        pass
 
     def infer_shape(self, feed_shapes):
         """Given shapes of feed_dict nodes, infer shape for all nodes in graph.
